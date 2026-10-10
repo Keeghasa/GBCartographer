@@ -120,6 +120,16 @@ function readSettings(settingsFile: string): Record<string, unknown> {
   }
 }
 
+/**
+ * Whether this build ships the demo with its art: the demo's pictures stay on the author's machines until their
+ * artists say yes, so a build from GitHub has the project files but no pictures, and shows no demo.
+ */
+export function demoAvailable(root: string): boolean {
+  const assets = resolve(root, "demo", "assets");
+  if (!existsSync(resolve(root, "demo", "demo.gbsproj")) || !existsSync(assets)) return false;
+  return readdirSync(assets, { withFileTypes: true }).some((kind) => kind.isDirectory() && readdirSync(resolve(assets, kind.name)).some((file) => file.toLowerCase().endsWith(".png")));
+}
+
 /** A folder in the system's temporary space (test copies and the like): opened, but never kept as recent. */
 let temporaryRoots = [tmpdir(), "/tmp", "/private/tmp", "/private/var/folders"];
 const isTemporary = (path: string) => temporaryRoots.some((root) => resolve(path).startsWith(resolve(root) + sep));

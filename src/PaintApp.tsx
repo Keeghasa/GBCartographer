@@ -125,6 +125,8 @@ export default function PaintApp() {
   const saving = useRef(false);
   const shadeInputs = useRef<(HTMLInputElement | null)[]>([]);
   const [recent, setRecent] = useState<{ name: string; path: string }[]>([]);
+  // Whether this build has the demo project with its art (builds from GitHub don't, until its artists say yes).
+  const [hasDemo, setHasDemo] = useState(false);
   /** The right-click menu on a picture card: where it opened and for which asset. */
   const [assetMenu, setAssetMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null);
   /** The project menu (open another, the demo, recent, close), anchored under the button that opened it. */
@@ -403,7 +405,7 @@ export default function PaintApp() {
   /** Reads the open GB Studio project (its pictures and palettes), or notes that none is open. */
   async function loadProject(): Promise<void> {
     const asJson = <T,>(response: Response) => response.ok && response.headers.get("content-type")?.includes("json") ? response.json() as Promise<T> : null;
-    const ping = await fetch("./__cartographer/ping", { cache: "no-cache" }).then((response) => asJson<{ ok?: boolean; project?: { path: string; versionNote?: string | null } | null; recent?: { name: string; path: string }[] }>(response)).catch(() => null);
+    const ping = await fetch("./__cartographer/ping", { cache: "no-cache" }).then((response) => asJson<{ ok?: boolean; project?: { path: string; versionNote?: string | null } | null; recent?: { name: string; path: string }[]; demo?: boolean }>(response)).catch(() => null);
     setServed(Boolean(ping?.ok));
     // A project made with a GB Studio version this wasn't tested with: say so once per project and session.
     if (ping?.project?.versionNote && !versionNoted.current.has(ping.project.path)) {
@@ -411,6 +413,7 @@ export default function PaintApp() {
       say(ping.project.versionNote);
     }
     setRecent(ping?.recent ?? []);
+    setHasDemo(Boolean(ping?.demo));
     const opened = ping?.ok && ping.project ? await fetch(PROJECT_URL, { cache: "no-cache" }).then((response) => asJson<{ ok?: boolean } & Project>(response)).catch(() => null) : null;
     if (opened?.ok) {
       palettesRef.current = opened.palettes.filter((palette) => palette.colors?.length === 4);
@@ -1792,7 +1795,7 @@ export default function PaintApp() {
   if (splash) {
     return (
       <div className="gbp-shell gbp-splash" onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event)}>
-        <StartScreen recent={recent} onChooseProject={() => void chooseProject()} onDemo={() => void chooseProject(true)} onOpenFiles={() => void pickFiles()} onOpenRecent={(path) => void openProjectPath(path)} onAbout={() => setShowAbout(true)} />
+        <StartScreen recent={recent} onChooseProject={() => void chooseProject()} onDemo={hasDemo ? () => void chooseProject(true) : null} onOpenFiles={() => void pickFiles()} onOpenRecent={(path) => void openProjectPath(path)} onAbout={() => setShowAbout(true)} />
         {toast && <div className="gbp-toast" role="status">{toast}</div>}
         {showAbout && <AboutWindow onClose={() => setShowAbout(false)} />}
       </div>
@@ -1802,7 +1805,7 @@ export default function PaintApp() {
   const otherRecent = recent.filter((item) => item.path !== project?.path);
   const projectItems: MenuEntry[] = [
     { label: "Open another project…", icon: <FolderOpen />, onSelect: () => void chooseProject() },
-    { label: "Open the demo project", icon: <Gamepad2 />, onSelect: () => void chooseProject(true) },
+    ...(hasDemo ? [{ label: "Open the demo project", icon: <Gamepad2 />, onSelect: () => void chooseProject(true) }] : []),
     ...(project && /[\\/]demo-project$/.test(project.path) ? [{ label: "Reset the demo project…", icon: <RotateCcw />, title: "Your painted copy goes to the backups folder; a fresh copy of the demo opens", onSelect: () => void chooseProject(true, true) }] : []),
     ...(otherRecent.length ? [{ separator: true } as MenuEntry, { heading: <><Clock size={11} /> Recent</> } as MenuEntry, ...otherRecent.slice(0, 5).map((item) => ({ label: recent.filter((other) => other.name === item.name).length > 1 ? `${item.name} · ${item.path.split(/[\\/]/).slice(-2, -1)[0] ?? ""}` : item.name, indent: true, title: item.path, onSelect: () => void openProjectPath(item.path) }))] : []),
     ...(project ? [

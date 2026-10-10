@@ -43,7 +43,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampMeta, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
 import { readMaps, writeMaps } from "./maps";
-import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote } from "./project";
+import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
 export interface ServerOptions {
   /** The repo or app folder. */
@@ -125,7 +125,7 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
       return true;
     }
     if (url.pathname === "/__cartographer/ping") {
-      reply(res, 200, { ok: true, project: project ? { name: projectName(project), path: project, version: projectVersion(project), versionNote: versionNote(project) } : null, recent: recentProjects(options.settingsFile).map((path) => ({ name: projectName(path), path })) });
+      reply(res, 200, { ok: true, demo: demoAvailable(options.root), project: project ? { name: projectName(project), path: project, version: projectVersion(project), versionNote: versionNote(project) } : null, recent: recentProjects(options.settingsFile).map((path) => ({ name: projectName(path), path })) });
       return true;
     }
     if (url.pathname === "/__cartographer/project" && req.method === "POST") {

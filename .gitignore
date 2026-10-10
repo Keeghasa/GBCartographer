@@ -44,3 +44,6 @@ src/graphics/scenes.ts
 src/graphics/library.ts
 src/graphics/library.test.ts
 demo/Cartographer/
+
+# Installers made by electron-builder (npm run dist)
+release/

@@ -15,26 +15,109 @@
     "build-app-icon": "vite-node scripts/build-app-icon.ts --",
     "install-mac-app": "scripts/mac/install-app.sh",
     "install-shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/install-shortcut.ps1",
-    "screenshot": "node scripts/screenshot.mjs http://127.0.0.1:5173/ docs/screenshot.png scripts/screenshot-demo.js"
-  },
-  "dependencies": {
-    "@fontsource/inter": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
-    "lucide-react": "^1.48.0",
-    "radix-ui": "^1.6.7",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "screenshot": "node scripts/screenshot.mjs http://127.0.0.1:5173/ docs/screenshot.png scripts/screenshot-demo.js",
+    "dist": "npm run desktop:build && electron-builder --publish never",
+    "dist:mac": "npm run desktop:build && electron-builder --mac --publish never",
+    "dist:win": "npm run desktop:build && electron-builder --win --publish never",
+    "dist:linux": "npm run desktop:build && electron-builder --linux --publish never"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@types/node": "^22.20.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "electron": "^44.4.5",
+    "electron-builder": "26.16.1",
     "esbuild": "^0.25.12",
+    "lucide-react": "^1.48.0",
+    "radix-ui": "^1.6.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
     "vite-node": "^3.0.5",
     "vitest": "^5.0.3"
+  },
+  "author": "Keeghasa",
+  "homepage": "https://github.com/Keeghasa/GBCartographer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Keeghasa/GBCartographer.git"
+  },
+  "build": {
+    "appId": "io.github.keeghasa.gbcartographer",
+    "productName": "GB Cartographer",
+    "artifactName": "GB-Cartographer-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.png",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "GB Cartographer ${version}"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "GB-Cartographer-${version}-windows-setup.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Graphics",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "publish": null
   }
 }

@@ -8,7 +8,7 @@ import { decodeTileColors } from "../src/gb/gbstudio";
 import { encodePng } from "../src/gb/png";
 import { handleCartographerRequest } from "./endpoints";
 import { KEEP, listBackups, projectBackupDir } from "./backups";
-import { setProjectFolder, versionNote, setTemporaryRoots } from "./project";
+import { setProjectFolder, versionNote, setTemporaryRoots, demoAvailable } from "./project";
 
 // A throwaway folder with a tiny fake GB Studio 4 project.
 let root = "";
@@ -65,7 +65,8 @@ const latestBackup = (file: string) => {
 
 describe("project folder", () => {
   it("starts with no project, refuses folders that are not projects, and remembers the chosen one", async () => {
-    expect(await json<{ project: null }>(await fetch(`${base}/ping`))).toEqual({ ok: true, project: null, recent: [] });
+    // demo: whether this checkout has the demo's pictures (they stay on the author's machines until blessed).
+    expect(await json<{ project: null }>(await fetch(`${base}/ping`))).toEqual({ ok: true, demo: demoAvailable(root), project: null, recent: [] });
     expect((await fetch(`${base}/gbstudio-assets`)).status).toBe(404);
     const post = (path: string) => fetch(`${base}/project`, { method: "POST", body: JSON.stringify({ path }) });
     expect((await post(root)).status).toBe(400);

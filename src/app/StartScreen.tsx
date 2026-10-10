@@ -3,7 +3,7 @@ import { Button, Chip, Kbd } from "../ui/kit";
 import "./StartScreen.css";
 
 /** The splash without a project (dev server or desktop app): open a project, the demo, PNG files, or a recent project. It fills the window. */
-export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOpenRecent, onAbout }: { recent: { name: string; path: string }[]; onChooseProject: () => void; onDemo: () => void; onOpenFiles: () => void; onOpenRecent: (path: string) => void; onAbout: () => void }) {
+export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOpenRecent, onAbout }: { recent: { name: string; path: string }[]; onChooseProject: () => void; onDemo: (() => void) | null; onOpenFiles: () => void; onOpenRecent: (path: string) => void; onAbout: () => void }) {
   return (
     <div className="ss-splash k">
       <img className="ss-icon" src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={88} height={88} />
@@ -15,7 +15,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       <div className="ss-cards">
         {/* The first card is the main way in, so it's lit like a picked card. */}
         <button type="button" className="k-card k-card--button ss-card ss-card--main" onClick={onChooseProject}><span className="ss-ic"><FolderTree size={18} /></span><b>Open a project</b><span>The folder with the .gbsproj file. Backgrounds, sprites, tilesets and fonts open here and save back.</span></button>
-        <button type="button" className="k-card k-card--button ss-card" onClick={onDemo}><span className="ss-ic"><Gamepad2 size={18} /></span><b>Try the demo</b><span>A small project with CC0 and MIT art, credited inside. Opens a copy you can paint in.</span></button>
+        {onDemo && <button type="button" className="k-card k-card--button ss-card" onClick={onDemo}><span className="ss-ic"><Gamepad2 size={18} /></span><b>Try the demo</b><span>A small project with CC0 and MIT art, credited inside. Opens a copy you can paint in.</span></button>}
         <button type="button" className="k-card k-card--button ss-card" onClick={onOpenFiles}><span className="ss-ic"><FolderOpen size={18} /></span><b>Open PNG files</b><span>Any Game Boy picture on its own. Drop files anywhere, or paste from the clipboard.</span><span className="ss-keys"><Kbd>Ctrl+O</Kbd></span></button>
       </div>
       {recent.length > 0 && (
