@@ -5,7 +5,7 @@
 .st-search svg { position: absolute; left: 10px; color: var(--k-ink-3); pointer-events: none; }
 .st-search .k-input { width: 100%; padding-left: 30px; }
 .st-shelf { width: 100%; }
-.st-body { overflow: auto; min-height: 0; padding-right: 4px; display: flex; flex-direction: column; gap: var(--k-5); }
+.st-body { overflow: auto; min-height: 0; padding: 0 4px 28px 0; mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); display: flex; flex-direction: column; gap: var(--k-5); }
 .st-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--k-2); }
 .st-title { font-weight: 650; font-size: var(--k-text-md); color: var(--k-ink); }
 .st-source { display: inline-flex; align-items: center; gap: 4px; color: var(--k-acc); text-decoration: none; }

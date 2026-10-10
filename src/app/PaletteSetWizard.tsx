@@ -162,8 +162,8 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
         <span className="k-spacer" />
         {error && step > 0 && <p className="psw-error" role="alert">{error}</p>}
         {step === 2 && (done.project || done.mine) && <Chip tone="acc"><Check size={12} strokeWidth={3} />{[done.project, done.mine].filter(Boolean).join(" · ")}</Chip>}
-        <Button icon={<ArrowLeft />} disabled={step === 0 || busy} onClick={() => { setPicked(null); setStep(step - 1); }}>Back</Button>
-        {step < 2 ? <Button variant="primary" disabled={step === 0 ? !made?.palettes.length : !palettes.length} onClick={next}>Next<ArrowRight /></Button>
+        {step > 0 && <Button icon={<ArrowLeft />} disabled={busy} onClick={() => { setPicked(null); setStep(step - 1); }}>Back</Button>}
+        {step < 2 ? <Button variant="primary" disabled={step === 0 ? !made?.palettes.length : !palettes.length} title={step === 0 && !made?.palettes.length ? (kind === "lospec" ? "Fetch a Lospec palette first" : kind === "picture" ? "Choose a picture first" : "Pick a library set first") : undefined} onClick={next}>Next<ArrowRight /></Button>
           : <>
             <Button variant={projectName ? undefined : "primary"} disabled={!named || busy || Boolean(done.mine)} title="Your own palettes, kept in this browser" onClick={addToMine}>Add to Mine</Button>
             {projectName && !done.project && <Button variant="primary" disabled={!named || busy} title={`New palette files in ${projectName}`} onClick={() => void addToProject()}>{busy ? "Adding…" : `Add to ${projectName}`}</Button>}

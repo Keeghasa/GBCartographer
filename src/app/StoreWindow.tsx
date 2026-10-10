@@ -35,6 +35,19 @@ interface Props {
 
 const SHELVES = storeShelves();
 const GRAPHICS_CREDIT = { author: "Keeghasa (GB Cartographer)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };
+/** What each Art section holds, in a line. */
+const GROUP_INTROS: Record<string, string> = {
+  People: "Walking characters in GB Studio's classic six-frame strip: GB Studio sets up their animations by itself.",
+  Creatures: "Animals and enemies, each a short looping animation.",
+  Things: "Single-frame sprites: signs, crates, hearts, coins.",
+  "Animated things": "Two-state things (chests, doors, levers) and short loops (coins, sparkles, explosions).",
+  Emotes: "16 × 16 bubbles GB Studio shows above an actor's head.",
+  Avatars: "16 × 16 faces for dialogue boxes.",
+  UI: "GB Studio's window frame (ui/frame.png) and menu cursor (ui/cursor.png).",
+  "Tile sheets": "16 × 16 pieces to build backgrounds from, eight to a row.",
+  Scenes: "Whole backgrounds to start from: title, menu, town, house, shop, cave, overworld and more.",
+  "Map screens": "A village cut into six screens that join at their edges, ready for the Map Room.",
+};
 const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background" };
 /** Sites the store links to, in their own colors (a Source button wears its site's). */
 const SITES: { host: RegExp; name: string; color: string }[] = [
@@ -60,11 +73,11 @@ function SiteButton({ url, label, title }: { url: string; label?: string; title?
 const Strip = ({ colors }: { colors: readonly string[] }) => <span className="app-chips">{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>;
 
 /** Who made a shelf, its license (explained on click) and a button to its source. */
-function Credit({ author, license, source }: { author?: string; license?: string; source?: string }) {
+function Credit({ author, license, source, shelf }: { author?: string; license?: string; source?: string; shelf?: string }) {
   const terms = license ? LICENSES[license] : undefined;
   return (
     <>
-      {author && <span className="k-muted k-small">by {author}</span>}
+      {author && author !== shelf && <span className="k-muted k-small">by {author}</span>}
       {license && (terms
         ? <Popover trigger={<Button size="sm" variant="ghost" icon={<Scale />} title="What this license lets you do">{license}</Button>}>
             <div className="st-license k-stack k-stack--tight"><b>{license}</b><span className="k-small">{terms.text}</span>
@@ -147,7 +160,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
             {shelves.length === 0 && <p className="k-muted k-small">No palette matches “{query}”.</p>}
             {shelves.map((shelf) => (
               <section key={shelf.name} className="k-stack">
-                <header className="st-head"><span className="st-title">{shelf.name}</span><Credit author={shelf.author} license={shelf.license} source={shelf.source} /></header>
+                <header className="st-head"><span className="st-title">{shelf.name}</span><Credit author={shelf.author} license={shelf.license} source={shelf.source} shelf={shelf.name} /></header>
                 {shelf.about && <p className="k-muted k-small st-about">{shelf.about}</p>}
                 <div className="st-sets">
                   {shelf.sets.map((set) => {
@@ -188,7 +201,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
           {aisle === "graphics" && (
             <section className="k-stack">
               <header className="st-head"><span className="st-title">{needle ? `Art matching “${query}”` : group}</span><Credit {...GRAPHICS_CREDIT} /></header>
-              <p className="k-muted k-small st-about">Placeholder art drawn in plain shapes, ready to paint over your own way. Sprites come in GB Studio's classic strip, so it sets up their animations by itself.</p>
+              <p className="k-muted k-small st-about">{needle ? "Placeholder art drawn in plain shapes, ready to paint over your own way." : GROUP_INTROS[group] ?? "Placeholder art drawn in plain shapes, ready to paint over your own way."}</p>
               {arts.length === 0 && <p className="k-muted k-small">Nothing matches “{query}”.</p>}
               <div className="st-sets st-sets--art">
                 {arts.map(({ asset, art }) => (

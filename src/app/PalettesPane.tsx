@@ -49,7 +49,9 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
   const shown = [{ name: "None (GB greens)", colors: [...GB_SHADES] } as Palette, ...palettes]
     .map((palette, index) => {
       const slot = index ? slotOf(palette) : -1;
-      return { palette, index, slot, named: index && slot < 0 && namedSlots && sceneSlots.length ? namedSlot(palette.name, slotNames) : -1 };
+      // Every slot it fills (a scene may put one palette in two slots).
+      const slots = index && palette.id ? sceneSlots.flatMap((id, at) => id === palette.id ? [at + 1] : []) : [];
+      return { palette, index, slot, slots, named: index && slot < 0 && namedSlots && sceneSlots.length ? namedSlot(palette.name, slotNames) : -1 };
     })
     .filter(({ palette, index }) => index === activePalette || matches(palette.name, filter))
     .sort((a, b) => (a.index === 0 ? -1 : b.index === 0 ? 1 : a.slot >= 0 && b.slot >= 0 ? a.slot - b.slot : a.slot >= 0 ? -1 : b.slot >= 0 ? 1 : a.index - b.index));
@@ -90,10 +92,10 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
         <div className="app-section-head"><span className="k-eyebrow">All palettes</span><span className="k-row"><span className="k-muted k-xs">{palettes.length}</span><HelpTip label="About the palette brush">{helpFor(doc, sceneSlots.length > 0)}</HelpTip></span></div>
         <input type="search" className="k-input" placeholder="Filter palettes" aria-label="Filter palettes by name" value={filter} onChange={(event) => onFilter(event.target.value)} />
         <div className="app-list gbp-palettes" role="listbox" aria-label="Palettes">
-          {shown.map(({ palette, index, slot, named }) => (
+          {shown.map(({ palette, index, slot, slots, named }) => (
             <button key={`${index}-${palette.name}`} role="option" aria-selected={activePalette === index} className="app-row" title={index && sceneSlots.length ? "Right-click: put in a slot" : undefined} onClick={() => onPick(index)} onContextMenu={(event) => openSlotMenu(event, index)}>
               <Chips colors={palette.colors} /><span className="app-name">{palette.name}</span>
-              {slot >= 0 && <Chip title={doc?.asset?.kind === "sprites" ? `Sprite palette slot ${slot + 1}` : `Palette slot ${slot + 1} of this background's scene`}>{slot + 1}</Chip>}
+              {slot >= 0 && <Chip title={`${doc?.asset?.kind === "sprites" ? "Sprite palette slot" : "Palette slot"}${slots.length > 1 ? "s" : ""} ${slots.join(" and ")}${doc?.asset?.kind === "sprites" ? "" : " of this background's scene"}`}>{slots.join(" · ")}</Chip>}
               {named >= 0 && <Chip title={`Saves as slot ${named + 1} (time-of-day palettes)`}>→ {named + 1}</Chip>}
             </button>
           ))}

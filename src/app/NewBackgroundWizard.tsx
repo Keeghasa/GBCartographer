@@ -51,7 +51,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate }
   }
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} title="New background" sub={`A blank background in ${projectName}, sized in screens`} icon={<FileImage size={18} />}
-      footer={<><span className="k-muted k-small">Never replaces a file</span><span className="k-spacer" /><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" disabled={!valid || busy} title={valid ? undefined : "Give it a name (letters, digits, spaces, - _ ( ) .)"} onClick={() => void create()}>{busy ? "Making…" : "Create and open"}</Button></>}>
+      footer={<><span className="k-muted k-small">{valid ? "Never replaces a file" : "Name it to create it"}</span><span className="k-spacer" /><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" disabled={!valid || busy} title={valid ? undefined : "Give it a name (letters, digits, spaces, - _ ( ) .)"} onClick={() => void create()}>{busy ? "Making…" : "Create and open"}</Button></>}>
       <div className="k-stack--loose k-stack">
         <Field label="Name"><input className="k-input" autoFocus placeholder="e.g. Market Street" value={name} onChange={(event) => setName(event.target.value)} /></Field>
         <div className="k-stack k-stack--tight">
@@ -66,7 +66,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate }
           {shown.length > 0 && <div className="app-list">{shown.map((palette, slot) => <div key={slot} className="app-row" style={{ cursor: "default" }}><span className="app-slot">{slot + 1}</span><Chips colors={palette.colors} /><span className="app-name">{palette.name}</span></div>)}</div>}
         </div>
         <div className="k-well m-path" style={{ padding: "10px 12px" }}>
-          Creates <code className="k-mono">assets/backgrounds/{name.trim() || "…"}.png</code> in the lightest shade.{source === "library" ? ` Adds the ${set.length} palettes to the project and puts them in its default background slots 1–${set.length} (asked first; every scene without its own palettes uses them).` : source === "defaults" ? " Its tiles use the project's default palettes, as above." : " No palettes: paint it in the greens, give tiles palettes later."}
+          Creates <code className="k-mono">assets/backgrounds/{name.trim() || "<name>"}.png</code> in the lightest shade.{source === "library" ? ` Adds the ${set.length} palettes to the project and puts them in its default background slots 1–${set.length} (asked first; every scene without its own palettes uses them).` : source === "defaults" ? " Its tiles use the project's default palettes, as above." : " No palettes: paint it in the greens, give tiles palettes later."}
         </div>
       </div>
     </Dialog>

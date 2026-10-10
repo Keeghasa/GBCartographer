@@ -89,9 +89,9 @@ export function Slider({ value, onChange, min, max, step = 1, label }: { value: 
 }
 
 /** A list to pick from (Radix select): a palette, a font, a tint. */
-export function Select({ value, onChange, options, label, placeholder }: { value: string; onChange: (value: string) => void; options: { value: string; label: ReactNode }[]; label: string; placeholder?: string }) {
+export function Select({ value, onChange, options, label, placeholder, disabled }: { value: string; onChange: (value: string) => void; options: { value: string; label: ReactNode }[]; label: string; placeholder?: string; disabled?: boolean }) {
   return (
-    <RSelect.Root value={value} onValueChange={onChange}>
+    <RSelect.Root value={value} onValueChange={onChange} disabled={disabled}>
       <RSelect.Trigger className="k-select" aria-label={label}><RSelect.Value placeholder={placeholder} /><RSelect.Icon><ChevronDown /></RSelect.Icon></RSelect.Trigger>
       <RSelect.Portal>
         <RSelect.Content className="k-menu" position="popper" sideOffset={4}>

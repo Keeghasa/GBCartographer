@@ -1580,16 +1580,25 @@ export default function PaintApp() {
   // Seamless view: what repeats, drawn from the canvas as shown (palettes and screen look included).
   const seamlessArea = doc && seamless ? (doc.sel && doc.sel.w > 0 && doc.sel.h > 0 ? doc.sel : hoverCell ? { x: hoverCell.x * CELL, y: hoverCell.y * CELL, w: Math.min(CELL, doc.width - hoverCell.x * CELL), h: Math.min(CELL, doc.height - hoverCell.y * CELL) } : null) : null;
 
-  // The priority brush's overlay: tiles that draw over sprites, one canvas pixel per tile.
+  // The priority brush's overlay: tiles that draw over sprites, tinted blue with stripes the other way from the
+  // budget view's and an outline, so they can't be taken for blue art (water, glass).
   useLayoutEffect(() => {
     const canvas = priorityCanvas.current;
     if (!canvas || !doc?.priority) return;
     const cw = cellsWide(doc.width), ch = Math.ceil(doc.height / CELL);
-    Object.assign(canvas, { width: cw, height: ch });
+    Object.assign(canvas, { width: cw * CELL, height: ch * CELL });
     const context = canvas.getContext("2d")!;
-    context.clearRect(0, 0, cw, ch);
-    context.fillStyle = "rgba(90, 170, 255, .55)";
-    doc.priority.forEach((on, cell) => { if (on) context.fillRect(cell % cw, Math.floor(cell / cw), 1, 1); });
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    doc.priority.forEach((on, cell) => {
+      if (!on) return;
+      const x = (cell % cw) * CELL, y = Math.floor(cell / cw) * CELL;
+      context.fillStyle = "rgba(90, 170, 255, .3)";
+      context.fillRect(x, y, CELL, CELL);
+      context.fillStyle = "rgba(140, 200, 255, .95)";
+      for (let at = 0; at < CELL; at += 4) for (let step = 0; step < CELL - at; step += 1) context.fillRect(x + CELL - 1 - at - step, y + step, 1, 1);
+      context.strokeStyle = "rgba(10, 30, 70, .9)";
+      context.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
+    });
   });
 
   /**
@@ -1891,7 +1900,7 @@ export default function PaintApp() {
         <span className="k-spacer" />
         <span className="k-seg app-zoom" role="group" aria-label="Zoom">
           <IconButton label="Zoom out" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(-1)}><Minus /></IconButton>
-          <b>{doc ? `${doc.zoom * 100}%` : "–"}</b>
+          <b className={doc ? undefined : "k-muted"}>{doc ? `${doc.zoom * 100}%` : "–"}</b>
           <IconButton label="Zoom in" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(1)}><Plus /></IconButton>
         </span>
         <span className="k-seg" role="group" aria-label="View">
@@ -1997,7 +2006,7 @@ export default function PaintApp() {
         </aside>
       </div>
       <footer className="app-status">
-        <span className="app-status-hint"><b>{hint[1]}</b> · {hint[4]}</span>
+        <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>
         <span ref={readoutRef} className="gbp-readout" />
         <span className="k-spacer" />
         {look !== "plain" && <Button size="sm" title="The picture shows like a real screen (Picture tab → Screen); the file is unchanged. Click for plain." onClick={() => { setLook("plain"); store(LOOK_KEY, "plain"); }}>{lookName}<X /></Button>}

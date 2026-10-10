@@ -58,9 +58,9 @@ export function PicturePane({ doc, tileCount, budget, onBudget, look, onLook, ti
         <span className="k-label">Screen</span>
         <Segmented fill size="sm" label="Screen" value={look} onChange={onLook} options={LOOKS.map(([value, label, title]) => ({ value, label, title }))} />
       </section>
-      <section className="app-section" title="Preview colors for tiles without a palette. Saving always writes the GB greens.">
-        <span className="k-label">Tint</span>
-        <Select label="Tint" value={tint} onChange={onTint} options={[...BUILT_IN_TINTS.map(({ name }) => ({ value: name, label: name })), ...paletteNames.map((name) => ({ value: name, label: name })), { value: "Custom", label: "Custom" }]} />
+      <section className="app-section" title={look === "dmg" || look === "pocket" ? "The Game Boy and Pocket screens show their own shades, so Tint has no effect with them." : "Preview colors for tiles without a palette. Saving always writes the GB greens."}>
+        <span className="k-label">Tint{look === "dmg" || look === "pocket" ? <span className="k-muted"> · off on this screen</span> : null}</span>
+        <Select label="Tint" disabled={look === "dmg" || look === "pocket"} value={tint} onChange={onTint} options={[...BUILT_IN_TINTS.map(({ name }) => ({ value: name, label: name })), ...paletteNames.map((name) => ({ value: name, label: name })), { value: "Custom", label: "Custom" }]} />
         {tint === "Custom" && <div className="app-colors">{customTint.map((color, index) => <input key={index} type="color" aria-label={`Tint shade ${index + 1}`} value={color} onChange={(event) => onCustomTint(customTint.map((old, at) => at === index ? event.target.value.toUpperCase() : old))} />)}</div>}
       </section>
       <section className="app-section">

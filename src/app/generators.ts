@@ -68,6 +68,12 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
   let grid = new Uint8Array(w * h).fill(1);
   if (settings.style === "cave") {
     for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) grid[y * w + x] = edge(x, y) || random() * 100 < settings.fill ? 1 : 0;
+    // A pocket of floor near the middle of every screen, so no screen ends up solid rock (joined up below).
+    const perX = SCREEN_W / settings.cell, perY = SCREEN_H / settings.cell, radius = Math.max(1.5, Math.min(perX, perY) / 4);
+    for (let sy = 0; sy < settings.rows; sy += 1) for (let sx = 0; sx < settings.columns; sx += 1) {
+      const cx = (sx + 0.5) * perX + (random() - 0.5) * perX / 3, cy = (sy + 0.5) * perY + (random() - 0.5) * perY / 3;
+      for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (Math.hypot(x - cx, y - cy) <= radius) grid[y * w + x] = 0;
+    }
     for (let pass = 0; pass < settings.smooth; pass += 1) {
       const next = new Uint8Array(w * h);
       for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
@@ -78,7 +84,7 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
       }
       grid = next;
     }
-    if (settings.connected) keepBiggestArea(grid, w, h);
+    if (settings.connected) joinAreas(grid, w, h);
   } else {
     carveRooms(grid, w, h, settings, random);
   }
@@ -111,8 +117,33 @@ function carveRooms(grid: Uint8Array, w: number, h: number, settings: CaveSettin
   }
 }
 
-/** Floor areas joined by sides; all but the biggest become rock. */
-function keepBiggestArea(grid: Uint8Array, w: number, h: number) {
+/**
+ * Every open area joined to the biggest by a tunnel (an L from the area's middle to the nearest floor of the main
+ * cave), so the whole map gets used; pockets of fewer than four cells are filled in instead.
+ */
+function joinAreas(grid: Uint8Array, w: number, h: number) {
+  for (let pass = 0; pass < 64; pass += 1) {
+    const { area, sizes } = labelAreas(grid, w, h);
+    if (sizes.length <= 1) return;
+    const main = sizes.indexOf(Math.max(...sizes));
+    // The next area to join: the biggest that isn't the main one (tiny ones are filled).
+    let next = -1;
+    sizes.forEach((size, id) => { if (id !== main && (next < 0 || size > sizes[next])) next = id; });
+    if (sizes[next] < 4) { for (let at = 0; at < w * h; at += 1) if (!grid[at] && area[at] !== main) grid[at] = 1; return; }
+    const cells: number[] = [], mainCells: number[] = [];
+    for (let at = 0; at < w * h; at += 1) { if (area[at] === next) cells.push(at); else if (area[at] === main) mainCells.push(at); }
+    const cx = cells.reduce((sum, at) => sum + (at % w), 0) / cells.length, cy = cells.reduce((sum, at) => sum + Math.floor(at / w), 0) / cells.length;
+    const from = cells.reduce((best, at) => Math.hypot(at % w - cx, Math.floor(at / w) - cy) < Math.hypot(best % w - cx, Math.floor(best / w) - cy) ? at : best, cells[0]);
+    const to = mainCells.reduce((best, at) => Math.abs(at % w - from % w) + Math.abs(Math.floor(at / w) - Math.floor(from / w)) < Math.abs(best % w - from % w) + Math.abs(Math.floor(best / w) - Math.floor(from / w)) ? at : best, mainCells[0]);
+    let x = from % w, y = Math.floor(from / w);
+    const tx = to % w, ty = Math.floor(to / w);
+    while (x !== tx) { x += Math.sign(tx - x); grid[y * w + x] = 0; }
+    while (y !== ty) { y += Math.sign(ty - y); grid[y * w + x] = 0; }
+  }
+}
+
+/** Floor areas joined by sides: each floor cell's area id, and each area's size. */
+function labelAreas(grid: Uint8Array, w: number, h: number): { area: Int32Array; sizes: number[] } {
   const area = new Int32Array(w * h).fill(-1);
   const sizes: number[] = [];
   for (let start = 0; start < w * h; start += 1) {
@@ -129,9 +160,9 @@ function keepBiggestArea(grid: Uint8Array, w: number, h: number) {
     }
     sizes.push(size);
   }
-  const keep = sizes.indexOf(Math.max(...sizes));
-  for (let at = 0; at < w * h; at += 1) if (!grid[at] && area[at] !== keep) grid[at] = 1;
+  return { area, sizes };
 }
+
 
 /** Steps from one floor cell to every other (-1 unreachable). */
 function distances(grid: Uint8Array, w: number, h: number, from: number, passable: (cell: number) => boolean): Int32Array {
@@ -373,12 +404,14 @@ export function drawWorld(settings: WorldSettings): Generated {
       pen.dot(7, 2, 3); pen.dot(8, 2, 3);
     } else if (cell === ROAD) {
       // A dirt band from the middle towards each neighbouring road or town.
-      pen.rect(5, 5, 6, 6, 1);
+      // With one palette for the whole map, shade 1 is the water's color too: roads take shade 2 there.
+      const dirt = theme && theme.palettes.length === 1 ? 2 : 1;
+      pen.rect(5, 5, 6, 6, dirt);
       const links = SIDES.map(([dx, dy]) => { const n = at(x + dx, y + dy); return n === ROAD || n === TOWN; });
-      if (links[0]) pen.rect(5, 0, 6, 5, 1);
-      if (links[1]) pen.rect(11, 5, 5, 6, 1);
-      if (links[2]) pen.rect(5, 11, 6, 5, 1);
-      if (links[3]) pen.rect(0, 5, 5, 6, 1);
+      if (links[0]) pen.rect(5, 0, 6, 5, dirt);
+      if (links[1]) pen.rect(11, 5, 5, 6, dirt);
+      if (links[2]) pen.rect(5, 11, 6, 5, dirt);
+      if (links[3]) pen.rect(0, 5, 5, 6, dirt);
     } else if (cell === TOWN) {
       // Two houses: a pitched roof over walls with a door, one up on the left, one down on the right.
       for (const [hx, hy] of [[1, 0], [8, 6]]) {

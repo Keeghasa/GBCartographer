@@ -83,6 +83,7 @@
 .k-field { display: flex; flex-direction: column; gap: 6px; }
 .k-label { color: var(--k-ink-2); font-size: var(--k-text-sm); font-weight: 500; }
 .k-hint { color: var(--k-ink-3); font-size: var(--k-text-xs); }
+.k-input[type="search"] { -webkit-appearance: none; appearance: none; }
 .k-input { height: var(--k-ctl-h); padding: 0 var(--k-3); color: var(--k-ink); background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-ctl); font: var(--k-text-md) var(--k-font); width: 100%; }
 .k-input::placeholder { color: var(--k-ink-3); }
 .k-input:focus { outline: none; border-color: var(--k-acc-hi); box-shadow: 0 0 0 3px rgba(var(--k-acc-rgb), .28); }
@@ -93,6 +94,7 @@
 .k-kbd { display: inline-flex; align-items: center; height: 18px; padding: 0 5px; color: #d2d6dc; background: #1c1f24; border: 1px solid var(--k-edge); border-bottom-width: 2px; border-radius: 5px; font: 500 var(--k-text-xs) var(--k-font); }
 
 /* Select (Radix). */
+.k-select[data-disabled] { opacity: .45; cursor: default; }
 .k-select { display: inline-flex; align-items: center; justify-content: space-between; gap: var(--k-2); height: var(--k-ctl-h); padding: 0 var(--k-2) 0 var(--k-3); color: var(--k-ink); background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-ctl); font: var(--k-text-md) var(--k-font); cursor: pointer; min-width: 0; }
 .k-select:hover { border-color: var(--k-edge-2); }
 .k-select > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -143,7 +145,7 @@
 .k-dialog-head { display: flex; align-items: center; gap: var(--k-2); padding: var(--k-3) var(--k-3) var(--k-3) var(--k-5); border-bottom: 1px solid var(--k-edge); }
 .k-dialog-title { margin: 0; font-size: var(--k-text-lg); font-weight: 600; }
 .k-dialog-sub { color: var(--k-ink-3); font-size: var(--k-text-sm); }
-.k-dialog-body { padding: var(--k-5); overflow: auto; flex: 1; min-height: 0; }
+.k-dialog-body { padding: var(--k-5); overflow: auto; flex: 1; min-height: 0; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--k-5)), transparent); } /* content that runs past the bottom fades out instead of being cut mid-line */
 .k-dialog-foot { display: flex; align-items: center; gap: var(--k-2); padding: var(--k-3) var(--k-5); border-top: 1px solid var(--k-edge); }
 
 /* Ticker: clipped text slides to show the rest while hovered (ticker.ts adds the class and the distance). */

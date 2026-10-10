@@ -242,7 +242,7 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
           <Button icon={<RefreshCw />} onClick={() => setStamp(stamp + 1)}>Check again</Button>
           <Button variant="primary" onClick={onClose}>Close</Button>
         </>) : (<>
-          <Button icon={<ArrowLeft />} disabled={!report || at === 0 || busy} onClick={() => setAt(at - 1)}>Back</Button>
+          {report && at > 0 && <Button icon={<ArrowLeft />} disabled={busy} onClick={() => setAt(at - 1)}>Back</Button>}
           {fixable && <Button variant="ghost" disabled={busy} onClick={leave}>Skip</Button>}
           <Button variant="primary" disabled={!report || busy} onClick={leave}>{nextOpen(at, { ...statuses, [key]: "seen" }) >= list.length ? "Finish" : "Next"}<ArrowRight /></Button>
         </>)}

@@ -720,6 +720,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   const colorMode = typeof settings.colorMode === "string" ? settings.colorMode : "mono";
   const spriteMode = settings.spriteMode === "8x8" ? "8x8" : "8x16";
   const colorOnly = colorMode === "color", limit = colorOnly ? 384 : 192;
+  const notRead: { kind: AssetKind; file: string }[] = [];
   const issues: HealthIssue[] = [];
   const palettes = listPalettes(project);
   if (colorMode === "mono" && palettes.length) issues.push({ level: "warning", kind: "project", title: "Color mode is off", detail: `The project is monochrome${typeof settings.colorMode === "string" ? "" : " (settings.gbsres has no colorMode, so GB Studio uses mono)"}: GB Studio shows the greens and none of the ${palettes.length} palettes. Turn on color in GB Studio's settings (Color only or GB + Color).` });
@@ -728,7 +729,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
     if (asset.kind === "stamps") continue;
     const path = join(project, "assets", asset.kind, asset.file);
     const where = { kind: asset.kind, file: asset.file };
-    if (asset.kind !== "ui" && !existsSync(`${path}.gbsres`)) issues.push({ level: "note", ...where, title: "Not read by GB Studio yet", detail: "There is no .gbsres beside it: GB Studio adds one when it next opens the project." });
+    if (asset.kind !== "ui" && !existsSync(`${path}.gbsres`)) notRead.push(where);
     const tall = asset.kind === "sprites" && spriteMode === "8x16" ? 16 : 8;
     if (asset.width % 8 || asset.height % tall) issues.push({ level: "problem", ...where, title: "Not whole tiles", detail: `${asset.width} × ${asset.height} px is not a whole number of 8 × ${tall} tiles; GB Studio cuts or pads the edge.` });
     if ((asset.kind === "emotes" || asset.kind === "avatars") && (asset.width !== 16 || asset.height !== 16)) issues.push({ level: "problem", ...where, title: "Should be 16 × 16", detail: `GB Studio expects ${asset.kind === "emotes" ? "emotes" : "avatars"} of 16 × 16 px; this one is ${asset.width} × ${asset.height}.` });
@@ -785,6 +786,9 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Day, night and sunset versions (names ending in D, N or S) of the project's palettes: events switch them in, so being unused or dim is expected." });
   const order = { problem: 0, warning: 1, note: 2 };
   issues.sort((a, b) => order[a.level] - order[b.level]);
+  // Pictures GB Studio hasn't read yet: one note each when there are a few, one note for all of them past five.
+  if (notRead.length > 5) issues.push({ level: "note", kind: "project", title: `${notRead.length} pictures not read by GB Studio yet`, detail: `They have no .gbsres beside them yet: GB Studio adds those when it next opens the project (${notRead.slice(0, 6).map((item) => item.file).join(", ")}${notRead.length > 6 ? ", …" : ""}).` });
+  else for (const where of notRead) issues.push({ level: "note", ...where, title: "Not read by GB Studio yet", detail: "There is no .gbsres beside it: GB Studio adds one when it next opens the project." });
   return { colorMode, issues };
 }
 

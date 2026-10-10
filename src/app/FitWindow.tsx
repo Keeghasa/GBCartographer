@@ -49,7 +49,8 @@ export function FitWindow({ name, rgba, width, height, slotsTarget, onClose, onA
       footer={<>
         <span className="k-muted k-small">Undo brings the picture back</span>
         <span className="k-spacer" />
-        <Button disabled={busy} title="The picture takes these tiles and palettes (undo brings it back)" onClick={() => void apply(false)}>Apply</Button>
+        <Button disabled={busy} onClick={onClose}>Cancel</Button>
+        <Button variant={slotsTarget ? undefined : "primary"} disabled={busy} title="The picture takes these tiles and palettes (undo brings it back)" onClick={() => void apply(false)}>Apply</Button>
         {slotsTarget && <Button variant="primary" icon={<Palette />} disabled={busy} title={`Also adds the ${fit.report.after} palettes to the project and puts them in ${slotsTarget}'s slots; Save then writes the tiles`} onClick={() => void apply(true)}>Apply and put in {slotsTarget}</Button>}
       </>}>
       <div className="k-stack">

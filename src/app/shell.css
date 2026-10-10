@@ -31,9 +31,10 @@
 .app-badge { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; display: grid; place-items: center; color: #f0f2f5; background: #3a3f48; border-radius: 8px; font: 600 9px var(--k-font); }
 .k-btn[aria-pressed="true"] .app-badge { color: var(--k-acc-text); background: var(--k-on-acc); }
 .app-project { flex: none; width: 268px; display: flex; flex-direction: column; gap: var(--k-3); padding: var(--k-3); min-height: 0; }
+.app-project > .k-input { flex: none; } /* the filter keeps its height; the cards below take the squeeze */
 .app-project-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-2); min-width: 0; }
 .app-project-head .k-eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-2); overflow-y: auto; align-content: start; min-height: 0; margin: 0 -4px; padding: 0 4px 4px; }
+.app-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-2); overflow-y: auto; align-content: start; min-height: 0; margin: 0 -4px; padding: 0 4px 20px; mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent); }
 .app-card { display: flex; flex-direction: column; gap: 6px; padding: 6px; min-width: 0; }
 .app-card .gbp-asset-thumb, .app-card-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; image-rendering: pixelated; background: repeating-conic-gradient(#20232a 0 25%, #17191e 0 50%) 0 0 / 12px 12px; border-radius: 6px; }
 /* Names sit at the foot of the card, so a row's names line up whatever its thumbnails' shapes. */
@@ -49,7 +50,7 @@
 .app-tools .k-btn svg { width: 16px; height: 16px; }
 .app-tools .k-btn[aria-pressed="true"] { background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); border-color: var(--k-acc-hi); box-shadow: var(--k-glow); }
 .app-tools hr { grid-column: 1 / -1; width: 100%; height: 1px; margin: 4px 0; border: 0; background: var(--k-edge); }
-.app-size { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; width: 100%; color: var(--k-ink-2); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; }
+.app-size { grid-column: 1 / -1; display: flex; white-space: nowrap; align-items: center; justify-content: space-between; width: 100%; color: var(--k-ink-2); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; }
 .app-size .k-btn { width: 22px; height: 22px; } .app-size .k-btn svg { width: 12px; height: 12px; }
 
 /* The picture area: a sunk panel; the strips above the picture are cards that stay at the top. */
