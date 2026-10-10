@@ -39,7 +39,7 @@ export const WORLD_THEMES: MapTheme[] = [
     ["#43BD35", "#FEE761", "#ECAB11", "#1C162D"],
     ["#43BD35", "#FFEEE5", "#DA2424", "#1C162D"],
   ]) },
-  ...["SG-Winter Forest GB", "SG-Campfire GB"].flatMap((name) => { const palette = named(name); return palette ? [{ id: name, name: name.replace("SG-", ""), credit: `${SPICY} (one palette)`, palettes: [palette] }] : []; }),
+  ...["SG-Winter Forest GB", "SG-Campfire GB"].flatMap((name) => { const palette = named(name); return palette ? [{ id: name, name: name.replace("SG-", ""), credit: SPICY, palettes: [palette] }] : []; }),
 ];
 
 export const CAVE_THEMES: MapTheme[] = [

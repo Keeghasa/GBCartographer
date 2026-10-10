@@ -8,7 +8,7 @@ import { decodeTileColors } from "../src/gb/gbstudio";
 import { encodePng } from "../src/gb/png";
 import { handleCartographerRequest } from "./endpoints";
 import { KEEP, listBackups, projectBackupDir } from "./backups";
-import { setProjectFolder, versionNote } from "./project";
+import { setProjectFolder, versionNote, setTemporaryRoots } from "./project";
 
 // A throwaway folder with a tiny fake GB Studio 4 project.
 let root = "";
@@ -71,10 +71,20 @@ describe("project folder", () => {
     expect((await post(root)).status).toBe(400);
     const opened = await json<{ ok: boolean; project: { name: string; path: string } }>(await post(project));
     expect(opened.project).toEqual({ name: "My Game", path: project });
-    expect(JSON.parse(readFileSync(join(root, "settings.json"), "utf8"))).toEqual({ project, recent: [project] });
-    const ping = await json<{ project: { name: string }; recent: { name: string; path: string }[] }>(await fetch(`${base}/ping`));
-    expect(ping.project.name).toBe("My Game");
-    expect(ping.recent).toEqual([{ name: "My Game", path: project }]);
+    // Remembered as the open project, but not as recent: it lives in the system's temporary folder (test copies
+    // there would crowd out real projects).
+    expect(JSON.parse(readFileSync(join(root, "settings.json"), "utf8"))).toEqual({ project, recent: [] });
+    // Outside the temporary folder (here: with that rule off), it is listed as recent too.
+    setTemporaryRoots([]);
+    try {
+      await fetch(`${base}/project`, { method: "POST", body: JSON.stringify({ path: project }) });
+      expect(JSON.parse(readFileSync(join(root, "settings.json"), "utf8"))).toEqual({ project, recent: [project] });
+      const ping = await json<{ project: { name: string }; recent: { name: string; path: string }[] }>(await fetch(`${base}/ping`));
+      expect(ping.project.name).toBe("My Game");
+      expect(ping.recent).toEqual([{ name: "My Game", path: project }]);
+    } finally {
+      setTemporaryRoots([tmpdir(), "/tmp", "/private/tmp", "/private/var/folders"]);
+    }
   });
 
   it("opens a copy of the shipped demo project, made once, and goes back to the real project afterwards", async () => {

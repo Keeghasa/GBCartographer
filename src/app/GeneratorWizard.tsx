@@ -80,6 +80,11 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
       </>}>
       <div className="gw">
         <div className="gw-controls k-stack">
+          <div className="k-stack k-stack--tight" title={theme ? `${theme.palettes.length === 7 ? "7 terrain palettes made from these colors" : `${theme.palettes.length} palette${theme.palettes.length === 1 ? "" : "s"}`}; Make background adds ${theme.palettes.length === 1 ? "it" : "them"} to the project` : undefined}>
+            <Select label="Palettes" value={(mode === "cave" ? cave.theme : world.theme) || "greens"} onChange={(id) => mode === "cave" ? setC({ theme: id === "greens" ? "" : id }) : setW({ theme: id === "greens" ? "" : id })}
+              options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
+            <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
+          </div>
           {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (name === "Cave" || name === "Dungeon") setName(style === "cave" ? "Cave" : "Dungeon"); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
           <Setting label="Screens tall" value={rows} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ rows: value }) : setW({ rows: value })} />
@@ -107,11 +112,6 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <Switch checked={world.island} onChange={(island) => setW({ island })}>Island (water all round)</Switch>
             <Switch checked={world.roads} onChange={(roads) => setW({ roads })}>Roads between towns</Switch>
           </>}
-          <div className="k-stack k-stack--tight">
-            <Select label="Palettes" value={(mode === "cave" ? cave.theme : world.theme) || "greens"} onChange={(id) => mode === "cave" ? setC({ theme: id === "greens" ? "" : id }) : setW({ theme: id === "greens" ? "" : id })}
-              options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
-            <span className="k-muted k-xs">{theme ? `${theme.credit} · ${theme.palettes.length} palette${theme.palettes.length === 1 ? "" : "s"}, added with Make background` : "No palettes: the greens"}</span>
-          </div>
           <span className="k-row"><span className="k-label">Layout</span><span className="k-mono k-small k-muted">#{mode === "cave" ? cave.seed : world.seed}</span><span className="k-spacer" />{reroll}</span>
         </div>
         <div className="gw-stage">

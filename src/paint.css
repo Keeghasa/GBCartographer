@@ -3,7 +3,7 @@
  * priority, selection, brush outline, sprite slices), the empty stage and its mascot, the font sample, and the
  * little "?" help tip. Everything else is the component kit (ui/kit/kit.css) and the shell (app/shell.css).
  */
-.gbp-stage { min-width: fit-content; min-height: 100%; box-sizing: border-box; display: grid; place-items: center; padding: 32px; cursor: crosshair; touch-action: none; }
+.gbp-stage { flex: 1 0 auto; min-width: fit-content; box-sizing: border-box; display: grid; place-items: center; padding: 32px; cursor: crosshair; touch-action: none; }
 .gbp-stage.pan { cursor: grab; }
 .gbp-wrap { position: relative; flex: none; overflow: hidden; border-radius: 4px; background: repeating-conic-gradient(#8a8f98 0 25%, #747983 0 50%) 0 0 / 16px 16px; box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0, 0, 0, .7); }
 .gbp-wrap canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }

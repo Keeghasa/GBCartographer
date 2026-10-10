@@ -4,7 +4,8 @@
  * the repo. A folder counts as a project when it has an assets/ folder (GB Studio 4 layout).
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
+import { tmpdir } from "node:os";
 import { formatNote } from "../src/gb/compat";
 
 /** The GB Studio versions GB Cartographer was tested with (major.minor). */
@@ -119,13 +120,19 @@ function readSettings(settingsFile: string): Record<string, unknown> {
   }
 }
 
+/** A folder in the system's temporary space (test copies and the like): opened, but never kept as recent. */
+let temporaryRoots = [tmpdir(), "/tmp", "/private/tmp", "/private/var/folders"];
+const isTemporary = (path: string) => temporaryRoots.some((root) => resolve(path).startsWith(resolve(root) + sep));
+/** Which folders count as temporary (the tests' projects live in one, so they switch it off). */
+export function setTemporaryRoots(roots: string[]) { temporaryRoots = roots; }
+
 /** Remembers the open project and keeps the last six project folders as "recent" (newest first). */
 export function saveProjectFolder(settingsFile: string, path: string | null) {
   const settings = readSettings(settingsFile);
   if (path) {
     settings.project = path;
     const recent = (Array.isArray(settings.recent) ? settings.recent as unknown[] : []).filter((entry): entry is string => typeof entry === "string" && entry !== path);
-    settings.recent = [path, ...recent].slice(0, 6);
+    settings.recent = [...(isTemporary(path) ? [] : [path]), ...recent.filter((entry) => !isTemporary(entry))].slice(0, 6);
   } else delete settings.project;
   mkdirSync(dirname(settingsFile), { recursive: true });
   writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
@@ -134,5 +141,5 @@ export function saveProjectFolder(settingsFile: string, path: string | null) {
 /** The recent project folders that still exist, newest first. */
 export function recentProjects(settingsFile: string): string[] {
   const recent = readSettings(settingsFile).recent;
-  return (Array.isArray(recent) ? recent as unknown[] : []).filter((entry): entry is string => typeof entry === "string" && isProjectFolder(entry));
+  return (Array.isArray(recent) ? recent as unknown[] : []).filter((entry): entry is string => typeof entry === "string" && !isTemporary(entry) && isProjectFolder(entry));
 }

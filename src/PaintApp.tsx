@@ -1558,14 +1558,22 @@ export default function PaintApp() {
   useLayoutEffect(() => {
     const canvas = usageCanvas.current;
     if (!canvas || !doc || !shownUsage) return;
+    // Drawn at the picture's own size, so each marked tile gets an outline and stripes as well as a tint: on red or
+    // amber art a tint alone disappears.
     const cw = Math.ceil(doc.width / CELL), ch = Math.ceil(doc.height / CELL);
-    Object.assign(canvas, { width: cw, height: ch });
+    Object.assign(canvas, { width: cw * CELL, height: ch * CELL });
     const context = canvas.getContext("2d")!;
-    context.clearRect(0, 0, cw, ch);
+    context.clearRect(0, 0, canvas.width, canvas.height);
     shownUsage.uses.forEach((value, cell) => {
       if (value > 1) return;
-      context.fillStyle = shownUsage.near[cell] >= 0 ? "rgba(255, 190, 40, .55)" : "rgba(235, 60, 60, .45)";
-      context.fillRect(cell % cw, Math.floor(cell / cw), 1, 1);
+      const near = shownUsage.near[cell] >= 0, x = (cell % cw) * CELL, y = Math.floor(cell / cw) * CELL;
+      context.fillStyle = near ? "rgba(255, 190, 40, .35)" : "rgba(235, 60, 60, .3)";
+      context.fillRect(x, y, CELL, CELL);
+      context.fillStyle = near ? "rgba(255, 210, 60, .95)" : "rgba(255, 70, 70, .95)";
+      for (let at = 0; at < CELL; at += 4) for (let step = 0; step < CELL - at; step += 1) context.fillRect(x + at + step, y + step, 1, 1);
+      context.strokeStyle = "rgba(10, 10, 20, .9)";
+      context.lineWidth = 1;
+      context.strokeRect(x + 0.5, y + 0.5, CELL - 1, CELL - 1);
     });
   });
 
@@ -1787,7 +1795,7 @@ export default function PaintApp() {
     { label: "Open another project…", icon: <FolderOpen />, onSelect: () => void chooseProject() },
     { label: "Open the demo project", icon: <Gamepad2 />, onSelect: () => void chooseProject(true) },
     ...(project && /[\\/]demo-project$/.test(project.path) ? [{ label: "Reset the demo project…", icon: <RotateCcw />, title: "Your painted copy goes to the backups folder; a fresh copy of the demo opens", onSelect: () => void chooseProject(true, true) }] : []),
-    ...(otherRecent.length ? [{ separator: true } as MenuEntry, { heading: <><Clock size={11} /> Recent</> } as MenuEntry, ...otherRecent.slice(0, 5).map((item) => ({ label: item.name, indent: true, title: item.path, onSelect: () => void openProjectPath(item.path) }))] : []),
+    ...(otherRecent.length ? [{ separator: true } as MenuEntry, { heading: <><Clock size={11} /> Recent</> } as MenuEntry, ...otherRecent.slice(0, 5).map((item) => ({ label: recent.filter((other) => other.name === item.name).length > 1 ? `${item.name} · ${item.path.split(/[\\/]/).slice(-2, -1)[0] ?? ""}` : item.name, indent: true, title: item.path, onSelect: () => void openProjectPath(item.path) }))] : []),
     ...(project ? [
       { separator: true } as MenuEntry,
       { label: "Picture to background…", icon: <ImagePlus />, title: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget", onSelect: () => setShowPictureWizard(true) },
@@ -1866,10 +1874,10 @@ export default function PaintApp() {
           ? <Menu open={Boolean(projectMenu)} onOpenChange={(open) => setProjectMenu(open ? { x: 0, y: 0 } : null)} items={projectItems} trigger={<button className="app-brand" title="Projects: open, switch or close"><LogoMark size={22} />GB Cartographer<Chip tone="acc" title="Alpha release: expect bugs, and keep your GB Studio project backed up">ALPHA</Chip><ChevronDown size={14} /></button>} />
           : <span className="app-brand"><LogoMark size={22} />GB Cartographer<Chip tone="acc">ALPHA</Chip></span>}
         <span className="k-seg" role="group" aria-label="File">
-          <Button icon={<FilePlus />} title={project ? `A new blank picture: in ${project.name} or just here` : "A new blank picture"} onClick={() => setShowNew(true)}>New</Button>
-          <Button icon={<FolderOpen />} title="Open PNG files · Ctrl+O (or drop them on the window)" onClick={() => void pickFiles()}>Open</Button>
-          <Button icon={<Save />} disabled={!doc} title={`Save every changed picture · Ctrl+S${doc?.asset ? ` (this one over ${doc.asset.file} in the project; old files go to the backups folder)` : doc?.handle ? ` (this one over ${doc.name})` : " (this one asks where)"}`} onClick={() => void save(false)}>Save</Button>
-          <Menu open={Boolean(exportMenu) && Boolean(doc)} onOpenChange={(open) => setExportMenu(open ? { x: 0, y: 0 } : null)} items={exportItems} trigger={<Button icon={<Rocket />} disabled={!doc} title="Export a copy in the GB greens (Ctrl+E), or an image to share">Export</Button>} />
+          <Button icon={<FilePlus />} title={project ? `A new blank picture: in ${project.name} or just here` : "A new blank picture"} onClick={() => setShowNew(true)}><span className="app-bar-label">New</span></Button>
+          <Button icon={<FolderOpen />} title="Open PNG files · Ctrl+O (or drop them on the window)" onClick={() => void pickFiles()}><span className="app-bar-label">Open</span></Button>
+          <Button icon={<Save />} disabled={!doc} title={`Save every changed picture · Ctrl+S${doc?.asset ? ` (this one over ${doc.asset.file} in the project; old files go to the backups folder)` : doc?.handle ? ` (this one over ${doc.name})` : " (this one asks where)"}`} onClick={() => void save(false)}><span className="app-bar-label">Save</span></Button>
+          <Menu open={Boolean(exportMenu) && Boolean(doc)} onOpenChange={(open) => setExportMenu(open ? { x: 0, y: 0 } : null)} items={exportItems} trigger={<Button icon={<Rocket />} disabled={!doc} title="Export a copy in the GB greens (Ctrl+E), or an image to share"><span className="app-bar-label">Export</span></Button>} />
         </span>
         <span className="k-seg" role="group" aria-label="Maps and palettes">
           {served && !project && <Button icon={<FolderTree />} title="Open a GB Studio project folder" onClick={() => void chooseProject()}>Open project…</Button>}

@@ -100,7 +100,10 @@ export function DialoguePreview({ backgrounds, hasFrame, onClose }: { background
       for (let tx = 0; tx < 20; tx += 1) {
         const fx = tx === 0 ? 0 : tx === 19 ? 16 : 8, fy = ty === 0 ? 0 : ty === height / 8 - 1 ? 16 : 8;
         for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
-          let shade = fx === 8 && fy === 8 ? 0 : 3;
+          // Without a frame: a light box with a thin dark line through its border tiles, like GB Studio's own frame.
+          const last = height / 8 - 1;
+          let shade = (tx === 0 && x === 3 && !(ty === 0 && y < 3) && !(ty === last && y > 4)) || (tx === 19 && x === 4 && !(ty === 0 && y < 3) && !(ty === last && y > 4))
+            || (ty === 0 && y === 3 && !(tx === 0 && x < 3) && !(tx === 19 && x > 4)) || (ty === last && y === 4 && !(tx === 0 && x < 3) && !(tx === 19 && x > 4)) ? 3 : 0;
           if (images.frame) {
             const at = ((fy + y) * images.frame.width + fx + x) * 4;
             shade = gbStudioShade(images.frame.data[at + 1]);

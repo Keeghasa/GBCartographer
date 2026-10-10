@@ -67,7 +67,16 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   const [adding, setAdding] = useState<{ x: number; y: number } | null>(null);
   // The New map wizard is open.
   const [making, setMaking] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  // "fit" (the default): screens scaled so the whole grid fits the area; 1× and 2× are pixel sizes.
+  const [zoom, setZoom] = useState<"fit" | "1" | "2">("fit");
+  const [gridArea, setGridArea] = useState<HTMLElement | null>(null);
+  const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    if (!gridArea) return;
+    const observer = new ResizeObserver(([entry]) => setAreaSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
+    observer.observe(gridArea);
+    return () => observer.disconnect();
+  }, [gridArea]);
   const [loaded, setLoaded] = useState(new Map<string, Loaded>());
   const [busy, setBusy] = useState(false);
   const backgrounds = useMemo(() => project.assets.filter((asset) => asset.kind === "backgrounds"), [project.assets]);
@@ -171,6 +180,10 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   const cells = map?.cells ?? [];
   const xs = cells.map((cell) => cell.x), ys = cells.map((cell) => cell.y);
   const [minX, maxX, minY, maxY] = cells.length ? [Math.min(...xs) - 1, Math.max(...xs) + 1, Math.min(...ys) - 1, Math.max(...ys) + 1] : [0, 0, 0, 0];
+  // Fit: the largest scale (up to 2×) at which every column and row, with their 2 px gaps, fits the grid area.
+  const columnCount = maxX - minX + 1, rowCount = maxY - minY + 1;
+  const fitScale = areaSize.width ? Math.max(0.25, Math.min(2, (areaSize.width - 2 * (columnCount - 1)) / (columnCount * W), (areaSize.height - 2 * (rowCount - 1)) / (rowCount * H))) : 1;
+  const scale = zoom === "fit" ? fitScale : Number(zoom);
   const nearCell = (x: number, y: number) => !cells.length ? x === 0 && y === 0 : SIDES.some((side) => cellAt(x + OFFSET[side][0], y + OFFSET[side][1]));
   const selectedCell = selected ? cellAt(selected.x, selected.y) : undefined;
   const edges = selectedCell ? SIDES.flatMap((side) => {
@@ -203,7 +216,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
         <span className="k-muted k-small">Edge overlap</span>
         <Segmented size="sm" label="Edge overlap" value={String(overlap) as "1" | "2"} onChange={(value) => updateMap((item) => ({ ...item, overlap: Number(value) }))} options={[{ value: "1", label: "1 tile" }, { value: "2", label: "2 tiles" }]} />
       </span>
-      <Segmented size="sm" label="Zoom" value={String(zoom) as "1" | "2"} onChange={(value) => setZoom(Number(value))} options={[{ value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
+      <Segmented size="sm" label="Zoom" value={zoom} onChange={setZoom} options={[{ value: "fit", label: "Fit", title: "Scale the screens so the whole map fits" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
     </>
   );
   const footer = (
@@ -236,11 +249,11 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
           <p className="k-muted k-xs mr-maps-note">A map is GB Cartographer's own layout, saved in the project's Cartographer folder (GB Studio doesn't read it); each screen stays a normal background PNG.</p>
         </nav>
 
-        <section className="k-well mr-grid" aria-label="Screens">
+        <section ref={setGridArea} className="k-well mr-grid" aria-label="Screens">
           {!map ? (
             <div className="mr-empty"><span className="mr-mascot"><PxSnake size={48} /></span><span className="k-muted">Make a map to start: New map on the left.</span></div>
           ) : (
-            <div className="mr-cells" style={{ gridTemplateColumns: `repeat(${maxX - minX + 1}, ${W * zoom}px)`, gridAutoRows: `${H * zoom}px` }}>
+            <div className="mr-cells" style={{ gridTemplateColumns: `repeat(${maxX - minX + 1}, ${W * scale}px)`, gridAutoRows: `${H * scale}px` }}>
               {Array.from({ length: (maxY - minY + 1) * (maxX - minX + 1) }, (_, at) => {
                 const x = minX + (at % (maxX - minX + 1)), y = minY + Math.floor(at / (maxX - minX + 1));
                 const cell = cellAt(x, y);

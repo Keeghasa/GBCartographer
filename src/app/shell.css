@@ -11,6 +11,8 @@
 .app-zoom b { min-width: 52px; align-self: center; text-align: center; font-size: var(--k-text-sm); font-variant-numeric: tabular-nums; }
 .app-grid-size { position: absolute; right: 2px; bottom: 1px; font: 600 8px var(--k-font); }
 .app-bar .k-icon-btn { position: relative; }
+/* Narrower windows: the file buttons keep their icons and tooltips, and drop their words, so the bar fits (1280 px and up). */
+@media (max-width: 1440px) { .app-bar .app-bar-label { display: none; } }
 
 /* Picture tabs. */
 .app-tabs { display: flex; align-items: center; gap: var(--k-1); padding: 0 var(--k-3) var(--k-1); min-height: 32px; overflow-x: auto; scrollbar-width: none; }
@@ -51,12 +53,15 @@
 .app-size .k-btn { width: 22px; height: 22px; } .app-size .k-btn svg { width: 12px; height: 12px; }
 
 /* The picture area: a sunk panel; the strips above the picture are cards that stay at the top. */
-.app-stage { flex: 1; min-width: 0; position: relative; overflow: auto; background: var(--k-well); }
+.app-stage { flex: 1; min-width: 0; position: relative; overflow: auto; background: var(--k-well); display: flex; flex-direction: column; }
+/* Strips above the picture (frames, text, stamps) keep their height; the picture's stage fills what is left. */
+.app-stage > :not(.gbp-stage) { flex: none; }
 .app-strip { position: sticky; top: var(--k-3); left: var(--k-3); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--k-3); width: max-content; max-width: calc(100% - 24px); margin: var(--k-3); padding: var(--k-2) var(--k-3); background: var(--k-panel); }
 .app-strip + .app-strip { margin-top: 0; }
 .app-strip-label { color: var(--k-ink-2); font-size: var(--k-text-sm); white-space: nowrap; }
 .app-strip canvas { image-rendering: pixelated; border-radius: 6px; box-shadow: 0 0 0 1px var(--k-edge); }
 .app-strip--alert { border-color: rgba(230, 162, 60, .5); background: #1b1710; }
+.app-strip--alert .app-strip-label { white-space: normal; flex: 1 1 260px; min-width: 0; }
 .app-frames { display: flex; gap: 6px; overflow-x: auto; }
 .app-stamp { position: relative; flex: none; }
 .app-stamp-edit { position: absolute; top: 2px; right: 2px; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--k-edge-2); border-radius: 6px; background: var(--k-raised); color: var(--k-ink); opacity: 0; transition: opacity .12s; cursor: pointer; }
