@@ -45,4 +45,4 @@ LAUNCH
   echo "Installed $app"
 }
 
-install_app "GB Cartographer" "io.github.keeganhasa.gbcartographer" ""
+install_app "GB Cartographer" "io.github.keeghasa.gbcartographer" ""

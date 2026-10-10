@@ -5,7 +5,7 @@ import { Button, Chip, Dialog } from "../ui/kit";
 import { LogoMark } from "../ui/LogoMark";
 import "./AboutWindow.css";
 
-const REPO = "https://github.com/Keeganhasa/GBCartographer";
+const REPO = "https://github.com/Keeghasa/GBCartographer";
 
 /** Every licence that ships with the app: what, and whose and under which licence. */
 const LICENCES: [string, string][] = [
@@ -39,7 +39,7 @@ export function AboutWindow({ onClose }: { onClose: () => void }) {
   async function check() {
     setUpdate({ state: "checking" });
     try {
-      const response = await fetch("https://api.github.com/repos/Keeganhasa/GBCartographer/releases/latest", { headers: { Accept: "application/vnd.github+json" } });
+      const response = await fetch("https://api.github.com/repos/Keeghasa/GBCartographer/releases/latest", { headers: { Accept: "application/vnd.github+json" } });
       if (response.status === 404) return setUpdate({ state: "done", text: "No releases yet: this is the newest there is." });
       if (!response.ok) throw new Error(response.statusText);
       const release = await response.json() as { tag_name?: string; html_url?: string };

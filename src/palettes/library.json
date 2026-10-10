@@ -65,9 +65,9 @@
   {
    "name": "Chorbi",
    "about": "Palettes from the author's game Chorbi: Dustwatch Center, the diner and the greenhouse, with day, sunset and night versions.",
-   "author": "Keegan (Chorbi)",
+   "author": "Keeghasa",
    "license": "CC0",
-   "source": "https://github.com/Keeganhasa/GBCartographer/blob/main/src/palettes/library.json",
+   "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "sets": {
     "DWC": "Dustwatch Center",
     "Diner": "Diner",
@@ -448,9 +448,9 @@
   {
    "name": "Overworld",
    "about": "One palette per terrain for overworld maps: grass, forest, mountain, water, shore, road, town.",
-   "author": "Keegan",
+   "author": "Keeghasa",
    "license": "CC0",
-   "source": "https://github.com/Keeganhasa/GBCartographer/blob/main/src/palettes/library.json",
+   "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "palettes": [
     {
      "name": "OW-1-Grass",

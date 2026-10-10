@@ -647,7 +647,7 @@ export function createAsset(project: string, kind: AssetKind, name: string, byte
   return { file };
 }
 
-const OWN_README = "This folder belongs to GB Cartographer (https://github.com/Keeganhasa/GBCartographer), not to GB Studio.\nIt keeps what GB Cartographer needs and GB Studio doesn't:\n- stamps/ holds saved stamps (a PNG each, and its tile palettes in a .json beside it);\n- maps.json holds the Map Room's layouts (which background sits where in each map).\nGB Studio ignores this folder; deleting it loses only these files.\n";
+const OWN_README = "This folder belongs to GB Cartographer (https://github.com/Keeghasa/GBCartographer), not to GB Studio.\nIt keeps what GB Cartographer needs and GB Studio doesn't:\n- stamps/ holds saved stamps (a PNG each, and its tile palettes in a .json beside it);\n- maps.json holds the Map Room's layouts (which background sits where in each map).\nGB Studio ignores this folder; deleting it loses only these files.\n";
 
 /** Says what the Cartographer folder is (written when GB Cartographer first uses it, and kept up to date). */
 export function ownFolderReadme(project: string) {

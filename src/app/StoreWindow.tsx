@@ -34,7 +34,7 @@ interface Props {
 }
 
 const SHELVES = storeShelves();
-const GRAPHICS_CREDIT = { author: "Keegan (GB Cartographer)", license: "CC0", source: "https://github.com/Keeganhasa/GBCartographer/tree/main/src/graphics" };
+const GRAPHICS_CREDIT = { author: "Keeghasa (GB Cartographer)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };
 const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background" };
 /** Sites the store links to, in their own colors (a Source button wears its site's). */
 const SITES: { host: RegExp; name: string; color: string }[] = [
