@@ -16,7 +16,7 @@ const LICENCES: [string, string][] = [
   ["OpenDyslexic", "Abbie Gonzalez, SIL Open Font License 1.1. Downloaded the first time you turn it on."],
   ["Demo project", "Art by Raptorspank (CC0) and the GB Studio Community Assets authors (MIT), credited in the demo's CREDITS.md."],
   ["Libraries", "React (MIT) and lucide icons (ISC). The desktop app runs on Electron (MIT)."],
-  ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licences are in the app's licenses folder."],
+  ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licenses are in the app's licenses folder."],
 ];
 
 /** "0.1.0-alpha.1" → comparable parts; a release without a pre-release suffix sorts after its pre-releases. */
@@ -71,7 +71,7 @@ export function AboutWindow({ onClose }: { onClose: () => void }) {
           {update.url && <Button size="sm" variant="primary" icon={<ExternalLink />} onClick={() => open(update.url!)}>Get it</Button>}
         </div>
         <div className="k-stack k-stack--tight">
-          <span className="k-eyebrow">Licences</span>
+          <span className="k-eyebrow">Licenses</span>
           <dl className="k-well ab-licences">
             {LICENCES.map(([what, licence]) => <div key={what}><dt>{what}</dt><dd>{licence}</dd></div>)}
           </dl>

@@ -62,7 +62,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     const before = new Set(close.map(({ a, b }) => `${a}-${b}`));
     const fresh = closeShades(colors, sprite).filter(({ a, b }) => !before.has(`${a}-${b}`));
     onRecolor(colors);
-    if (fresh.length) say(`Colors ${fresh[0].a + 1} and ${fresh[0].b + 1} of ${picked?.name ?? "this palette"} are hard to tell apart now (difference ${fresh[0].delta}; aim for 12 or more).`);
+    if (fresh.length) say(`Colors ${fresh[0].a + 1} and ${fresh[0].b + 1} of ${picked?.name ?? "this palette"} are too alike to tell apart on a screen now: make one lighter or darker.`);
   };
 
   const Chips = ({ colors }: { colors: readonly string[] }) => <span className="app-chips">{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>;
@@ -102,7 +102,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
       {doc && picked && (
         <section className="app-section gbp-palette-edit">
           <hr className="k-divider" />
-          <div className="app-section-head"><span className="k-eyebrow">{picked.name} here</span>{close.length > 0 && <Chip tone="warn" title={close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart (difference ${delta}; aim for 12 or more)`).join("\n")}>low contrast</Chip>}</div>
+          <div className="app-section-head"><span className="k-eyebrow">{picked.name} · in this picture</span>{close.length > 0 && <Chip tone="warn" title={close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart (difference ${delta}; aim for 12 or more)`).join("\n")}>low contrast</Chip>}</div>
           <div className="app-colors">
             {picked.colors.map((color, index) => <input key={index} type="color" aria-label={`${picked.name} color ${index + 1}`} title={`Color ${index + 1}: ${color}`} value={color} onChange={(event) => recolor(picked.colors.map((old, at) => at === index ? event.target.value : old))} />)}
           </div>

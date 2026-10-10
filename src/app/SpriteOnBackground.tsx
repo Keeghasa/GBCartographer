@@ -101,7 +101,7 @@ export function SpriteOnBackground({ backgrounds, frames, fps, onClose }: Props)
       footer={<>
         <span className="k-muted k-small">Drag the sprite (Shift snaps to 8 px) · at {position.x}, {position.y} · tile {Math.floor(position.x / 8)}, {Math.floor(position.y / 8)}</span>
         <span className="k-spacer" />
-        {contrast && <span className={`k-small sob-readout ${share > 25 ? "sob-warn" : "k-muted"}`} title="Outline pixels whose color is within 12 (CIE ΔE) of the background right next to them">{contrast.edge ? `${share ? `${share}% of the outline is hard to see here` : "The whole outline clears the bar here"} · weakest contrast ${Math.round(contrast.weakest * 10) / 10} (aim for 12 or more)` : "Off the background"}</span>}
+        {contrast && <span className={`k-small sob-readout ${share > 25 ? "sob-warn" : "k-muted"}`} title="Outline pixels whose color is within 12 (CIE ΔE) of the background right next to them">{contrast.edge ? `${share ? `${share}% of the outline is hard to see here` : "The outline stands out everywhere here"} · lowest contrast ${Math.round(contrast.weakest * 10) / 10} (12 or more stands out)` : "Off the background"}</span>}
       </>}>
       <div className="k-well sob-stage">
         {!backgrounds.length ? <p className="k-muted sob-empty">This project has no backgrounds.</p> : (

@@ -557,7 +557,7 @@
   {
    "name": "Vibrant-14 (SpicyGame)",
    "shelf": "SpicyGame",
-   "about": "A bright 14-color palette, grouped by Claude into scene palettes.",
+   "about": "A bright 14-color palette, grouped into four-color scene palettes for GB Cartographer.",
    "author": "SpicyGame",
    "license": "Public domain",
    "source": "https://spicygame.itch.io/palettes",
@@ -630,7 +630,7 @@
   {
    "name": "VIBE-20 (SpicyGame)",
    "shelf": "SpicyGame",
-   "about": "A 20-color palette, grouped by Claude into eight scene palettes (VIBE-21 differs only in two purples).",
+   "about": "A 20-color palette, grouped into eight scene palettes for GB Cartographer (VIBE-21 differs only in two purples).",
    "author": "SpicyGame",
    "license": "Public domain",
    "source": "https://spicygame.itch.io/palettes",
@@ -712,7 +712,7 @@
   {
    "name": "VIBE-21 (SpicyGame)",
    "shelf": "SpicyGame",
-   "about": "VIBE-20 with two deeper purples, grouped by Claude into eight scene palettes.",
+   "about": "VIBE-20 with two deeper purples, grouped into eight scene palettes for GB Cartographer.",
    "author": "SpicyGame",
    "license": "Public domain",
    "source": "https://spicygame.itch.io/palettes",

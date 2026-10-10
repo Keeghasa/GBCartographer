@@ -12,7 +12,7 @@ const PRESETS: Record<AssetKind | "file", [number, number, string][]> = {
   backgrounds: [[160, 144, "one screen"], [320, 144, "two wide"], [160, 288, "two tall"], [256, 256, "square"]],
   sprites: [[16, 16, "one 16 × 16 frame"], [32, 16, "two frames"], [64, 16, "four frames"], [16, 32, "one 16 × 32 frame"]],
   tilesets: [[128, 64, "16 × 8 tiles"], [64, 64, "8 × 8 tiles"], [16, 16, "2 × 2 tiles"]],
-  fonts: [[128, 112, "ASCII 32–255 (16 per row)"], [128, 48, "ASCII 32–127"]],
+  fonts: [[128, 112, "ASCII 32–255"], [128, 48, "ASCII 32–127"]],
   emotes: [[16, 16, "an emote"]],
   stamps: [[16, 16, "2 × 2 tiles"], [32, 32, "4 × 4 tiles"], [8, 8, "one tile"]],
   avatars: [[16, 16, "an avatar"]],

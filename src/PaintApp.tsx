@@ -1831,7 +1831,7 @@ export default function PaintApp() {
       return { disabled: here || !slotTarget.id, onSelect: () => void putInSlot(slotMenu.palette, slot), label: <><span className="app-slot" style={{ width: 14, color: "var(--k-ink-3)" }}>{slot + 1}</span><span className="app-chips">{(holder?.colors ?? ["#222", "#222", "#222", "#222"]).map((color, at) => <i key={at} style={{ background: color }} />)}</span><span className="app-name">{holder?.name ?? "—"}{here ? " (here)" : ""}</span>{slot === UI_SLOT && doc.asset?.kind !== "sprites" && <Chip title="GB Studio draws dialogue boxes and menus with slot 8">UI</Chip>}</> };
     }),
     { separator: true },
-    { note: slotTarget.id ? `Writes ${slotWhere} in GB Studio right away. Tiles wearing the palette moved out show the new one there.` : "Add this palette to the project first (palette manager)." },
+    { note: slotTarget.id ? `Writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Add this palette to the project first (palette manager)." },
   ] : [];
   const selectionItems: MenuEntry[] = selectionMenu && doc?.sel ? [
     { heading: `Selection · ${doc.sel.w} × ${doc.sel.h}` },

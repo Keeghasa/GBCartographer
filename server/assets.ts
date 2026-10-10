@@ -780,7 +780,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
     // A palette used only for sprites shows colors 1–3 (color 0 is see-through), so only those are compared.
     const spriteOnly = entry.uses.length > 0 && entry.uses.every((use) => use.kind === "sprite");
     const close = closeShades(palette.colors, spriteOnly);
-    if (close.length) issues.push({ level: "warning", kind: "palettes", file: palette.name, title: "Low contrast", detail: close.map(({ a, b, delta }) => delta === 0 ? `colors ${a + 1} and ${b + 1} are the same color` : `colors ${a + 1} and ${b + 1} differ by ${delta}`).join("; ") + " (aim for a difference of 12 or more)." });
+    if (close.length) issues.push({ level: "warning", kind: "palettes", file: palette.name, title: "Low contrast", detail: (close.map(({ a, b, delta }) => delta === 0 ? `colors ${a + 1} and ${b + 1} are the same color` : `colors ${a + 1} and ${b + 1} are too alike (${delta})`).join("; ") + " (12 or more tells apart well).").replace(/^c/, "C") });
   }
   if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Day, night and sunset versions (names ending in D, N or S) of the project's palettes: events switch them in, so being unused or dim is expected." });
   const order = { problem: 0, warning: 1, note: 2 };

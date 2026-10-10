@@ -47,7 +47,7 @@ export function checkupOrder(issues: readonly CheckupIssue[], notes: boolean): C
 
 /** The close pairs a low-contrast detail names ("colors 2 and 3 differ by 4; …"), as 0-based positions. */
 export function contrastPairs(detail: string): [number, number][] {
-  return [...detail.matchAll(/colors (\d+) and (\d+)/g)].map((match) => [Number(match[1]) - 1, Number(match[2]) - 1] as [number, number]).filter(([a, b]) => a >= 0 && b >= 0 && a !== b);
+  return [...detail.matchAll(/colors (\d+) and (\d+)/gi)].map((match) => [Number(match[1]) - 1, Number(match[2]) - 1] as [number, number]).filter(([a, b]) => a >= 0 && b >= 0 && a !== b);
 }
 
 /** The other palettes a "same colors" detail names ("The same four colors as A, B."), checked against the known names. */
