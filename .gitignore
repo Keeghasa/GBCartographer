@@ -32,9 +32,8 @@ docs/SPEC.md
 docs/demo-tile-palettes.json
 .claude/
 
-# Only palettes ship to GitHub (the author, 2026-10-10): no art of any kind until its authors have given their
-# blessing, not even CC0 or our own generated art. These stay on the author's machines:
-# the demo's art, the README's screenshots and GIFs, and the graphics library's art.
+# Other people's art stays on the author's machines until its artists have given their blessing (2026-10-10):
+# the demo's pictures, and old screenshots that show them. GB Cartographer's own graphics (src/graphics) ship.
 demo/assets/**/*.png
 docs/*.png
 docs/*.gif
@@ -43,11 +42,6 @@ docs/*.gif
 !docs/demo-spray.gif
 !docs/demo-select-move.gif
 !docs/demo-pencil.gif
-src/graphics/tiles.ts
-src/graphics/sprites.ts
-src/graphics/scenes.ts
-src/graphics/library.ts
-src/graphics/library.test.ts
 demo/Cartographer/
 
 # Installers made by electron-builder (npm run dist)

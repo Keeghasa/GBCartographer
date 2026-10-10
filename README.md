@@ -19,7 +19,7 @@ palettes straight back into the project.
 | :---: | :---: | :---: |
 | ![Spraying shades over the demo's Free Furniture tileset](docs/demo-spray.gif) | ![Selecting a television on the Free Furniture tileset and moving it](docs/demo-select-move.gif) | ![Drawing zig-zag strokes with the pencil over the Free Furniture tileset](docs/demo-pencil.gif) |
 
-<sub>In the GIFs: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md).</sub>
+<sub>The art in these GIFs is the demo project's: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md). It appears here only as screen recordings: the art files themselves aren't in this repository or the downloads.</sub>
 
 **[Download the alpha](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
 [Install](#install)).
@@ -44,7 +44,9 @@ palettes straight back into the project.
   import palettes from Lospec `.hex` or GIMP `.gpl` files and export your own as JSON.
 - **Graphics.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
-  and source, plus links to Game Boy art on itch.io and OpenGameArt.
+  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 54 placeholder graphics (CC0) to
+  add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
+  window frames and cursors, tile sheets (with tall trees), whole scenes, and a village cut into Map Room screens.
 - **Wizards and generators.** A picture to a background, day / sunset / night versions of a scene's palettes, a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
@@ -210,5 +212,5 @@ npm run build
 
 Code: MIT (see LICENSE). The logo is the author's pixel art, CC0. [Public Pixel](https://ggbot.itch.io/public-pixel-font)
 by GGBotNet (CC0, shipped in `public/fonts/`) is an optional UI font. Inter by Rasmus Andersson and the Inter Project Authors, and JetBrains Mono by JetBrains, ship with the app (SIL Open Font License 1.1, licences in `public/fonts/`).
-Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. The repository ships none of the demo project's art (it joins with its artists' blessing; credits in [demo/CREDITS.md](demo/CREDITS.md)), except in the author's four demo GIFs at the top of this page. GB Studio is by Chris Maltby and
+Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholder art, drawn in code (`src/graphics`), CC0. Other people's art appears only in this README's screenshots and GIFs, as pictures of the app at work: the demo project's art files aren't in the repository or the downloads until their artists have said yes (credits in [demo/CREDITS.md](demo/CREDITS.md)). GB Studio is by Chris Maltby and
 contributors; GB Cartographer is not affiliated with it.
