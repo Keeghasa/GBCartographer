@@ -11,7 +11,12 @@ palettes straight back into the project.
 >
 > GB Cartographer is free during the alpha, and maybe forever.
 
-Screenshots will come back once the artists whose work they show have said yes.
+![GB Cartographer with a generated overworld open in its palettes: the project's backgrounds on the left, the tools, and the palettes on the right](docs/media/painter.png)
+
+![Painting palettes onto a village screen, tile by tile, with the palette brush: grass, roofs, walls and a road get their colors](docs/media/palette-brush.gif)
+
+**[Download the alpha](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
+[Install](#install)).
 
 ## Features
 
@@ -66,9 +71,38 @@ Screenshots will come back once the artists whose work they show have said yes.
   short, fixed list of what it ever writes (below).
 - **Works offline**, with its fonts built in. **A demo project** to try it on (its art joins once its artists say yes).
 
+## Screenshots
+
+The generators: an RPG-style overworld and a cave or dungeon, redrawn live as the sliders move, in the palettes you
+pick. Make background puts the map and its palettes in your project.
+
+![The overworld generator redrawing as the water slider moves and new layouts are rolled](docs/media/generator.gif)
+
+| | |
+| :---: | :---: |
+| ![The overworld generator in SpicyGame's VIBE-20 colors](docs/media/generators.png) | ![The cave generator in a stone palette](docs/media/cave.png) |
+| ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png) | ![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png) |
+
+![The Graphics window: SpicyGame's public-domain palette sets, credited, with buttons to add a set or one palette](docs/media/graphics.png)
+
+The pictures in these screenshots are GB Cartographer's own placeholder graphics.
+
+## Install
+
+Download the file for your computer from the [latest release](https://github.com/Keeghasa/GBCartographer/releases).
+The builds aren't signed yet, so the first launch needs one extra step:
+
+- **macOS:** open the `.dmg` (`arm64` for Apple silicon, `x64` for Intel) and drag GB Cartographer to Applications.
+  The first time, right-click (or Control-click) the app and choose **Open**, then **Open** again. If macOS still
+  refuses, open System Settings → Privacy & Security and click **Open Anyway**.
+- **Windows:** run the `windows-setup.exe` (or unzip the `.zip`). If SmartScreen says it protected your PC, click
+  **More info**, then **Run anyway**.
+- **Linux:** make the `.AppImage` executable (`chmod +x GB-Cartographer-*.AppImage`) and run it.
+
 ## Planned
 
-- Prebuilt apps for macOS, Windows and Linux (GitHub Releases and itch.io), and a tested Windows pass.
+- An itch.io page, and a tested Windows pass.
+- The demo project's art, once its artists have said yes.
 
 ## GB Studio versions
 
@@ -85,10 +119,11 @@ lists opens with a note: keep a backup and look for a GB Cartographer update.
 
 ## Try it with the demo project
 
-`demo/` holds a small GB Studio 4 project: its scenes, palettes and settings. Its art isn't in the repository yet:
-it will join once each artist has given their blessing (credits in [demo/CREDITS.md](demo/CREDITS.md)). Until
-then, open your own GB Studio project to try GB Cartographer. **Try the demo project** on the start screen opens a
-copy of it (in the app's data folder, so the shipped copy stays clean).
+`demo/` holds a small GB Studio 4 project: its scenes, palettes and settings. Its art isn't in the repository or
+the downloads yet: it will join once each artist has given their blessing (credits in
+[demo/CREDITS.md](demo/CREDITS.md)). Until then, open your own (backed-up) GB Studio project. When a build has the
+demo, **Try the demo** on the start screen opens a copy of it (in the app's data folder, so the shipped copy stays
+clean).
 
 ## What GB Cartographer writes into your project
 
@@ -121,7 +156,11 @@ background with GB Studio's Automatic color asks before saving, since a save in 
 npm install
 npm run desktop        # the desktop app (builds first)
 npm run dev            # or the page on a local dev server, http://127.0.0.1:5173
+npm run dist           # installers for this computer, in release/ (dist:mac, dist:win, dist:linux)
 ```
+
+A tag like `v0.1.0-alpha.1` makes GitHub build the installers for all three systems and publish them as a
+pre-release (`.github/workflows/release.yml`, notes from `docs/releases/<tag>.md`).
 
 In the desktop app, **Open project…** shows a file dialog: pick the project's `.gbsproj` file (or its folder). On the dev server it asks for the folder's path; you
 can also set `GBC_PROJECT=/path/to/project` or write `{ "project": "/path/to/project" }` to
