@@ -42,6 +42,7 @@ docs/*.gif
 !docs/demo-spray.gif
 !docs/demo-select-move.gif
 !docs/demo-pencil.gif
+!docs/screenshot-paint-directly.png
 demo/Cartographer/
 
 # Installers made by electron-builder (npm run dist)

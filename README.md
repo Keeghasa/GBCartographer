@@ -11,7 +11,7 @@ palettes straight back into the project.
 >
 > GB Cartographer is free during the alpha, and maybe forever.
 
-![GB Cartographer with a generated overworld open in its palettes: the project's backgrounds on the left, the tools, and the palettes on the right](docs/media/painter.png)
+![GB Cartographer with GB Studio's sample project open: "Paint and Color directly in app" painted over the wide parallax background in its scene's palettes, the project's backgrounds on the left and the palettes on the right](docs/screenshot-paint-directly.png)
 
 ![Painting palettes onto the demo's Winter Tileset, tile by tile, with the palette brush](docs/demo.gif)
 
@@ -19,7 +19,7 @@ palettes straight back into the project.
 | :---: | :---: | :---: |
 | ![Spraying shades over the demo's Free Furniture tileset](docs/demo-spray.gif) | ![Selecting a television on the Free Furniture tileset and moving it](docs/demo-select-move.gif) | ![Drawing zig-zag strokes with the pencil over the Free Furniture tileset](docs/demo-pencil.gif) |
 
-<sub>The art in these GIFs is the demo project's: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md). It appears here only as screen recordings: the art files themselves aren't in this repository or the downloads.</sub>
+<sub>The main screenshot shows GB Studio's sample project (`appData/templates/gbs2` in the [GB Studio repository](https://github.com/chrismaltby/gb-studio)), Copyright (c) 2019-2026 Chris Maltby, used under the MIT license. The art in these GIFs is the demo project's: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md). It appears here only as screen recordings: the art files themselves aren't in this repository or the downloads.</sub>
 
 **[Download the alpha](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
 [Install](#install)).
@@ -91,9 +91,11 @@ pick. Make background puts the map and its palettes in your project.
 | ![The overworld generator in SpicyGame's VIBE-20 colors](docs/media/generators.png) | ![The cave generator in a stone palette](docs/media/cave.png) |
 | ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png) | ![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png) |
 
+![A generated overworld open in the painter, in its palettes](docs/media/painter.png)
+
 ![The Graphics window: SpicyGame's public-domain palette sets, credited, with buttons to add a set or one palette](docs/media/graphics.png)
 
-The pictures in these screenshots are GB Cartographer's own placeholder graphics.
+The pictures in these screenshots are GB Cartographer's own placeholders.
 
 ## Install
 
