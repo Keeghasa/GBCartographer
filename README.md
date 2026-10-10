@@ -13,7 +13,13 @@ palettes straight back into the project.
 
 ![GB Cartographer with a generated overworld open in its palettes: the project's backgrounds on the left, the tools, and the palettes on the right](docs/media/painter.png)
 
-![Painting palettes onto a village screen, tile by tile, with the palette brush: grass, roofs, walls and a road get their colors](docs/media/palette-brush.gif)
+![Painting palettes onto the demo's Winter Tileset, tile by tile, with the palette brush](docs/demo.gif)
+
+| Spray | Select and move | Pencil |
+| :---: | :---: | :---: |
+| ![Spraying shades over the demo's Free Furniture tileset](docs/demo-spray.gif) | ![Selecting a television on the Free Furniture tileset and moving it](docs/demo-select-move.gif) | ![Drawing zig-zag strokes with the pencil over the Free Furniture tileset](docs/demo-pencil.gif) |
+
+<sub>In the GIFs: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md).</sub>
 
 **[Download the alpha](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
 [Install](#install)).
@@ -204,5 +210,5 @@ npm run build
 
 Code: MIT (see LICENSE). The logo is the author's pixel art, CC0. [Public Pixel](https://ggbot.itch.io/public-pixel-font)
 by GGBotNet (CC0, shipped in `public/fonts/`) is an optional UI font. Inter by Rasmus Andersson and the Inter Project Authors, and JetBrains Mono by JetBrains, ship with the app (SIL Open Font License 1.1, licences in `public/fonts/`).
-Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. The repository ships no art (the demo project's will join with its artists' blessing; credits in [demo/CREDITS.md](demo/CREDITS.md)). GB Studio is by Chris Maltby and
+Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. The repository ships none of the demo project's art (it joins with its artists' blessing; credits in [demo/CREDITS.md](demo/CREDITS.md)), except in the author's four demo GIFs at the top of this page. GB Studio is by Chris Maltby and
 contributors; GB Cartographer is not affiliated with it.

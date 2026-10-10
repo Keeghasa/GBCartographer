@@ -38,6 +38,11 @@ docs/demo-tile-palettes.json
 demo/assets/**/*.png
 docs/*.png
 docs/*.gif
+# …except the author's own demo GIFs (2026-10-10: "put back the gifs i made")
+!docs/demo.gif
+!docs/demo-spray.gif
+!docs/demo-select-move.gif
+!docs/demo-pencil.gif
 src/graphics/tiles.ts
 src/graphics/sprites.ts
 src/graphics/scenes.ts
