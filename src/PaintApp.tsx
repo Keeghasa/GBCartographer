@@ -100,6 +100,8 @@ export default function PaintApp() {
   /** Whether the page is served by something that can open a project (the dev server or the desktop app). */
   const [served, setServed] = useState(false);
   const [showPalettes, setShowPalettes] = useState(false);
+  // A palette for the palette manager to show first (Project health's Open on a palette).
+  const [paletteFocus, setPaletteFocus] = useState<string | undefined>();
   const [showStore, setShowStore] = useState(false);
   const [showWizards, setShowWizards] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -2074,7 +2076,7 @@ export default function PaintApp() {
           onFixTiles={(kind, file) => void openByFile(kind, file).then((opened) => { if (opened) setWizard("budget"); })} />
       )}
       {showPictureWizard && <PictureWizard projectName={project?.name ?? null} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} />}
-      {showHealth && project && <HealthWindow projectName={project.name} onClose={() => setShowHealth(false)} onOpen={(kind, file) => { const asset = project.assets.find((item) => item.kind === kind && item.file === file); if (asset) { setProjectKind(kind); void openAsset(asset); } }} />}
+      {showHealth && project && <HealthWindow projectName={project.name} onClose={() => setShowHealth(false)} onOpen={(kind, file) => { if ((kind as string) === "palettes") { setPaletteFocus(file); setShowPalettes(true); return; } const asset = project.assets.find((item) => item.kind === kind && item.file === file); if (asset) { setProjectKind(kind); void openAsset(asset); } }} />}
       {showNew && <NewPictureWindow projectName={project?.name ?? null} initialKind={projectKind} onClose={() => setShowNew(false)} onCreate={createPicture} />}
       {showResize && doc && <ResizeWindow name={doc.asset?.name ?? doc.name} width={doc.width} height={doc.height} sprite={doc.asset?.kind === "sprites"} inProject={Boolean(doc.asset)} onClose={() => setShowResize(false)} onResize={resizePicture} />}
       {backups && project && (
@@ -2084,9 +2086,10 @@ export default function PaintApp() {
         <PaletteManager
           projectName={project?.name ?? null}
           projectPalettes={project?.palettes ?? []}
+          focus={paletteFocus}
           sceneSlots={sceneSlots}
           picture={doc ? { pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), width: doc.width, height: doc.height, sprite: Boolean(doc.keyGreen) } : null}
-          onClose={() => setShowPalettes(false)}
+          onClose={() => { setShowPalettes(false); setPaletteFocus(undefined); }}
           onWriteProject={writeProjectPalette}
           onPick={(id) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) { setActivePalette(index + 1); setTool("palette"); } }}
           onRemoveProject={removeProjectPalette}

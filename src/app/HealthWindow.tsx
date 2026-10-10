@@ -46,11 +46,11 @@ export function HealthWindow({ projectName, onClose, onOpen }: { projectName: st
               <span className="k-eyebrow">{LEVELS[level]} · {list.length}</span>
               {list.map((issue, index) => {
                 // Pictures open in the painter; palettes and project settings have nowhere to go from here.
-                const openable = Boolean(issue.file) && issue.kind !== "palettes" && issue.kind !== "project";
+                const openable = Boolean(issue.file) && issue.kind !== "project";
                 // A note that names no file (the time-of-day count) is only information: a gray bar.
                 const tone = level === "note" && !issue.file ? "info" : level;
                 return (
-                  <div key={index} className={`k-card hw-issue hw-${tone}${openable ? " hw-openable" : ""}`} title={openable ? "Open this picture" : undefined} onClick={openable ? () => open(issue) : undefined}>
+                  <div key={index} className={`k-card hw-issue hw-${tone}${openable ? " hw-openable" : ""}`} title={openable ? (issue.kind === "palettes" ? "Show this palette in the palette manager" : "Open this picture") : undefined} onClick={openable ? () => open(issue) : undefined}>
                     <i aria-hidden="true" />
                     <div className="hw-text">
                       <b>{issue.title}</b>

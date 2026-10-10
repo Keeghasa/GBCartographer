@@ -48,6 +48,8 @@ export interface PaletteManagerProps {
   projectName: string | null;
   /** The project's palettes, with their GB Studio ids. */
   projectPalettes: Palette[];
+  /** A project palette to show first, by name (Project health opens it). */
+  focus?: string;
   /** The open picture's eight palette slot ids, in slot order (empty when it has none). */
   sceneSlots: string[];
   /** The open picture, flattened, for the preview. */
@@ -119,12 +121,12 @@ export function addToMine(palettes: { name: string; colors: string[] }[]) {
   writeMine([...readMine(), ...palettes.map(({ name, colors }) => ({ name, colors: [...colors] }))]);
 }
 
-export default function PaletteManager({ projectName, projectPalettes, sceneSlots, picture, onClose, onWriteProject, onPick, onSlotMenu, onRemoveProject }: PaletteManagerProps) {
+export default function PaletteManager({ projectName, projectPalettes, focus, sceneSlots, picture, onClose, onWriteProject, onPick, onSlotMenu, onRemoveProject }: PaletteManagerProps) {
   const [promptDialog, askText] = usePrompt();
-  const [collection, setCollection] = useState<Collection>(projectPalettes.length ? "project" : LIBRARY[0]?.name ?? "mine");
+  const [collection, setCollection] = useState<Collection>(projectPalettes.length || focus ? "project" : LIBRARY[0]?.name ?? "mine");
   const [filter, setFilter] = useState("");
   const [mine, setMine] = useState<Palette[]>(() => readMine());
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(() => Math.max(0, focus ? projectPalettes.findIndex((palette) => palette.name === focus) : 0));
   const [draft, setDraft] = useState<{ name: string; colors: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
@@ -133,6 +135,8 @@ export default function PaletteManager({ projectName, projectPalettes, sceneSlot
   /** Which scenes use each project palette (by id), read from the project when the Project collection shows. */
   const [usage, setUsage] = useState<Map<string, PaletteUsage> | null>(null);
   const [onlyOdd, setOnlyOdd] = useState(false);
+  // On opening, the selected palette scrolls into view (Project health opens the manager on one).
+  useEffect(() => { const timer = window.setTimeout(() => document.querySelector(".pm-list [aria-selected=true]")?.scrollIntoView({ block: "center" }), 60); return () => window.clearTimeout(timer); }, []);
   useEffect(() => {
     if (!projectName) return setUsage(null);
     let live = true;
@@ -432,7 +436,7 @@ export default function PaletteManager({ projectName, projectPalettes, sceneSlot
                       onContextMenu={(event) => { if (!slotsHere(palette)) return; event.preventDefault(); choose(row.group, index); onSlotMenu!(palette.id!, event.clientX, event.clientY); }}>
                       {view === "project" && sceneSlots.length > 0 && <span className="app-slot">{slotOf(palette) >= 0 ? slotOf(palette) + 1 : ""}</span>}
                       <span className="app-chips">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>
-                      <span className="app-name">{palette.name}</span>
+                      <span className="app-name" title={palette.name}>{palette.name}</span>
                       {/ N$/.test(palette.name) && <Chip title="A night version (N)">night</Chip>}
                       {closeShades(palette.colors, picture?.sprite).length > 0 && <Chip tone="warn" title="Two neighbouring shades are hard to tell apart">low contrast</Chip>}
                       {view === "project" && unused(palette) && <Chip title="No scene uses it (not a default either); events may still pick it">unused</Chip>}
@@ -451,7 +455,7 @@ export default function PaletteManager({ projectName, projectPalettes, sceneSlot
               <div className="k-row">
                 <input type="text" className="k-input" aria-label="Palette name" value={name} onChange={(event) => edit({ name: event.target.value })} />
                 <Button title="A copy in Mine, to edit freely" onClick={() => copyToMine(true)}>Duplicate</Button>
-                <Button disabled={!valid} title="Make D, N and S versions of this palette in Mine (D lilac, N dark and blue, S warm), modeled on the DWC set: a starting point to tune" onClick={makeVariants}>D / N / S</Button>
+                <Button disabled={!valid} title="Make D, N and S versions of this palette in Mine (D lilac, N dark and blue, S warm), modeled on the DWC set: a starting point to tune" onClick={makeVariants}>Day, night, sunset</Button>
                 {collection !== "mine" && <Button disabled={!valid} title="Keep this palette in Mine" onClick={() => copyToMine(false)}>Copy to Mine</Button>}
               </div>
               <div className="pm-colors">
