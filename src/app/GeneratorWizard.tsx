@@ -122,8 +122,8 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           <span className="k-row">
             <Chip>{picture.width} × {picture.height} px</Chip>
             <Chip>{columns} × {rows} screens</Chip>
-            <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} tiles</Chip>
-            <span className="k-muted k-xs">Placeholder art: paint over it. Red lines are screen edges.</span>
+            <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} unique tiles</Chip>
+            <span className="k-muted k-xs">Placeholder art: paint over it. Cyan lines are screen edges.</span>
           </span>
         </div>
       </div>

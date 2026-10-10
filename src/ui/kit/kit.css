@@ -145,6 +145,8 @@
 .k-dialog-head { display: flex; align-items: center; gap: var(--k-2); padding: var(--k-3) var(--k-3) var(--k-3) var(--k-5); border-bottom: 1px solid var(--k-edge); }
 .k-dialog-title { margin: 0; font-size: var(--k-text-lg); font-weight: 600; }
 .k-dialog-sub { color: var(--k-ink-3); font-size: var(--k-text-sm); }
+.k-dialog-head > .k-stack { flex: 1; min-width: 0; }
+.k-dialog-head .k-dialog-sub { overflow-wrap: anywhere; }
 .k-dialog-body { padding: var(--k-5); overflow: auto; flex: 1; min-height: 0; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--k-5)), transparent); } /* content that runs past the bottom fades out instead of being cut mid-line */
 .k-dialog-foot { display: flex; align-items: center; gap: var(--k-2); padding: var(--k-3) var(--k-5); border-top: 1px solid var(--k-edge); }
 
