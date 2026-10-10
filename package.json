@@ -1,6 +1,6 @@
 {
   "name": "gb-cartographer",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "A small pixel painter for GB Studio projects: backgrounds, sprite sheets and tilesets in the four Game Boy shades, with per-tile palettes written back to the project.",
   "license": "MIT",
   "type": "module",
@@ -63,7 +63,7 @@
     "mac": {
       "category": "public.app-category.graphics-design",
       "icon": "build/icon.png",
-      "identity": null,
+      "identity": "-",
       "target": [
         {
           "target": "dmg",
@@ -79,7 +79,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "hardenedRuntime": false
     },
     "dmg": {
       "title": "GB Cartographer ${version}"

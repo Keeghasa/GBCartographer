@@ -103,8 +103,10 @@ Download the file for your computer from the [latest release](https://github.com
 The builds aren't signed yet, so the first launch needs one extra step:
 
 - **macOS:** open the `.dmg` (`arm64` for Apple silicon, `x64` for Intel) and drag GB Cartographer to Applications.
-  The first time, right-click (or Control-click) the app and choose **Open**, then **Open** again. If macOS still
-  refuses, open System Settings → Privacy & Security and click **Open Anyway**.
+  The first time you open it, macOS says it can't check the app for malware (checking needs a paid Apple developer
+  account). Click **Done**, then open System Settings → Privacy & Security, scroll down and click **Open Anyway** next
+  to GB Cartographer, then **Open Anyway** again. Or run this once in Terminal:
+  `xattr -dr com.apple.quarantine "/Applications/GB Cartographer.app"`
 - **Windows:** run the `windows-setup.exe` (or unzip the `.zip`). If SmartScreen says it protected your PC, click
   **More info**, then **Run anyway**.
 - **Linux:** make the `.AppImage` executable (`chmod +x GB-Cartographer-*.AppImage`) and run it.
