@@ -435,6 +435,62 @@ export function deleteAsset(project: string, kind: AssetKind, path: string, back
   return { files };
 }
 
+
+// ---- scene collisions (the author's pick 2026-10-11; written only the `collisions` field, backed up first) ----
+
+/** A scene that shows a background, with its collisions (one value per 8 × 8 tile, padded to the background). */
+export interface SceneCollisions { file: string; id: string; name: string; type: string; mtime: number; collisions: number[] }
+
+/** The scenes that show this background (by its sidecar id), and their collisions; none when GB Studio hasn't read it. */
+export function sceneCollisions(project: string, path: string): { scenes: SceneCollisions[]; width: number; height: number; collisionTypes: Record<string, unknown[]> } {
+  const size = pngSizeOfFile(path) ?? { width: 0, height: 0 };
+  const width = Math.ceil(size.width / 8), height = Math.ceil(size.height / 8);
+  const id = assetId(path);
+  const scenes: SceneCollisions[] = [];
+  const scenesDir = join(project, "project/scenes");
+  if (id && existsSync(scenesDir)) {
+    for (const folder of readdirSync(scenesDir).sort()) {
+      const file = join(scenesDir, folder, "scene.gbsres");
+      const scene = readJson(file);
+      if (!scene || scene.backgroundId !== id) continue;
+      let values: number[] = [];
+      try { values = typeof scene.collisions === "string" ? decodeTileColors(scene.collisions) : []; } catch { values = []; }
+      const collisions = Array.from({ length: width * height }, (_, at) => values[at] ?? 0);
+      scenes.push({ file: relative(project, file).split(sep).join("/"), id: typeof scene.id === "string" ? scene.id : folder, name: typeof scene.name === "string" && scene.name ? scene.name : folder, type: typeof scene.type === "string" ? scene.type : "TOPDOWN", mtime: statSync(file).mtimeMs, collisions });
+    }
+  }
+  return { scenes, width, height, collisionTypes: pluginCollisionTypes(project) };
+}
+
+/** Collision tiles of scene types the project adds (an ejected engine, or plugins' engine.json). */
+function pluginCollisionTypes(project: string): Record<string, unknown[]> {
+  const out: Record<string, unknown[]> = {};
+  const files = [join(project, "assets/engine/engine.json")];
+  const plugins = join(project, "plugins");
+  if (existsSync(plugins)) for (const entry of readdirSync(plugins)) files.push(join(plugins, entry, "engine/engine.json"), join(plugins, entry, "engine.json"));
+  for (const file of files) {
+    const engine = existsSync(file) ? readJson(file) : null;
+    const types = Array.isArray(engine?.sceneTypes) ? engine!.sceneTypes as Record<string, unknown>[] : [];
+    for (const type of types) if (typeof type.key === "string" && Array.isArray(type.collisionTiles)) out[type.key] = type.collisionTiles;
+  }
+  return out;
+}
+
+/**
+ * Writes a scene's collisions: only its `collisions` field changes (in GB Studio's packing), the old file backed up
+ * first, refused when it changed on disk since `expectedMtime` (unless `force`). `values` is one byte per tile.
+ */
+export function writeSceneCollisions(project: string, sceneFile: string, values: readonly number[], backup: Backup, expectedMtime: number | null, force: boolean): { mtime: number } {
+  const file = resolve(project, sceneFile);
+  if (!file.startsWith(join(project, "project", "scenes") + sep) || !file.endsWith(`${sep}scene.gbsres`) || !existsSync(file)) throw new AssetWriteError("No such scene.", 404);
+  const scene = readJson(file);
+  if (!scene || scene._resourceType !== "scene") throw new AssetWriteError("That file isn't a GB Studio scene.", 400);
+  if (!values.every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) throw new AssetWriteError("Collisions are numbers 0–255.", 400);
+  const mtime = statSync(file).mtimeMs;
+  if (!force && expectedMtime !== null && Math.abs(mtime - expectedMtime) > 1) throw new AssetWriteError("The scene changed on disk since it was read.", 409, mtime);
+  return { mtime: writeSidecar(file, { ...scene, collisions: encodeTileColors(values) }, backup) };
+}
+
 /**
  * Puts a project palette into one of an asset's eight slots (`slot` 0–7): the scene's palette list
  * (`paletteIds` / `spritePaletteIds`) when a scene shows the asset, else the project's default palettes in

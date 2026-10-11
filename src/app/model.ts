@@ -4,8 +4,9 @@
  */
 import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect } from "../paint";
 import type { AutotileKind } from "./autotile";
+import type { CollisionTileDef } from "../gb/collisions";
 
-export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text";
+export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text" | "collision";
 
 export const MIRRORS: Mirror[] = ["off", "x", "y", "xy"];
 export const MIRROR_LABEL = { off: "Mirror off", x: "Mirror ↔", y: "Mirror ↕", xy: "Mirror ↔↕" } as const;
@@ -73,13 +74,23 @@ export interface AssetInfo { mtime: number; tileColors: number[]; slots: string[
 /** A file to open; `replace` names an open picture (by id) that it reloads in place (same tab, same zoom). */
 export interface Opening { file: File; handle?: FileHandle; asset?: Asset; info?: AssetInfo; replace?: number }
 
-export interface Snapshot { pixels: Uint8Array; cells: Uint8Array; /** Per tile: draws over sprites (GB Studio's priority flag). */ priority?: Uint8Array; /** The picture's palettes (colors are editable, so undo brings them back). */ palettes?: Palette[] }
+/** A background's GB Studio scenes and their collisions (src/gb/collisions.ts): read when opened, painted with the collision brush, written on Save. */
+export interface DocCollisions {
+  scenes: { file: string; id: string; name: string; type: string; mtime: number; opened: number[]; values: Uint8Array }[];
+  /** The scene the brush paints and the overlay shows. */
+  scene: number;
+  /** Collision tiles of scene types the project's plugins add. */
+  types: Record<string, CollisionTileDef[]>;
+}
+export interface Snapshot { /** Each scene's collisions (a background in scenes). */ collisionValues?: Uint8Array[]; pixels: Uint8Array; cells: Uint8Array; /** Per tile: draws over sprites (GB Studio's priority flag). */ priority?: Uint8Array; /** The picture's palettes (colors are editable, so undo brings them back). */ palettes?: Palette[] }
 export interface Doc extends Snapshot {
   id: number;
   name: string;
   width: number;
   height: number;
   hasAlpha: boolean;
+  /** A project background's scenes and their collisions (none: not a project background, or not loaded yet). */
+  collision?: DocCollisions;
   /** This picture's own copy of the library palettes: their colors can be edited per picture. */
   palettes: Palette[];
   undo: Snapshot[];
@@ -119,6 +130,8 @@ export type Drag =
   | { kind: "auto"; last: Point; erase: boolean }
   /** A corner-Wang stamp painted at grid corners (`last` is a corner, in tiles). */
   | { kind: "corner"; last: Point; erase: boolean }
+  /** The collision brush painting GB Studio collisions tile by tile (Alt or right-drag clears). */
+  | { kind: "collision"; last: Point; erase: boolean }
   | { kind: "shape"; start: Point; base: Uint8Array }
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }

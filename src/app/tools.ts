@@ -1,5 +1,5 @@
 /** The paint tools (with their icons and help) and the asset kinds' icons. */
-import { CaseSensitive, Circle, DropletOff, Eraser, Ghost, Layers2, Move, PaintBucket, Palette as PaletteIcon, Pencil, Pipette, SprayCan, Square, Type } from "lucide-react";
+import { BrickWall, CaseSensitive, Circle, DropletOff, Eraser, Ghost, Layers2, Move, PaintBucket, Palette as PaletteIcon, Pencil, Pipette, SprayCan, Square, Type } from "lucide-react";
 import { FilledSquare, LineEnds } from "../ui/icons";
 import { PhPuzzlePiece, PhSelection, PhSticker, PxAvatar, PxHand, PxImage, PxMessageReply, PxSmile } from "../ui/setIcons";
 
@@ -21,6 +21,7 @@ export const TOOLS = [
   ["hand", "Pan", PxHand, "H", "drag to pan · Space or middle button with any tool", "Drag to pan. Space or the middle mouse button pans with any tool."],
   ["stamp", "Stamp", PhSticker, "C", "right-click picks a tile · drag stamps it on the grid", "Right-click a tile to pick it up as the stamp (or select a block first, then pick the stamp tool), then click or drag to stamp copies on the 8 px grid. Tile palettes come along when the stamp is whole tiles."],
   ["priority", "Priority brush", Layers2, "U", "drag over tiles to draw them over sprites · Alt or right-drag clears", "On a background or tileset, drag over tiles to mark them as drawn over sprites (GB Studio's priority flag; marked tiles show hatched). Alt-drag or right-drag clears the mark. Save writes the flag into the tile colors."],
+  ["collision", "Collision brush", BrickWall, "W", "drag over tiles to set GB Studio collisions · Alt or right-drag clears · [ ] size", "On a project background that GB Studio has put in a scene, paint that scene's collisions: pick solid, a one-way side, a ladder or a slope (what the scene's type offers) in the strip above the picture, then drag over tiles; Shift-click combines one-way sides. Alt or right-drag clears. The scene picker chooses which scene, when several show the background. Save writes only the scene's collisions."],
   ["text", "Text", CaseSensitive, "Y", "click to place text in a project font · drag to move · switch tools to stamp it", "Click the picture to place text set in one of the project's font sheets (pick the font, type, choose the ink above the picture). It floats: drag it, change the words, invert it, then switch tools or press Stamp it to put it down. Variable-width fonts keep their widths."],
 ] as const;
 export const KIND_ICONS = { backgrounds: PxImage, sprites: Ghost, tilesets: PhPuzzlePiece, fonts: Type, emotes: PxSmile, avatars: PxAvatar, ui: PxMessageReply, stamps: PhSticker } as const;

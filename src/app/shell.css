@@ -165,3 +165,7 @@
 /* Something unsaved: an orange dot on the Save button (the orange of unsaved names). */
 .app-unsaved { position: relative; } .app-unsaved::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: var(--k-warn); border-radius: 50%; box-shadow: 0 0 0 2px var(--k-ctl); }
 .app-card b.dirty::first-line { color: var(--k-warn); }
+/* The collision brush's strip and GB Studio's collision layer over the picture (half see-through, like GB Studio's). */
+.app-collision-picks { display: flex; flex-wrap: wrap; gap: 4px; }
+.app-collision-picks .k-btn { gap: 6px; }
+.app-collision-icon { width: 16px; height: 16px; image-rendering: pixelated; background: rgba(0, 0, 0, .35); border-radius: 3px; }

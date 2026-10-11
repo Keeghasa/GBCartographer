@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2 } from "lucide-react";
+import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -62,6 +62,8 @@ import { MessagesWindow, Toasts, useMessages } from "./app/Messages";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
 import { autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
+import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
+import { CollisionStrip } from "./app/CollisionStrip";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -98,6 +100,7 @@ export default function PaintApp() {
   const [usage, setUsage] = useState<{ key: string; usage: TileUsage } | null>(null);
   const usageCanvas = useRef<HTMLCanvasElement>(null);
   const priorityCanvas = useRef<HTMLCanvasElement>(null);
+  const collisionCanvas = useRef<HTMLCanvasElement>(null);
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [activePalette, setActivePalette] = useState(0);
   const [tint, setTint] = useState(() => readStored(TINT_KEY, "GB greens"));
@@ -213,12 +216,21 @@ export default function PaintApp() {
   const swatchColors = picked ? shown(picked.colors) : tintColors;
   const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id }) => ({ name, colors: [...colors], ...(id ? { id } : {}) }));
   const blank = (target: Doc) => target.hasAlpha ? CLEAR : 0;
+  // The collision brush: the picked collision tiles of the scene being edited (GB Studio's value and mask).
+  const [collisionPick, setCollisionPick] = useState<string[]>(["solid"]);
+  const [showCollisions, setShowCollisions] = useState<boolean>(() => readStored("gbc-collisions", false));
+  const collisionDefs = (target: Doc | null): CollisionTileDef[] => {
+    const scene = target?.collision?.scenes[target.collision.scene];
+    if (!scene) return [];
+    return (target!.collision!.types[scene.type] ?? SCENE_TYPE_COLLISIONS[scene.type] ?? DEFAULT_COLLISIONS);
+  };
   const { takeStamp, setStamp, pointerDown, pointerMove, pointerUp } = usePainting({
     doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, seamless, activePalette, hoverCell,
     wrapRef, scrollerRef, readoutRef, brushRef, spaceDown, paintTool,
     setShade, setActivePalette, setHoverCell, setToolState, say, pushUndo, touch, bump, floatSelection, dropFloat, moveFloat, clonePalettes, blank,
     onSelectionMenu: (x, y) => setSelectionMenu({ x, y }),
     onPlaceText: (point) => void placeText(point),
+    collisionBrush: () => collisionBrush(collisionDefs(doc).filter((def) => collisionPick.includes(def.key))),
   });
 
   /** A message: it slides in at the bottom left (Messages.tsx) and is kept for the Messages window. */
@@ -240,11 +252,11 @@ export default function PaintApp() {
     window.clearTimeout(sessionTimer.current);
     const value = {
       active: docs.current.findIndex((item) => item.id === activeId),
-      docs: docs.current.map(({ name, width, height, pixels, cells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, float }) => {
+      docs: docs.current.map(({ name, width, height, pixels, cells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, float, collision }) => {
         // A floating piece is kept dropped in place, with its tile palettes.
         const flat = pixels.slice(), flatCells = cells.slice();
         if (float) { drop(flat, width, height, float); dropCells(flatCells, width, height, float); }
-        return { name, width, height, pixels: flat, cells: flatCells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom };
+        return { name, width, height, pixels: flat, cells: flatCells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, collision };
       }),
     };
     return sessionStore("readwrite", (objects) => objects.put(value, "open")).then(() => true);
@@ -265,7 +277,7 @@ export default function PaintApp() {
   // ---- undo and the floating selection ---------------------------------------------------------------------------
 
   function pushUndo(target: Doc) {
-    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}) });
+    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}) });
     while (target.undo.length > UNDO_LIMIT || (target.undo.length > 1 && target.undo.length * target.pixels.length > UNDO_BYTES)) target.undo.shift();
     target.redo = [];
   }
@@ -281,9 +293,10 @@ export default function PaintApp() {
   function stepHistory(from: "undo" | "redo") {
     if (!doc || !doc[from].length) return;
     dropFloat(doc);
-    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, palettes: clonePalettes(doc.palettes), ...(doc.priority ? { priority: doc.priority } : {}) });
-    const { palettes, ...rest } = doc[from].pop()!;
+    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, palettes: clonePalettes(doc.palettes), ...(doc.priority ? { priority: doc.priority } : {}), ...(doc.collision ? { collisionValues: doc.collision.scenes.map((scene) => scene.values.slice()) } : {}) });
+    const { palettes, collisionValues, ...rest } = doc[from].pop()!;
     Object.assign(doc, rest);
+    if (collisionValues && doc.collision) collisionValues.forEach((values, index) => { if (doc.collision!.scenes[index]) doc.collision!.scenes[index].values = values; });
     // Palette colors come back too; a restored list that predates a palette added since keeps the newer ones.
     if (palettes) palettes.forEach((palette, index) => { if (doc.palettes[index]) doc.palettes[index] = palette; });
     doc.sel = null;
@@ -388,6 +401,7 @@ export default function PaintApp() {
         const opened: Doc = { id, ...(handle && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? file.name, width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: false, handle, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
         if (old >= 0) docs.current[old] = opened;
         else docs.current.push(opened);
+        if (asset?.kind === "backgrounds") void loadCollisions(opened);
         if (old >= 0) continue;
         const made = picture.palettes.length - palettesRef.current.length;
         if (info?.autoColor) say(`${asset?.name ?? file.name} uses GB Studio's Automatic color: GB Studio reads its colors from the PNG itself. Saving here writes the four greens and loses them; Save asks first.`);
@@ -759,10 +773,46 @@ export default function PaintApp() {
       } else notes.push(...await saveTileColors(target));
     }
     if (asset.kind === "stamps") notes.push(...await saveStampMeta(target));
+    if (asset.kind === "backgrounds" && target.collision) notes.push(...await saveCollisions(target));
     say(notes.join(". "));
     return true;
   }
 
+
+  /** Reads the scenes that show a project background and their collisions (none: GB Studio hasn't put it in one). */
+  async function loadCollisions(target: Doc) {
+    const asset = target.asset;
+    if (!asset || asset.kind !== "backgrounds") return;
+    const read = await fetch(`./__cartographer/scene-collisions?${new URLSearchParams({ file: asset.file })}`, { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ scenes: { file: string; id: string; name: string; type: string; mtime: number; collisions: number[] }[]; collisionTypes: Record<string, CollisionTileDef[]> }> : null).catch(() => null);
+    if (!read) return;
+    target.collision = {
+      scene: 0,
+      types: read.collisionTypes ?? {},
+      scenes: read.scenes.map(({ collisions, ...scene }) => ({ ...scene, opened: collisions.slice(), values: Uint8Array.from(collisions) })),
+    };
+    bump();
+  }
+
+  /** Writes the collisions of each scene whose collisions were painted (only that field of its scene.gbsres). */
+  async function saveCollisions(target: Doc): Promise<string[]> {
+    const notes: string[] = [];
+    for (const scene of target.collision?.scenes ?? []) {
+      if (scene.values.every((value, at) => value === (scene.opened[at] ?? 0))) continue;
+      if (!await okToWriteProjectJson()) return ["Collisions not written"];
+      const post = (force: boolean) => fetch(`./__cartographer/scene-collisions?${new URLSearchParams({ scene: scene.file, mtime: String(scene.mtime), ...(force ? { force: "1" } : {}) })}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collisions: Array.from(scene.values) }) });
+      let response = await post(false);
+      if (response.status === 409) {
+        if (!await confirmBox(`The scene ${scene.name} changed in GB Studio since you opened ${target.name}. Replace its collisions with these?`, { yes: "Replace" })) { notes.push(`${scene.name}'s collisions not written (still unsaved here)`); target.dirty = true; continue; }
+        response = await post(true);
+      }
+      const result = await response.json().catch(() => ({})) as { ok?: boolean; error?: string; mtime?: number };
+      if (!response.ok || !result.ok) { notes.push(`${scene.name}'s collisions not written: ${result.error ?? response.statusText}`); target.dirty = true; continue; }
+      scene.opened = Array.from(scene.values);
+      scene.mtime = result.mtime ?? scene.mtime;
+      notes.push(`Collisions written to ${scene.name}`);
+    }
+    return notes;
+  }
 
   /** Puts palettes in slots 1…n of what a picture reads (a scene's palettes, or the project's defaults until a scene shows it). */
   async function putInSlots(asset: Asset, ids: string[]) {
@@ -1783,6 +1833,8 @@ export default function PaintApp() {
         docs.current = session.docs.map((saved, index) => ({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: index + 1, undo: [], redo: [], sel: null, float: null }));
         setActiveId(docs.current[Math.max(0, session.active)]?.id ?? docs.current[0].id);
         void rereadSlots();
+        // Backgrounds kept from before collisions were read: read their scenes' collisions now.
+        for (const item of docs.current) if (item.asset?.kind === "backgrounds" && !item.collision && (!item.asset.project || item.asset.project === projectRef.current?.path)) void loadCollisions(item);
       });
     const onKeyDown = (event: KeyboardEvent) => latest.current.keyDown(event);
     const onKeyUp = (event: KeyboardEvent) => { if (event.key === " ") spaceDown.current = false; };
@@ -1876,6 +1928,34 @@ export default function PaintApp() {
 
   // Seamless view: what repeats, drawn from the canvas as shown (palettes and screen look included).
   const seamlessArea = doc && seamless ? (doc.sel && doc.sel.w > 0 && doc.sel.h > 0 ? doc.sel : hoverCell ? { x: hoverCell.x * CELL, y: hoverCell.y * CELL, w: Math.min(CELL, doc.width - hoverCell.x * CELL), h: Math.min(CELL, doc.height - hoverCell.y * CELL) } : null) : null;
+
+  // GB Studio's collisions over the picture, as GB Studio draws them: each tile's collision icons in their colors (half
+  // see-through, like its collision layer); a value no collision tile explains gets a dotted outline (GB Studio writes
+  // its hex there).
+  useLayoutEffect(() => {
+    const canvas = collisionCanvas.current, scene = doc?.collision?.scenes[doc.collision.scene];
+    if (!canvas || !doc || !scene) return;
+    const cw = cellsWide(doc.width), ch = Math.ceil(doc.height / CELL);
+    Object.assign(canvas, { width: cw * CELL, height: ch * CELL });
+    const context = canvas.getContext("2d")!;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    const defs = collisionDefs(doc);
+    const looks = new Map<number, ReturnType<typeof collisionLook>>();
+    scene.values.forEach((value, cell) => {
+      if (!value || cell >= cw * ch) return;
+      const look = looks.get(value) ?? collisionLook(value, defs);
+      looks.set(value, look);
+      const x = (cell % cw) * CELL, y = Math.floor(cell / cw) * CELL;
+      for (const def of look.shown) {
+        context.fillStyle = def.color.slice(0, 7);
+        iconPixels(def.icon).forEach((on, at) => { if (on) context.fillRect(x + (at % 8), y + Math.floor(at / 8), 1, 1); });
+      }
+      if (look.unknown) {
+        context.fillStyle = "#ffffff";
+        for (let at = 0; at < CELL; at += 2) { context.fillRect(x + at, y, 1, 1); context.fillRect(x + at, y + CELL - 1, 1, 1); context.fillRect(x, y + at, 1, 1); context.fillRect(x + CELL - 1, y + at, 1, 1); }
+      }
+    });
+  });
 
   // The priority brush's overlay: tiles that draw over sprites, tinted blue with stripes the other way from the
   // budget view's and an outline, so they can't be taken for blue art (water, glass).
@@ -2211,6 +2291,7 @@ export default function PaintApp() {
           <IconButton label={`Tile grid: ${grid ? `${grid} px` : "off"} (click for off / 8 px / 16 px)`} pressed={grid > 0} onClick={() => setGrid(grid === 0 ? 8 : grid === 8 ? 16 : 0)} aria-label="Tile grid"><Grid3x3 />{grid > 0 && <span className="app-grid-size">{grid}</span>}</IconButton>
           <IconButton label="Tile budget view: red tiles are used once, amber ones nearly match another" pressed={budgetView} onClick={() => setBudgetView(!budgetView)} aria-label="Tile budget view"><PhPiggyBank size={16} /></IconButton>
           <IconButton label="Game Boy screens: outline each 160 × 144 screen" pressed={screens} onClick={() => { setScreens(!screens); store(SCREENS_KEY, !screens); }} aria-label="Game Boy screens"><PxGamepad size={16} /></IconButton>
+          <IconButton label="GB Studio collisions over the picture (a background in a scene; the Collision brush paints them)" pressed={showCollisions} onClick={() => { setShowCollisions(!showCollisions); store("gbc-collisions", !showCollisions); }} aria-label="Collisions"><BrickWall /></IconButton>
           <IconButton label="Snap selections and moves to 8 px tiles" pressed={snap} onClick={() => setSnap(!snap)} aria-label="Snap selections to tiles"><Magnet /></IconButton>
         </span>
         <IconButton label="Help: tools, keys and what Save writes" keys="?" pressed={showHelp} onClick={() => setShowHelp(!showHelp)} aria-label="Help"><PxLightbulb size={16} /></IconButton>
@@ -2249,6 +2330,7 @@ export default function PaintApp() {
         <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
+          {doc && tool === "collision" && <CollisionStrip collision={doc.collision} isBackground={doc.asset?.kind === "backgrounds"} defs={collisionDefs(doc)} picked={collisionPick} onPick={setCollisionPick} onScene={(index) => { if (doc.collision) { doc.collision.scene = index; setCollisionPick(["solid"]); bump(); } }} />}
           {doc && tool === "stamp" && project && project.assets.some((asset) => asset.kind === "stamps") && <StampsStrip stamps={project.assets.filter((asset) => asset.kind === "stamps")} slotsVersion={slotsVersion} onUse={(asset) => void useSavedStamp(asset)} onOpen={(asset) => { setProjectKind("stamps"); void openAsset(asset); }} onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)} />}
           {doc && frames.length > 0 && <FramesStrip animations={animations} frame={frame} onFrame={setFrame} playing={playing} onPlaying={setPlaying} animSpeed={animSpeed} fps={fps} canvases={frameCanvases} onBackground={project?.assets.some((asset) => asset.kind === "backgrounds") ? () => setOnBackground(composeFrames()) : undefined} backgrounds={project?.assets.filter((asset) => asset.kind === "backgrounds") ?? []} />}
           {doc?.changedOnDisk && !doc.changedOnDisk.kept && (
@@ -2277,6 +2359,7 @@ export default function PaintApp() {
                 {gridLines && <div className="gbp-grid" style={{ backgroundSize: `${gridLines} ${gridLines}` }} />}
                 {budgetView && <canvas ref={usageCanvas} className="gbp-usage" />}
                 {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
+                {(showCollisions || tool === "collision") && doc.collision?.scenes.length ? <canvas ref={collisionCanvas} className="gbp-usage gbp-collisions" /> : null}
                 {screens && <div className="gbp-screens" style={{ backgroundSize: `${160 * doc.zoom}px ${144 * doc.zoom}px` }} />}
                 {current && current.tiles.map((tile, index) => <div key={index} className="gbp-frame-slice" style={{ left: tile.sliceX * doc.zoom, top: tile.sliceY * doc.zoom, width: 8 * doc.zoom, height: 16 * doc.zoom }} />)}
                 {doc.sel && <div className={`gbp-selection ${doc.float ? "floating" : ""}`} style={{ left: doc.sel.x * doc.zoom, top: doc.sel.y * doc.zoom, width: doc.sel.w * doc.zoom, height: doc.sel.h * doc.zoom }} />}

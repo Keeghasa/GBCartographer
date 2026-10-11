@@ -6,6 +6,7 @@
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
+import { paintCollision } from "../gb/collisions";
 import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
 
 interface Painting {
@@ -46,6 +47,8 @@ interface Painting {
   onSelectionMenu: (x: number, y: number) => void;
   /** The text tool clicked outside the floating text: place the text there. */
   onPlaceText: (point: Point) => void;
+  /** The collision brush's value and mask (the picked collision tiles; GB Studio's rule). */
+  collisionBrush: () => { value: number; mask: number };
 }
 
 export function usePainting(app: Painting) {
@@ -226,6 +229,18 @@ export function usePainting(app: Painting) {
     }
   }
 
+  /** Paints the collision brush (or clears, `erase`) on the tiles under its size, in the scene being edited. */
+  function setCollision(target: Doc, point: Point, erase: boolean) {
+    const scene = target.collision?.scenes[target.collision.scene];
+    if (!scene || !inside(target, point)) return;
+    const { value, mask } = erase ? { value: 0, mask: 0xff } : app.collisionBrush();
+    const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL), offset = Math.floor((cellBrush - 1) / 2);
+    for (let by = 0; by < cellBrush; by += 1) for (let bx = 0; bx < cellBrush; bx += 1) {
+      const cx = (point.x >> 3) - offset + bx, cy = (point.y >> 3) - offset + by;
+      if (cx >= 0 && cy >= 0 && cx < cw && cy < ch) scene.values[cy * cw + cx] = paintCollision(scene.values[cy * cw + cx], value, mask);
+    }
+  }
+
   /** Marks (or clears) the priority flag of the tiles under the palette brush's size. */
   function setPriority(target: Doc, point: Point, on: boolean) {
     if (!target.priority || !inside(target, point)) return;
@@ -268,7 +283,7 @@ export function usePainting(app: Painting) {
       const visible = inside(doc, point) && Boolean(stamp.current);
       Object.assign(outline.style, { display: visible ? "block" : "none", left: `${(point.x & ~7) * doc.zoom}px`, top: `${(point.y & ~7) * doc.zoom}px`, width: `${(stamp.current?.w ?? CELL) * doc.zoom}px`, height: `${(stamp.current?.h ?? CELL) * doc.zoom}px` });
     } else {
-      const cells = tool === "palette" || tool === "priority", tall = tool === "palette" && doc.keyGreen;
+      const cells = tool === "palette" || tool === "priority" || tool === "collision", tall = tool === "palette" && doc.keyGreen;
       const cellH = tall ? 2 * CELL : CELL, cellOffset = Math.floor((cellBrush - 1) / 2);
       const size = cells ? CELL * cellBrush : brush, offset = cells ? 0 : Math.floor((brush - 1) / 2);
       const [x, y] = cells ? [(point.x & ~7) - cellOffset * CELL, (tall ? point.y & ~15 : point.y & ~7) - cellOffset * cellH] : [point.x - offset, point.y - offset];
@@ -298,6 +313,12 @@ export function usePainting(app: Painting) {
     if (event.button === 2 && tool === "stamp") {
       if (inside(doc, point)) takeStamp(doc, { x: point.x & ~7, y: point.y & ~7, w: CELL, h: CELL });
       return;
+    }
+    if (event.button === 2 && tool === "collision" && doc.collision?.scenes.length) {
+      app.pushUndo(doc);
+      setCollision(doc, point, true);
+      drag.current = { kind: "collision", last: point, erase: true };
+      return app.touch(doc);
     }
     if (event.button === 2 && tool === "priority" && doc.priority) {
       app.pushUndo(doc);
@@ -355,6 +376,12 @@ export function usePainting(app: Painting) {
         putStamp(doc, point);
         drag.current = { kind: "stamp", origin, last: origin };
       }
+    } else if (tool === "collision") {
+      if (!doc.collision?.scenes.length) { app.say(doc.asset?.kind === "backgrounds" ? "GB Studio hasn't put this background in a scene yet: add it to a scene in GB Studio first, then open it here again." : "Collisions belong to a project background's GB Studio scene."); return; }
+      app.pushUndo(doc);
+      const erase = event.altKey;
+      setCollision(doc, point, erase);
+      drag.current = { kind: "collision", last: point, erase };
     } else if (tool === "priority") {
       if (!doc.priority) { app.say("The priority brush is for project backgrounds and tilesets (GB Studio's draw-over-sprites flag)."); return; }
       app.pushUndo(doc);
@@ -435,6 +462,9 @@ export function usePainting(app: Painting) {
       doc.pixels.set(state.base);
       doc.cells.set(state.baseCells);
       putBox(doc, state.origin, point);
+    } else if (state.kind === "collision") {
+      for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) setCollision(doc, { x, y }, state.erase);
+      state.last = point;
     } else if (state.kind === "priority") {
       for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) setPriority(doc, { x, y }, state.on);
       state.last = point;

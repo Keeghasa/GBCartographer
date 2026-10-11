@@ -12,6 +12,7 @@
  *                                             &resize=1 allows a new size in whole tiles)
  *   POST /__cartographer/gbstudio-new-asset   ?kind=&name= a new PNG in assets/<kind>/ (never replaces a file; no sidecar)
  *   POST /__cartographer/gbstudio-tile-colors { slots } per-cell palette slots into the sidecar (?kind=&file=&metaMtime=&force=1)
+ *   GET  /__cartographer/scene-collisions       a background's scenes and their collisions (?file=); POST { collisions } writes one scene's (?scene=&mtime=&force=1)
  *   GET  /__cartographer/gbstudio-asset-delete  a picture's files and what mentions it; POST deletes it into the backups (?kind=&file=)
  *   POST /__cartographer/stamp-autotile       { autotile: kind | null } a saved stamp's auto-tile (src/app/autotile.ts kinds) (?file=)
  *   POST /__cartographer/stamp-meta           { slots, tileColors, tags? } a saved stamp's tile palettes and tags (?file=&metaMtime=&force=1),
@@ -42,7 +43,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -352,6 +353,32 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, mtime: error.mtime });
         else throw error;
       }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/scene-collisions") {
+      // GET (?file= a background): the scenes showing it and their collisions. POST (?scene=&mtime=&force=1)
+      // { collisions }: writes only that scene's collisions field.
+      if (req.method === "POST") {
+        const body = JSON.parse((await readBody(req)).toString("utf8")) as { collisions?: unknown };
+        if (!Array.isArray(body.collisions)) {
+          reply(res, 400, { error: "collisions must be a list of numbers" });
+          return true;
+        }
+        const expected = url.searchParams.get("mtime");
+        try {
+          reply(res, 200, { ok: true, ...writeSceneCollisions(project, url.searchParams.get("scene") ?? "", body.collisions as number[], backup, expected === null ? null : Number(expected), url.searchParams.get("force") === "1") });
+        } catch (error) {
+          if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, mtime: error.mtime });
+          else throw error;
+        }
+        return true;
+      }
+      const path = assetPath(project, "backgrounds", url.searchParams.get("file") ?? "");
+      if (!path) {
+        reply(res, 404, { error: "No such background" });
+        return true;
+      }
+      reply(res, 200, { ok: true, ...sceneCollisions(project, path) });
       return true;
     }
     if (url.pathname === "/__cartographer/gbstudio-asset-delete") {

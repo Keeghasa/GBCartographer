@@ -59,3 +59,5 @@
   --tone-e9e5d6: #262a30;
   --tone-ecebdd: #262a30;
 }
+/* GB Studio collisions: half see-through, as GB Studio shows its collision layer. */
+.gbp-collisions { mix-blend-mode: normal; opacity: .55; }

@@ -60,6 +60,9 @@ palettes straight back into the project.
   everywhere) with fill patterns, eyedropper, select and move, flip and turn, mirror painting, brush sizes, undo,
   tabs, drag-and-drop, paste from the clipboard. Selections on tile edges take their tiles' palettes with them,
   even into another picture.
+- **GB Studio collisions.** See a scene's collisions over its background (as GB Studio draws them) and paint them
+  with the collision brush: solid, one-way sides, ladders and slopes, whatever the scene's type offers (a background
+  in several scenes: pick the scene). A background GB Studio hasn't put in a scene says to add it there first.
 - **Tile tools.** Linked tiles (paint one tile and every identical copy follows), a seamless view that repeats the
   tile under the pointer 3 × 3, a priority brush for tiles drawn over sprites, saved stamps with their palettes,
   auto-tile stamps (**9** box, **↔** / **↕** 3-slice, **P** path, **W** 47-tile Wang, **E** Wang edges, **C** corner
@@ -152,6 +155,8 @@ GB Cartographer is careful with your game files. It only ever writes:
 - the `paletteIndex` of the slices in a sprite sheet's `.png.gbsres` sidecar;
 - palette files in `project/palettes/`: a new one when you add a palette from the manager, the name and
   colors of one you edit there, or taking out one that nothing in the project uses (it goes to the backups);
+- a scene's `collisions` field in its `scene.gbsres`, when you paint collisions with the collision brush (only that
+  field; the scene is backed up first, and one GB Studio changed since asks before it's replaced);
 - when you put a palette in a slot: that one entry of a scene's palette list (`paletteIds` or `spritePaletteIds`
   in its `scene.gbsres`), or of the project's default palettes (`defaultBackgroundPaletteIds` or
   `defaultSpritePaletteIds` in `project/settings.gbsres`);
@@ -224,4 +229,4 @@ npm run build
 Code: MIT (see LICENSE). The logo is the author's pixel art, CC0. [Public Pixel](https://ggbot.itch.io/public-pixel-font)
 by GGBotNet (CC0, shipped in `public/fonts/`) is an optional UI font. Inter by Rasmus Andersson and the Inter Project Authors, and JetBrains Mono by JetBrains, ship with the app (SIL Open Font License 1.1, licences in `public/fonts/`).
 Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholders, CC0. Other people's art appears only in this README's screenshots and GIFs, as pictures of the app at work: the demo project's art files aren't in the repository or the downloads until their artists have said yes (credits in [demo/CREDITS.md](demo/CREDITS.md)). GB Studio is by Chris Maltby and
-contributors; GB Cartographer is not affiliated with it.
+contributors; GB Cartographer is not affiliated with it. The collision tile definitions (`src/gb/collisions.ts`) come from GB Studio's engine (MIT).

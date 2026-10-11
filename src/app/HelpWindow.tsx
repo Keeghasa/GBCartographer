@@ -77,6 +77,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
               <li>a background's tile palettes (<code>tileColors</code>) and a sprite sheet's slice palettes (<code>paletteIndex</code>)</li>
               <li>palette files from the palette manager</li>
               <li>when you put a palette in a slot: the scene's palette list or the project's default palettes</li>
+              <li>a scene's collisions (<code>collisions</code> in its scene.gbsres), painted with the collision brush</li>
               <li>its own folder, <code>Cartographer/</code>: saved stamps and Map Room maps</li>
               <li>Delete (asked every time) moves a picture's files into the backups</li>
             </ul>

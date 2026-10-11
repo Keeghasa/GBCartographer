@@ -281,6 +281,41 @@ describe("tile palettes", () => {
   });
 });
 
+describe("scene collisions", () => {
+  it("reads the scenes showing a background and writes only a scene's collisions, as GB Studio packs them", async () => {
+    const sceneFile = join(project, "project/scenes/town/scene.gbsres");
+    const original = JSON.parse(readFileSync(sceneFile, "utf8")) as Record<string, unknown>;
+    writeFileSync(sceneFile, JSON.stringify({ ...original, _resourceType: "scene", id: "scene-town", type: "PLATFORM", collisions: "0f!00!10!" }));
+    const read = await json<{ scenes: { file: string; name: string; type: string; mtime: number; collisions: number[] }[]; width: number; height: number }>(await fetch(`${base}/scene-collisions?file=town.png`));
+    expect([read.width, read.height, read.scenes.length]).toEqual([20, 18, 1]);
+    const [scene] = read.scenes;
+    expect([scene.file, scene.name, scene.type, scene.collisions.length, scene.collisions.slice(0, 4)]).toEqual(["project/scenes/town/scene.gbsres", "Town", "PLATFORM", 360, [15, 0, 16, 0]]);
+    const values = scene.collisions.slice();
+    values[1] = 1; values[359] = 0x20;
+    const post = (query: string, body: unknown = { collisions: values }) => fetch(`${base}/scene-collisions?${query}`, { method: "POST", body: JSON.stringify(body) });
+    expect((await post(`scene=${encodeURIComponent(scene.file)}&mtime=${scene.mtime - 5000}`)).status).toBe(409);
+    expect((await post(`scene=${encodeURIComponent("project/settings.gbsres")}`)).status).toBe(404);
+    expect((await post(`scene=${encodeURIComponent(scene.file)}&mtime=${scene.mtime}`, { collisions: [300] })).status).toBe(400);
+    expect((await post(`scene=${encodeURIComponent(scene.file)}&mtime=${scene.mtime}`)).status).toBe(200);
+    const written = JSON.parse(readFileSync(sceneFile, "utf8")) as Record<string, unknown>;
+    expect(written.collisions).toBe("0f!01!10!00164+20!");
+    expect(decodeTileColors(written.collisions as string)).toEqual(values);
+    // Everything else in the scene is as it was.
+    expect({ ...written, collisions: undefined }).toEqual({ ...original, _resourceType: "scene", id: "scene-town", type: "PLATFORM", collisions: undefined });
+    expect(latestBackup("project/scenes/town/scene.gbsres")).toContain("0f!00!10!");
+    writeFileSync(sceneFile, JSON.stringify(original));
+  });
+
+  it("finds no scene for a background GB Studio hasn't put in one", async () => {
+    const read = await json<{ scenes: unknown[] }>(await fetch(`${base}/scene-collisions?file=${encodeURIComponent("town.png")}`));
+    expect(read.scenes.length).toBe(1);
+    writeFileSync(join(project, "assets/backgrounds/loose.png"), encodePng(new Uint8ClampedArray(8 * 8 * 4).fill(255), 8, 8, deflateSync));
+    const loose = await json<{ scenes: unknown[] }>(await fetch(`${base}/scene-collisions?file=loose.png`));
+    expect(loose.scenes).toEqual([]);
+    rmSync(join(project, "assets/backgrounds/loose.png"));
+  });
+});
+
 describe("thumbnails", () => {
   it("puts every picture of a kind on one sheet, and the sheet changes when a picture does", async () => {
     const first = await json<{ stamp: string; width: number; height: number; cells: { file: string; x: number; y: number; w: number; h: number }[] }>(await fetch(`${base}/gbstudio-preview-sheet?kind=backgrounds`));
