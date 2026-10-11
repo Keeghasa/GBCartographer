@@ -139,3 +139,6 @@
 .app-toast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); z-index: 70; max-width: min(640px, calc(100vw - 48px)); padding: 8px 18px; color: var(--k-ink); background: #1a1d22; border: 1px solid var(--k-edge-2); border-radius: 999px; box-shadow: var(--k-float); font: var(--k-text-sm) var(--k-font); }
 .app-anim-scene { display: grid; place-items: center; flex: none; border-radius: 8px; background: rgba(128, 128, 128, .35); }
 .app-anim-scene canvas { display: block; image-rendering: pixelated; }
+/* The empty part of the project rail: a click hides or shows the picture cards. */
+.app-rail-fill { flex: 1 1 auto; min-height: 24px; width: 100%; padding: 0; background: none; border: 0; border-radius: var(--k-r-group); cursor: pointer; }
+.app-rail-fill:hover { background: var(--k-hover); }

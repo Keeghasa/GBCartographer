@@ -21,6 +21,8 @@ interface ProjectPanelProps {
   /** Whether the cards are showing (the rail always is). */
   open: boolean;
   onKind: (kind: AssetKind) => void;
+  /** The empty part of the rail: hides or shows the cards. */
+  onToggle: () => void;
   /** Bumped when palette slots change, so the thumbnails are drawn again. */
   slotsVersion: number;
   /** How a picture stands in the painter: not open, open, or the one on show; and whether it has unsaved changes. */
@@ -35,7 +37,7 @@ interface ProjectPanelProps {
 
 const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchParams({ kind: asset.kind, file: asset.file });
 
-export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateOf, onOpen, onUseStamp, onAutotile, onMenu }: ProjectPanelProps) {
+export function ProjectPanel({ project, kind, open, onKind, onToggle, slotsVersion, stateOf, onOpen, onUseStamp, onAutotile, onMenu }: ProjectPanelProps) {
   const [filter, setFilter] = useState("");
   const [sheet, setSheet] = useState<{ kind: AssetKind; image: HTMLImageElement; cells: Map<string, SheetCell> } | null>(null);
   const [sheetFailed, setSheetFailed] = useState(false);
@@ -78,6 +80,7 @@ export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateO
         {ASSET_KINDS.map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = kind === id && open; return (
           <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} · ${count}${on ? " · click to hide" : ""}`} onClick={() => onKind(id)}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>
         ); })}
+        <button type="button" className="app-rail-fill" aria-label={open ? "Hide the pictures" : "Show the pictures"} title={open ? "Hide the pictures" : "Show the pictures"} onClick={onToggle} />
       </nav>
       {open && <aside className="k-panel app-project" aria-label="GB Studio project">
         <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span><Chip>{label}</Chip></div>

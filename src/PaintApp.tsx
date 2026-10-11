@@ -2152,6 +2152,7 @@ export default function PaintApp() {
             kind={projectKind}
             open={showProject}
             onKind={(kind) => { if (kind === projectKind) setShowProject(!showProject); else { setProjectKind(kind); setShowProject(true); } }}
+            onToggle={() => setShowProject(!showProject)}
             slotsVersion={slotsVersion}
             stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file && !foreignProject(item)); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
