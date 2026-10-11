@@ -15,7 +15,13 @@
 @media (max-width: 1440px) { .app-bar .app-bar-label { display: none; } }
 
 /* Picture tabs. */
-.app-tabs { display: flex; align-items: center; gap: var(--k-1); padding: 0 var(--k-3) var(--k-1); min-height: 32px; overflow-x: auto; scrollbar-width: none; }
+.app-tabs { display: flex; align-items: center; gap: var(--k-1); padding: 0 var(--k-3) var(--k-1); min-height: 32px; }
+.app-tabs-scroll { --fade-l: 0px; --fade-r: 0px; flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--k-1); overflow-x: auto; scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%); }
+.app-tabs-scroll[data-more-left] { --fade-l: 32px; } .app-tabs-scroll[data-more-right] { --fade-r: 32px; }
+/* A picture from another project: a plane before its name (click: Pictures from other projects). */
+.app-tab-foreign { display: grid; place-items: center; flex: none; width: 18px; height: 18px; padding: 0; color: var(--k-warn); background: none; border: 0; cursor: pointer; }
+.app-tab-foreign svg { width: 13px; height: 13px; }
 .app-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 240px; height: 28px; padding: 0 var(--k-3) 0 4px; color: var(--k-ink-2); background: var(--k-ctl); border: 1px solid var(--k-edge); border-radius: var(--k-r-group); font-size: var(--k-text-sm); cursor: pointer; }
 .app-tab > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-tab:hover { background: var(--k-hover); color: var(--k-hover-ink); }

@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X } from "lucide-react";
+import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -55,6 +55,7 @@ import { TextStrip, type TextSettings } from "./app/TextStrip";
 import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
+import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -107,11 +108,12 @@ export default function PaintApp() {
   const [showWizards, setShowWizards] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showForeign, setShowForeign] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
   const [showPictureWizard, setShowPictureWizard] = useState(false);
   /** The wizard open (W2…W8 from the Wizards menu), if any. */
   /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
-  const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean } | null>(null);
+  const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing one tab, not the window. */ tab?: Doc } | null>(null);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "newBackground" | "budget" | "checkup" | GeneratorMode | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
@@ -1384,8 +1386,57 @@ export default function PaintApp() {
     setActiveId(list[(at + step + list.length) % list.length].id);
   }
 
+  // The tab strip: the open picture's tab scrolls into view, and fades at an edge mark more tabs that way.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  function tabFades() {
+    const strip = tabsRef.current;
+    if (!strip) return;
+    strip.toggleAttribute("data-more-left", strip.scrollLeft > 2);
+    strip.toggleAttribute("data-more-right", strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+  }
+  useEffect(() => {
+    tabsRef.current?.querySelector(".app-tab.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    tabFades();
+  }, [activeId, docs.current.length]);
+  useEffect(() => { window.addEventListener("resize", tabFades); return () => window.removeEventListener("resize", tabFades); }, []);
+
+  /** The project folder an open picture's file belongs to, when that isn't the open project (a plane on its tab). */
+  function foreignProject(item: Doc): string | null {
+    const from = item.asset?.project, here = projectRef.current?.path;
+    return from && from !== here ? from : null;
+  }
+
+  function foreignPictures(): ForeignPicture[] {
+    return docs.current.flatMap((item) => {
+      const from = foreignProject(item);
+      if (!from || !item.asset) return [];
+      const path = item.asset.kind === "stamps" ? `Cartographer/stamps/${item.asset.file}` : `assets/${item.asset.kind}/${item.asset.file}`;
+      const hereToo = Boolean(projectRef.current?.assets.some((asset) => asset.kind === item.asset!.kind && asset.file === item.asset!.file));
+      return [{ id: item.id, name: item.name, project: from, path, hereToo }];
+    });
+  }
+
+  /** Saves a picture from another project into this one as a new picture (never replacing a file) and opens it. */
+  async function copyIntoProject(item: Doc) {
+    if (!item.asset || !projectRef.current) return;
+    dropFloat(item);
+    const blob = await pngBlob(item);
+    const response = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind: item.asset.kind, name: item.name.replace(/\.png$/i, "") })}`, { method: "POST", body: blob }).catch(() => null);
+    const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;
+    if (!response?.ok || !result?.ok || !result.file) { say(`Could not save it into this project: ${result?.error ?? response?.statusText ?? "no answer"}`); return; }
+    await loadProject();
+    const made = projectRef.current?.assets.find((asset) => asset.kind === item.asset!.kind && asset.file === result.file);
+    if (made) await openAsset(made);
+    say(`Saved ${item.name} into ${projectRef.current?.name ?? "the project"} as ${result.file} (its tile palettes stay behind). The other project's tab is still open.`);
+  }
+
+  /** Closes a tab; one with unsaved changes asks first (Unsaved changes: save, discard or cancel). */
   function closeDoc(target: Doc) {
-    if (target.dirty && !window.confirm(`Close ${target.name} without saving?`)) return;
+    if (target.dirty) { setClosing({ changes: closingChanges([target]), busy: false, tab: target }); return; }
+    dropDoc(target);
+  }
+
+  function dropDoc(target: Doc) {
     const index = docs.current.indexOf(target);
     docs.current.splice(index, 1);
     if (target.id === activeId) setActiveId(docs.current[Math.min(index, docs.current.length - 1)]?.id ?? 0);
@@ -1490,15 +1541,15 @@ export default function PaintApp() {
 
   // Listeners registered once call the handlers of the latest render.
   /** What closing would leave unsaved: project files Save would write (pictures, edited palettes) and other pictures. */
-  function closingChanges(): ClosingChanges {
+  function closingChanges(only?: Doc[]): ClosingChanges {
     const here = projectRef.current?.path;
-    const dirty = docs.current.filter((item) => item.dirty);
+    const dirty = (only ?? docs.current).filter((item) => item.dirty);
     const inProject = (item: Doc) => Boolean(item.asset && (!item.asset.project || item.asset.project === here));
     const where = (kind: AssetKind, file: string) => kind === "stamps" ? `Cartographer/stamps/${file}` : `assets/${kind}/${file}`;
     return {
       project: [
         ...dirty.filter(inProject).map((item) => ({ path: where(item.asset!.kind, item.asset!.file), detail: hasSlots(item.asset!.kind) ? "picture and tile palettes" : "picture" })),
-        ...(projectRef.current ? editedProjectPalettes() : []).map((palette) => ({ path: `project/palettes: ${palette.name}`, detail: "palette colors", palette: true })),
+        ...(projectRef.current && !only ? editedProjectPalettes() : []).map((palette) => ({ path: `project/palettes: ${palette.name}`, detail: "palette colors", palette: true })),
       ],
       loose: dirty.filter((item) => !inProject(item)).map((item) => item.name),
     };
@@ -1522,7 +1573,17 @@ export default function PaintApp() {
 
   /** Save to GB Studio project: every unsaved project picture and edited palette, then close (stays open if any failed). */
   async function saveAndClose() {
+    const tab = closing?.tab;
     setClosing((now) => now && { ...now, busy: true });
+    if (tab) {
+      // One tab: a project picture saves into the project; any other picture asks where (or downloads).
+      const here = projectRef.current?.path;
+      await saveDoc(tab, false, !(tab.asset && (!tab.asset.project || tab.asset.project === here)));
+      if (tab.dirty) { setClosing({ changes: closingChanges([tab]), busy: false, tab }); return; }
+      setClosing(null);
+      dropDoc(tab);
+      return;
+    }
     const here = projectRef.current?.path;
     for (const item of docs.current.filter((entry) => entry.dirty && entry.asset && (!entry.asset.project || entry.asset.project === here))) await saveDoc(item, false, false);
     const edited = projectRef.current ? editedProjectPalettes() : [];
@@ -1535,8 +1596,10 @@ export default function PaintApp() {
 
   /** Discard changes: unsaved pictures close without saving (project files stay as they are on disk). */
   async function discardAndClose() {
+    const tab = closing?.tab;
+    if (tab) { setClosing(null); dropDoc(tab); return; }
     docs.current = docs.current.filter((item) => !item.dirty);
-    if (!docs.current.some((item) => item.id === activeId)) setActiveId(docs.current[0]?.id ?? null);
+    if (!docs.current.some((item) => item.id === activeId)) setActiveId(docs.current[0]?.id ?? 0);
     await finishClose();
   }
 
@@ -1881,6 +1944,7 @@ export default function PaintApp() {
       { label: "Project health…", icon: <PxHeart size={15} />, onSelect: () => setShowHealth(true) },
       { label: "Dialogue box…", icon: <MessageSquare />, onSelect: () => setShowDialogue(true) },
       { label: "Backups…", icon: <History />, onSelect: () => setBackups({}) },
+      { label: `Pictures from other projects…${foreignPictures().length ? ` (${foreignPictures().length})` : ""}`, icon: <Plane />, title: "Open tabs whose file belongs to another GB Studio project", onSelect: () => setShowForeign(true) },
       { separator: true } as MenuEntry,
       { label: FILE_MANAGER_LABEL, icon: <FolderSearch />, onSelect: () => void fetch("./__cartographer/reveal", { method: "POST" }) },
       { label: "Show backups folder", icon: <FolderArchive />, onSelect: () => void fetch("./__cartographer/reveal?backups=1", { method: "POST" }) },
@@ -1980,14 +2044,19 @@ export default function PaintApp() {
         </span>
         <IconButton label="Help: tools, keys and what Save writes" keys="?" pressed={showHelp} onClick={() => setShowHelp(!showHelp)} aria-label="Help"><PxLightbulb size={16} /></IconButton>
       </header>
-      <div className="app-tabs" role="tablist" aria-label="Open pictures">
-        {docs.current.map((item) => (
-          <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px`} onClick={() => setActiveId(item.id)}>
-            <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
-            <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
-          </div>
-        ))}
-        <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
+      <div className="app-tabs">
+        <div className="app-tabs-scroll" ref={tabsRef} role="tablist" aria-label="Open pictures" onScroll={tabFades}>
+          {docs.current.map((item) => { const from = foreignProject(item); return (
+            <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""}`} onClick={() => setActiveId(item.id)}>
+              <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
+              {from && <button type="button" className="app-tab-foreign" aria-label={`${item.name} is from another project`} title={`From another project (${from}): Save won't write it into this one. Click for Pictures from other projects.`} onClick={(event) => { event.stopPropagation(); setShowForeign(true); }}><Plane /></button>}
+              <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
+            </div>
+          ); })}
+          <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
+        </div>
+        {docs.current.length > 1 && <Menu align="end" items={docs.current.map((item) => ({ label: <span className={item.dirty ? "dirty" : undefined}>{item.name}{item.dirty && " *"}</span>, icon: foreignProject(item) ? <Plane /> : item.id === activeId ? <Check /> : <FileImage />, onSelect: () => setActiveId(item.id) }))}
+          trigger={<IconButton label={`All open pictures (${docs.current.length})`} size="sm" variant="ghost"><ChevronDown /></IconButton>} />}
       </div>
       <div className="app-body">
         {project && (
@@ -1997,7 +2066,7 @@ export default function PaintApp() {
             open={showProject}
             onKind={(kind) => { if (kind === projectKind) setShowProject(!showProject); else { setProjectKind(kind); setShowProject(true); } }}
             slotsVersion={slotsVersion}
-            stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
+            stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file && !foreignProject(item)); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
             onUseStamp={(asset) => void useSavedStamp(asset)}
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
@@ -2101,7 +2170,13 @@ export default function PaintApp() {
       {showMapRoom && project && <MapRoom project={project} onClose={() => setShowMapRoom(false)} onOpen={(asset) => { setProjectKind("backgrounds"); void openAsset(asset); }} onProjectChanged={async () => { await loadProject(); setSlotsVersion((value) => value + 1); }} onExport={(blob, name) => saveBlob(blob, name, PNG_TYPES)} say={say} />}
       {showDialogue && project && <DialoguePreview backgrounds={project.assets.filter((asset) => asset.kind === "backgrounds")} hasFrame={project.assets.some((asset) => asset.kind === "ui" && asset.file === "frame.png")} onClose={() => setShowDialogue(false)} />}
       {stampSave && <SaveStampDialog hint={stampSave.hint} known={[...new Set((project?.assets ?? []).flatMap((asset) => asset.tags ?? []))]} onClose={() => stampSave.resolve(null)} onSave={(save) => stampSave.resolve(save)} />}
-      {closing && <CloseWindow changes={closing.changes} busy={closing.busy} onSave={() => void saveAndClose()} onKeep={() => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { setClosing(null); (window as PickerWindow).gbc?.cancelClose?.(); }} />}
+      {showForeign && project && <ForeignWindow pictures={foreignPictures()} projectName={project.name}
+        onOpenHere={(id) => { const item = docs.current.find((entry) => entry.id === id); const here = item?.asset && projectRef.current?.assets.find((asset) => asset.kind === item.asset!.kind && asset.file === item.asset!.file); if (here) { setShowForeign(false); void openAsset(here); } }}
+        onCopyHere={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) { setShowForeign(false); void copyIntoProject(item); } }}
+        onCloseTab={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) closeDoc(item); }}
+        onCloseAll={() => { const listed = docs.current.filter((item) => foreignProject(item)); for (const item of listed.filter((entry) => !entry.dirty)) dropDoc(item); const dirty = listed.find((item) => item.dirty); if (dirty) closeDoc(dirty); }}
+        onClose={() => setShowForeign(false)} />}
+      {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tab={closing.tab?.name} onSave={() => void saveAndClose()} onKeep={closing.tab ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tab = closing.tab; setClosing(null); if (!tab) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
       {wizard === "dns" && doc && project && (
         <DnsWizard slots={slotPalettes.map((index) => { const palette = index >= 0 ? docPalettes[index] : null; return palette?.id ? { id: palette.id, name: palette.name, colors: [...palette.colors] } : null; })} where={slotWhere} existing={project.palettes.map((palette) => palette.name)}
           picture={{ pixels: doc.pixels, cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }} onClose={() => setWizard(null)} onCreate={addPalettes} />

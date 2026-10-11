@@ -1,0 +1,7 @@
+/* Pictures from other projects (src/app/ForeignWindow.tsx): one row per tab. */
+.fw-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 4px; list-style: none; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-card); }
+.fw-list li { display: flex; align-items: center; gap: var(--k-2); min-width: 0; padding: 6px 8px; }
+.fw-plane { flex: none; color: var(--k-warn); }
+.fw-name { display: flex; flex-direction: column; min-width: 0; }
+.fw-name > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fw-list .k-btn { flex: none; }
