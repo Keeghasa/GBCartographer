@@ -1678,9 +1678,11 @@ export default function PaintApp() {
     if (key === "]") return tool === "palette" || tool === "priority" ? setCellBrush(Math.min(3, cellBrush + 1)) : setBrush(Math.min(16, brush + 1));
     if (!doc) return;
     if (key === "Escape") {
+      // Only a floating piece landing changes the picture; dropping a plain selection doesn't make it unsaved.
+      const floating = Boolean(doc.float);
       dropFloat(doc);
       doc.sel = null;
-      return touch(doc);
+      return floating ? touch(doc) : bump();
     }
     if (key === "Delete" || key === "Backspace") return clearSelection();
     const arrow = ({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] } as Record<string, [number, number]>)[key];
