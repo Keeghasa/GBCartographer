@@ -875,7 +875,7 @@ export default function PaintApp() {
     if (!projectRef.current) return false;
     // The default slots are what every scene without its own palettes uses: say so before changing them.
     const count = result.palettes.length;
-    if (count && !asked && !await confirmBox(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\nThey go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
+    if (count && !asked && !await confirmBox(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\n${count === 1 ? "It goes in the project's default background slot 1" : `They go in the project's default background slots 1–${count}`}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
     if (count && !await okToWriteProjectJson()) return false;
     const ids: string[] = [];
     for (const [index, colors] of result.palettes.entries()) {
@@ -908,7 +908,7 @@ export default function PaintApp() {
     }
     await rereadSlots();
     setSlotsVersion((value) => value + 1);
-    say(`Made assets/backgrounds/${made.file} with ${ids.length} palettes in slots 1–${ids.length}.${target?.dirty ? " Its tile palettes wait until GB Studio has read the project once: then Save it here again." : ""}`);
+    say(`Made assets/backgrounds/${made.file} with ${ids.length === 1 ? "its palette in slot 1" : `${ids.length} palettes in slots 1–${ids.length}`}.${target?.dirty ? " Its tile palettes wait until GB Studio has read the project once: then Save it here again." : ""}`);
     return true;
   }
 

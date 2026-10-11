@@ -187,16 +187,16 @@ describe("palette files", () => {
     const made = await json<{ ok: boolean; id: string; file: string }>(await post({ name: "Cave Night", colors: ["#E0F8CF", "#86C06C", "#306850", "#071821"] }));
     expect(made.file).toBe("cave_night.gbsres");
     const file = join(project, "project/palettes/cave_night.gbsres");
-    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Night", colors: ["e0f8cf", "86c06c", "306850", "071821"] });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Night", colors: ["E0F8CF", "86C06C", "306850", "071821"] });
     const again = await json<{ file: string }>(await post({ name: "Cave Night", colors: ["#000000", "#111111", "#222222", "#333333"] }));
     expect(again.file).toBe("cave_night_2.gbsres");
     // Rewriting by id keeps the file and its other fields.
-    writeFileSync(file, JSON.stringify({ _resourceType: "palette", id: made.id, name: "Cave Night", colors: ["e0f8cf", "86c06c", "306850", "071821"], extra: 1 }));
+    writeFileSync(file, JSON.stringify({ _resourceType: "palette", id: made.id, name: "Cave Night", colors: ["E0F8CF", "86C06C", "306850", "071821"], extra: 1 }));
     const listedMtime = (await json<{ palettes: { id: string; mtime: number }[] }>(await fetch(`${base}/gbstudio-assets`))).palettes.find((palette) => palette.id === made.id)!.mtime;
     expect((await post({ id: made.id, name: "Cave Dusk", colors: ["#FFFFFF", "#AAAAAA", "#555555", "#000000"], mtime: listedMtime - 5000 })).status).toBe(409);
     const edited = await json<{ ok: boolean; id: string; file: string }>(await post({ id: made.id, name: "Cave Dusk", colors: ["#FFFFFF", "#AAAAAA", "#555555", "#000000"], mtime: listedMtime }));
     expect(edited).toMatchObject({ ok: true, id: made.id, file: "cave_night.gbsres" });
-    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Dusk", colors: ["ffffff", "aaaaaa", "555555", "000000"], extra: 1 });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Dusk", colors: ["FFFFFF", "AAAAAA", "555555", "000000"], extra: 1 });
     expect(latestBackup("project/palettes/cave_night.gbsres")).toContain("Cave Night");
     expect((await post({ id: "nope", name: "x", colors: ["#000000", "#111111", "#222222", "#333333"] })).status).toBe(404);
     const listed = await json<{ palettes: { name: string }[] }>(await fetch(`${base}/gbstudio-assets`));

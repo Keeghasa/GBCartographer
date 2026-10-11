@@ -474,8 +474,9 @@ export function paletteFileName(name: string): string {
  */
 export function writePalette(project: string, palette: { id?: string; name: string; colors: string[] }, backup: Backup, expectedMtime: number | null = null, force = false): { id: string; file: string; mtime: number } {
   const folder = join(project, "project", "palettes");
-  const colors = palette.colors.map((color) => color.replace(/^#/, "").toLowerCase());
-  if (colors.length !== 4 || colors.some((color) => !/^[0-9a-f]{6}$/.test(color))) throw new AssetWriteError("A palette needs four #RRGGBB colors.", 400);
+  // Upper-case hex, as GB Studio itself writes palette colors.
+  const colors = palette.colors.map((color) => color.replace(/^#/, "").toUpperCase());
+  if (colors.length !== 4 || colors.some((color) => !/^[0-9A-F]{6}$/.test(color))) throw new AssetWriteError("A palette needs four #RRGGBB colors.", 400);
   const name = palette.name.trim();
   if (!name) throw new AssetWriteError("A palette needs a name.", 400);
   mkdirSync(folder, { recursive: true });
