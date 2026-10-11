@@ -54,17 +54,26 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   const theme = themeOf(themes, (mode === "cave" ? cave.theme : world.theme) ?? "");
   const columns = mode === "cave" ? cave.columns : world.columns, rows = mode === "cave" ? cave.rows : world.rows;
 
-  // The cave's tiles: placeholder art, or one of the project's F / W / E stamps.
+  // Own tiles: the cave's from an F / W / E stamp; the overworld's shores from a C stamp and roads from a P stamp.
   const [tilesFile, setTilesFile] = useState("");
+  const [shoreFile, setShoreFile] = useState("");
+  const [roadFile, setRoadFile] = useState("");
   const [sheet, setSheet] = useState<CaveTiles | null>(null);
-  useEffect(() => {
+  const [shore, setShore] = useState<CaveTiles | null>(null);
+  const [road, setRoad] = useState<CaveTiles | null>(null);
+  const useSheet = (file: string, set: (sheet: CaveTiles | null) => void) => useEffect(() => {
     let live = true;
-    const stamp = tileStamps.find((item) => item.file === tilesFile);
-    if (!stamp) { setSheet(null); return; }
-    void loadTiles(stamp).then((loaded) => { if (live) setSheet(loaded); });
+    const stamp = tileStamps.find((item) => item.file === file);
+    if (!stamp) { set(null); return; }
+    void loadTiles(stamp).then((loaded) => { if (live) set(loaded); });
     return () => { live = false; };
-  }, [tilesFile]);
-  const picture = useMemo(() => mode === "cave" ? drawCave(cave, sheet) : drawWorld(world), [mode, cave, world, sheet]);
+  }, [file]);
+  useSheet(tilesFile, setSheet);
+  useSheet(shoreFile, setShore);
+  useSheet(roadFile, setRoad);
+  const stampsOf = (...kinds: string[]) => tileStamps.filter((stamp) => kinds.includes(stamp.autotile ?? ""));
+  const stampOptions = (kinds: string[], none: string) => [{ value: "placeholder", label: none }, ...stampsOf(...kinds).map((stamp) => { const glyph = autotileOf(stamp.autotile)?.glyph ?? ""; return { value: stamp.file, label: stamp.name.endsWith(`(${glyph})`) ? stamp.name : `${stamp.name} (${glyph})` }; })];
+  const picture = useMemo(() => mode === "cave" ? drawCave(cave, sheet) : drawWorld(world, { shore, road }), [mode, cave, world, sheet, shore, road]);
   const tiles = useMemo(() => countUniqueTiles(picture.pixels, picture.width, picture.height, false), [picture]);
 
   // A state ref: the dialog mounts its content after this component's first effects, so redraw when the canvas arrives.
@@ -110,9 +119,13 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
           {mode === "cave" && <div className="k-stack k-stack--tight" title="Draw the cave with one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
-            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)}
-              options={[{ value: "placeholder", label: "Placeholder art" }, ...tileStamps.map((stamp) => { const glyph = autotileOf(stamp.autotile)?.glyph ?? ""; return { value: stamp.file, label: stamp.name.endsWith(`(${glyph})`) ? stamp.name : `${stamp.name} (${glyph})` }; })]} />
-            <span className="k-muted k-xs">{tileStamps.length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Graphics → Art → Auto-tiles) can draw it"}</span>
+            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)} options={stampOptions(["wallface", "wang", "edges"], "Placeholder art")} />
+            <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Graphics → Art → Auto-tiles) can draw it"}</span>
+          </div>}
+          {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
+            <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Placeholder shores")} />
+            <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Placeholder roads")} />
+            <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your C stamp for shores, your P stamp for roads" : "Stamps marked C or P (Graphics → Art → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
           {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (name === "Cave" || name === "Dungeon") setName(style === "cave" ? "Cave" : "Dungeon"); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />

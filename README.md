@@ -44,13 +44,14 @@ palettes straight back into the project.
   import palettes from Lospec `.hex` or GIMP `.gpl` files and export your own as JSON.
 - **Graphics.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
-  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 63 placeholder graphics (CC0) to
+  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 65 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
   window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, and a template for every auto-tile.
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
-  palettes, as one background or cut into screens laid out in the Map Room.
+  palettes, drawn with your own auto-tile stamps if you like (the cave's walls, the overworld's shores and roads),
+  as one background or cut into screens laid out in the Map Room.
 - **The Map Room.** Lay backgrounds out as an adventure-style grid of screens, see whether neighbouring edges
   match, add a screen next to another, and export the whole map as one picture.
 - **Palettes edited in place.** Click a shade square again to change that color; Save writes the recolored

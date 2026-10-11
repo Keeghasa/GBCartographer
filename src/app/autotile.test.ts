@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot } from "./autotile";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, wallFaceTemplate, wangTemplate } from "../graphics/autotiles";
+import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "../graphics/autotiles";
 import { AUTOTILES } from "./autotile";
 
 describe("auto-tiles", () => {
@@ -39,5 +39,7 @@ describe("auto-tiles", () => {
     expect(distinct(made.edges, 16, 4)).toBe(16);
     expect(distinct(made.corner, 16, 4)).toBe(16);
     expect(distinct(made.wallface, 12, 4)).toBe(11);
+    expect(distinct(shoreTemplate(), 16, 4)).toBe(16);
+    expect(distinct(roadTemplate(), 16, 4)).toBe(16);
   });
 });

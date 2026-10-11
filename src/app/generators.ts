@@ -5,7 +5,7 @@
  * (0 lightest … 3 darkest): placeholder art to paint over. Few distinct cells, so the tile count stays low.
  */
 
-import { edgeMask, maskAt, slot16, wangSlot } from "./autotile";
+import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, wangSlot } from "./autotile";
 import { Pen } from "../graphics/pen";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 
@@ -193,7 +193,7 @@ function placeStairs(grid: Uint8Array, w: number, h: number) {
 }
 
 /** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
-export interface CaveTiles { kind: "wallface" | "wang" | "edges"; pixels: Uint8Array; width: number }
+export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "path"; pixels: Uint8Array; width: number }
 
 /**
  * The cave drawn in the author's style (2026-10-10), tile by tile: black for nothing (shade 3), light floors (shade 1),
@@ -376,7 +376,62 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
   }
 }
 
-export function drawWorld(settings: WorldSettings): Generated {
+/** The project's own stamps the overworld can draw with: a corner-Wang (C) sheet for shores, a path (P) sheet for roads. */
+export interface WorldTiles { shore?: Sheet | null; road?: Sheet | null }
+/** A stamp sheet's shades, `width` pixels wide. */
+export interface Sheet { pixels: Uint8Array; width: number }
+
+/** Copies the sheet's 8 × 8 tile at (column, row) onto tile (tx, ty) of `out`. */
+function blitTile(out: Generated, sheet: Sheet, tx: number, ty: number, column: number, row: number) {
+  for (let y = 0; y < 8; y += 1) out.pixels.set(sheet.pixels.subarray((row * 8 + y) * sheet.width + column * 8, (row * 8 + y) * sheet.width + column * 8 + 8), (ty * 8 + y) * out.width + tx * 8);
+}
+
+/**
+ * Shores from a corner-Wang (C) sheet (its second terrain is the water): every water tile takes the tile whose
+ * corners are water where all four tiles meeting there are water, so the shore curls inside the water's edge and
+ * the land keeps its own tiles.
+ */
+function drawShores(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
+  const tw = w * 2, th = h * 2;
+  const water = (tx: number, ty: number) => tx < 0 || ty < 0 || tx >= tw || ty >= th ? true : grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)] === WATER;
+  const corner = (vx: number, vy: number) => water(vx - 1, vy - 1) && water(vx, vy - 1) && water(vx - 1, vy) && water(vx, vy);
+  for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) {
+    if (!water(tx, ty)) continue;
+    const mask = (corner(tx, ty) ? CORNER_NW : 0) | (corner(tx + 1, ty) ? CORNER_NE : 0) | (corner(tx, ty + 1) ? CORNER_SW : 0) | (corner(tx + 1, ty + 1) ? CORNER_SE : 0);
+    const { column, row } = slot16(mask);
+    blitTile(out, sheet, tx, ty, column, row);
+  }
+}
+
+/**
+ * Roads from a path (P) sheet: one tile wide on the map's two-tile grid, from each road cell's top-left tile to its
+ * road (or town) neighbours to the right and below; each road tile joins the road tiles beside it. The rest of a
+ * road cell is plain ground.
+ */
+function drawRoads(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
+  const tw = w * 2, th = h * 2;
+  const cell = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
+  const linked = (x: number, y: number) => cell(x, y) === ROAD || cell(x, y) === TOWN;
+  const road = new Uint8Array(tw * th);
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    if (cell(x, y) !== ROAD) continue;
+    road[y * 2 * tw + x * 2] = 1;
+    if (linked(x + 1, y)) road[y * 2 * tw + x * 2 + 1] = 1;
+    if (linked(x, y + 1)) road[(y * 2 + 1) * tw + x * 2] = 1;
+    if (cell(x - 1, y) === TOWN) road[y * 2 * tw + x * 2 - 1] = 1;
+    if (cell(x, y - 1) === TOWN) road[(y * 2 - 1) * tw + x * 2] = 1;
+    // A road cell's other tiles: plain ground under the road.
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) new Pen(out, (x * 2 + dx) * 8, (y * 2 + dy) * 8, 8).fill(0);
+  }
+  const filled = (tx: number, ty: number) => tx >= 0 && ty >= 0 && tx < tw && ty < th && road[ty * tw + tx] === 1;
+  for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) {
+    if (!filled(tx, ty) || cell(Math.floor(tx / 2), Math.floor(ty / 2)) !== ROAD) continue;
+    const { column, row } = slot16(edgeMask(filled, tx, ty));
+    blitTile(out, sheet, tx, ty, column, row);
+  }
+}
+
+export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): Generated {
   const { w, h, grid } = worldGrid(settings);
   const out: Generated = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
   const theme = themeOf(WORLD_THEMES, settings.theme);
@@ -440,5 +495,7 @@ export function drawWorld(settings: WorldSettings): Generated {
       }
     }
   }
+  if (tiles?.shore) drawShores(out, grid, w, h, tiles.shore);
+  if (tiles?.road) drawRoads(out, grid, w, h, tiles.road);
   return out;
 }

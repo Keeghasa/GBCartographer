@@ -137,3 +137,39 @@ export function animTemplate(): Canvas {
   }
   return out;
 }
+
+/**
+ * Overworld shore (C), in the overworld generator's look: grass (0) and water (1, a wave in 2) by corner, with a dark
+ * shoreline (3) along the water's edge inside each tile. The generator's Shores draws its water with it.
+ */
+export function shoreTemplate(): Canvas {
+  return sheet16((t, mask) => {
+    const water = (x: number, y: number) => Boolean(mask & (y < 4 ? (x < 4 ? CORNER_NW : CORNER_NE) : (x < 4 ? CORNER_SW : CORNER_SE)));
+    for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) t.dot(x, y, water(x, y) ? 1 : 0);
+    if (mask & CORNER_NW) t.rect(1, 2, 2, 1, 2);
+    if (mask & CORNER_SE) t.rect(5, 6, 2, 1, 2);
+    if (!(mask & CORNER_NW)) t.dot(1, 1, 1);
+    if (!(mask & CORNER_SE)) t.dot(6, 5, 1);
+    // The shoreline: water next to grass (inside the tile) turns dark.
+    const edge: [number, number][] = [];
+    for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
+      if (!water(x, y)) continue;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => x + dx >= 0 && x + dx < 8 && y + dy >= 0 && y + dy < 8 && !water(x + dx, y + dy))) edge.push([x, y]);
+    }
+    for (const [x, y] of edge) t.dot(x, y, 3);
+  }, 0);
+}
+
+/** Overworld road (P), in the overworld generator's look: a dirt band (1) with pebbles (2) on grass (0), no edging. */
+export function roadTemplate(): Canvas {
+  return sheet16((t, mask) => {
+    t.fill(0);
+    t.rect(2, 2, 4, 4, 1);
+    if (mask & EDGE_N) t.rect(2, 0, 4, 2, 1);
+    if (mask & EDGE_S) t.rect(2, 6, 4, 2, 1);
+    if (mask & EDGE_W) t.rect(0, 2, 2, 4, 1);
+    if (mask & EDGE_E) t.rect(6, 2, 2, 4, 1);
+    t.dot(3, 3, 2); t.dot(5, 4, 2);
+    if (!mask) t.box(2, 2, 4, 4, 2);
+  }, 0);
+}

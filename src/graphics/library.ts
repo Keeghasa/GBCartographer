@@ -9,7 +9,7 @@ import type { WireAsset } from "./types";
 import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
+import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
 
 export type { WireAsset };
 
@@ -49,6 +49,8 @@ export const GRAPHICS: WireAsset[] = [
   { id: "autotile-path", name: "Path (P)", group: "Auto-tiles", kind: "stamps", autotile: "path", about: "16 tiles, 4 × 4: a road joining up, down, left and right (mask N 1, E 2, S 4, W 8; column mask % 4, row mask / 4). Repaint as a river, rail or fence.", make: pathTemplate },
   { id: "autotile-edges", name: "Wang edges (E)", group: "Auto-tiles", kind: "stamps", autotile: "edges", about: "16 tiles, 4 × 4: a wall outlined on its open sides (no inner corners). Repaint as water, hedges or paths.", make: edgesTemplate },
   { id: "autotile-corner", name: "Corner Wang (C)", group: "Auto-tiles", kind: "stamps", autotile: "corner", about: "16 tiles, 4 × 4: grass and water by corner (NW 1, NE 2, SW 4, SE 8 is water). Paint at the grid's corners and the shore draws itself. Repaint as any two grounds.", make: cornerTemplate },
+  { id: "autotile-shore", name: "Overworld shore (C)", group: "Auto-tiles", kind: "stamps", autotile: "corner", about: "16 tiles, 4 × 4, in the overworld's look: grass and water by corner with a dark shoreline. The overworld generator's Shores draws its water with it; paint shores by hand at the grid's corners.", make: shoreTemplate },
+  { id: "autotile-road", name: "Overworld road (P)", group: "Auto-tiles", kind: "stamps", autotile: "path", about: "16 tiles, 4 × 4, in the overworld's look: a dirt road joining up, down, left and right. The overworld generator's Roads draws its roads with it.", make: roadTemplate },
   { id: "autotile-wallface", name: "Wall face (F)", group: "Auto-tiles", kind: "stamps", autotile: "wallface", about: "4 × 3 tiles: floor and nothing, then the upper and lower wall rows (middle, left end, right end, both ends). Paint floor and the walls grow above it.", make: wallFaceTemplate },
   { id: "autotile-anim", name: "Animated tile", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "Water in four 8 × 8 frames side by side: stamps the first frame; the card plays them. Repaint as flowers, torches or lava.", make: animTemplate },
   { id: "scene-title", name: "Title screen", group: "Scenes", kind: "backgrounds", make: scenes.title },

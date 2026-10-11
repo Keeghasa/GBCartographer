@@ -953,7 +953,7 @@ export default function PaintApp() {
       const context = canvas.getContext("2d", { willReadFrequently: true })!;
       context.drawImage(bitmap, 0, 0);
       const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, false, false);
-      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" ? asset.autotile : null;
+      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" ? asset.autotile : null;
       return kind ? { kind, pixels: Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
@@ -2386,7 +2386,7 @@ export default function PaintApp() {
       {(wizard === "cave" || wizard === "world") && (
         <GeneratorWizard mode={wizard} projectName={project?.name ?? null} limit={budget.limit} onClose={() => setWizard(null)}
           onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
-          tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
+          tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
       {wizard === "newBackground" && project && <NewBackgroundWizard projectName={project.name} palettes={project.palettes} onClose={() => setWizard(null)} onCreate={createBackground} />}
       {wizard === "budget" && doc && (
