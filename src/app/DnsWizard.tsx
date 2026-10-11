@@ -159,10 +159,10 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       </div>
       <div className="k-stack k-stack--tight">
         <span className="k-eyebrow">Times to make</span>
-        <span className="k-muted k-xs">Your palettes as they are are the day.</span>
+        <span className="k-muted k-xs">Day is your palettes as they are.</span>
         {TIMES.map((time) => (
           <button key={time.key} type="button" className="k-card k-card--button dw-time" aria-pressed={times.has(time.key)} onClick={() => setTimes(toggle(times, time.key, !times.has(time.key)))}>
-            {time.icon}<b>{time.name}</b><span className="k-muted k-xs">{time.hint}</span><span className="k-spacer" /><span className="k-muted k-xs" title={`The new palettes' names end in " ${time.key}"`}>name + {time.key}</span>
+            {time.icon}<b>{time.name}</b><span className="k-muted k-xs">{time.hint}</span><span className="k-spacer" /><span className="k-muted k-xs dw-suffix" title={`The new palettes' names end in " ${time.key}"`}>name + {time.key}</span>
           </button>
         ))}
       </div>

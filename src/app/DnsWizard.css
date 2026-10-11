@@ -32,3 +32,4 @@
 .dw-pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--k-3); }
 .dw-pic { margin: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .dw-pic canvas { display: block; width: 100%; max-height: 22vh; object-fit: contain; image-rendering: pixelated; background: var(--k-well); border-radius: 6px; }
+.dw-suffix { flex: none; white-space: nowrap; }
