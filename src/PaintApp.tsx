@@ -113,6 +113,8 @@ export default function PaintApp() {
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
+  /** The right-hand panel (swatches, Palettes and Picture tabs): the thin handle beside it hides and shows it. */
+  const [showSide, setShowSide] = useState(() => readStored("gbc-side", true));
   /** Delete… on a picture: what goes and what mentions it, while the confirm is up. */
   const [deleting, setDeleting] = useState<{ asset: Asset; files: string[]; uses: string[]; busy: boolean } | null>(null);
   const [showHealth, setShowHealth] = useState(false);
@@ -2206,7 +2208,8 @@ export default function PaintApp() {
             </div>
           )}
         </div>
-        <aside className="k-panel app-side">
+        <button type="button" className="app-side-handle" aria-label={showSide ? "Hide the side panel" : "Show the side panel"} title={showSide ? "Hide the side panel" : "Show the side panel"} onClick={() => { setShowSide(!showSide); store("gbc-side", !showSide); }} />
+        {showSide && <aside className="k-panel app-side">
           <div className="app-swatches">
             {swatchColors.slice(0, 4).map((color, index) => (
               <button key={index} className="app-swatch" aria-pressed={shade === index} style={{ background: color }} aria-label={`Shade ${index + 1}`} title={`Shade ${index + 1} · ${index + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => { if (shade === index) shadeInputs.current[index]?.click(); else { setShade(index); if (tool === "eyedropper") setToolState(paintTool.current); } }}>
@@ -2231,7 +2234,7 @@ export default function PaintApp() {
                 usage={shownUsage ? { usedOnce, nearCount } : null} budgetView={budgetView} onBudgetView={setBudgetView} onMerge={mergeNear} />
             </Tabs.Content>
           </Tabs.Root>
-        </aside>
+        </aside>}
       </div>
       <footer className="app-status">
         <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>

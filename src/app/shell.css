@@ -142,3 +142,7 @@
 /* The empty part of the project rail: a click hides or shows the picture cards. */
 .app-rail-fill { flex: 1 1 auto; min-height: 24px; width: 100%; padding: 0; background: none; border: 0; border-radius: var(--k-r-group); cursor: pointer; }
 .app-rail-fill:hover { background: var(--k-hover); }
+/* The handle between the picture and the side panel (in the gap between them): a click hides or shows the panel. */
+.app-side-handle { flex: none; align-self: stretch; width: var(--k-2); margin-inline: calc(var(--k-2) * -1); padding: 0; background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.app-side-handle:hover { background: var(--k-hover); }
+.app-side-handle:last-child { margin-right: 0; }

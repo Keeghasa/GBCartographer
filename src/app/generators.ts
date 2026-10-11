@@ -191,41 +191,35 @@ function placeStairs(grid: Uint8Array, w: number, h: number) {
   grid[a] = 2; grid[b] = 2;
 }
 
+/**
+ * The cave drawn in the author's style (2026-10-10), tile by tile: black for nothing (shade 3), light floors (shade 1),
+ * and dark walls (shade 2) two tiles tall wherever nothing sits right above a floor, outlined in white (shade 0) on
+ * every side that doesn't meet more wall. Stairs are a box of steps on the floor.
+ */
 export function drawCave(settings: CaveSettings): Generated {
   const { w, h, grid } = caveGrid(settings);
-  const size = settings.cell;
+  const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
   const theme = themeOf(CAVE_THEMES, settings.theme ?? "");
   if (theme) { out.cells = new Uint8Array(Math.ceil(out.width / 8) * Math.ceil(out.height / 8)).fill(1); out.palettes = theme.palettes.map(({ name, colors }) => ({ name, colors: [...colors] })); }
-  const rock = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h || grid[y * w + x] === 1;
+  // Tiles: floor where the grid is open; wall in the two tiles above a floor that aren't floor.
+  const tw = w * per, th = h * per;
+  const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < tw && y < th && grid[Math.floor(y / per) * w + Math.floor(x / per)] !== 1;
+  const wall = (x: number, y: number) => x >= 0 && y >= 0 && x < tw && y < th && !floor(x, y) && (floor(x, y + 1) || (floor(x, y + 2) && !floor(x, y + 1)));
+  for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
+    const pen = new Pen(out, x * 8, y * 8, 8);
+    if (floor(x, y)) { pen.fill(1); continue; }
+    if (!wall(x, y)) { pen.fill(3); continue; }
+    pen.fill(2);
+    SIDES.forEach(([dx, dy], side) => { if (!wall(x + dx, y + dy)) pen.side(side, 0); });
+  }
+  // Stairs: a box of steps on their cell.
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
-    const pen = new Pen(out, x * size, y * size, size);
-    const cell = grid[y * w + x];
-    if (cell === 1) {
-      const open = SIDES.map(([dx, dy]) => !rock(x + dx, y + dy));
-      if (!open.some(Boolean)) { pen.fill(3); continue; }
-      // Rock next to the floor: mid shade, its floor-facing sides outlined.
-      pen.fill(2);
-      open.forEach((isOpen, side) => { if (isOpen) pen.side(side, 3); });
-      if (settings.style === "cave" && size === 16 && hash(x, y, settings.seed) % 3 === 0) { pen.rect(5, 6, 3, 1, 3); pen.rect(9, 10, 2, 1, 3); }
-      continue;
-    }
-    pen.fill(0);
-    if (settings.style === "dungeon") {
-      // Flagstones: a light line on the top and left of each cell (one per tile on 16-pixel cells).
-      pen.side(0, 1); pen.side(3, 1);
-      if (size === 16) { pen.rect(0, 8, 16, 1, 1); pen.rect(8, 0, 1, 16, 1); }
-    } else if (hash(x, y, settings.seed) % 4 === 0) {
-      const at = size === 16 ? 4 + (hash(x, y, 7) % 6) : 2;
-      pen.rect(at, at + 1, 2, 1, 1); pen.dot(at + 1, at, 1);
-    }
-    if (cell === 2) {
-      // Stairs: a box of steps.
-      const inset = size === 16 ? 2 : 1;
-      pen.rect(inset, inset, size - inset * 2, size - inset * 2, 1);
-      pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
-      for (let step = inset + 2; step < size - inset - 1; step += size === 16 ? 3 : 2) pen.rect(inset, step, size - inset * 2, 1, 3);
-    }
+    if (grid[y * w + x] !== 2) continue;
+    const pen = new Pen(out, x * size, y * size, size), inset = size === 16 ? 2 : 1;
+    pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
+    pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
+    for (let step = inset + 2; step < size - inset - 1; step += size === 16 ? 3 : 2) pen.rect(inset, step, size - inset * 2, 1, 2);
   }
   return out;
 }
