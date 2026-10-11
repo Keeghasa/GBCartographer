@@ -53,6 +53,7 @@ import { FramesStrip } from "./app/FramesStrip";
 import { StampsStrip } from "./app/StampsStrip";
 import { TextStrip, type TextSettings } from "./app/TextStrip";
 import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
+import { encodeText, fetchFontMap, glyphOf, textWidth } from "./gb/font";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
@@ -914,7 +915,7 @@ export default function PaintApp() {
       const canvas = Object.assign(document.createElement("canvas"), { width: bitmap.width, height: bitmap.height });
       const context = canvas.getContext("2d", { willReadFrequently: true })!;
       context.drawImage(bitmap, 0, 0);
-      const sheet = readFontSheet(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height);
+      const sheet = readFontSheet(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, await fetchFontMap(file));
       fontSheets.current.set(key, sheet);
       return sheet;
     } catch {
@@ -1846,26 +1847,28 @@ export default function PaintApp() {
     canvas.getContext("2d")!.putImageData(image, 0, 0);
   });
   // The font sample, at a Game Boy screen's width (160 px, 8 px margins), wrapped at word breaks like a text box:
-  // each character's glyph copied from the sheet as just drawn. In a variable-width font (see-through columns at a
-  // glyph's right, magenta in the file) each glyph advances by its width.
+  // each character's glyph copied from the sheet as just drawn. Which glyph a character draws and how wide it is
+  // come from GB Studio's reading of the font (src/gb/font.ts): the project file with its .json map, or for a PNG
+  // of its own, the sheet as drawn.
+  const [sampleFont, setSampleFont] = useState<{ key: string; font: FontSheet } | null>(null);
+  const sampleKey = doc && isFont && doc.asset?.kind === "fonts" && !foreignProject(doc) ? `${doc.asset.file}|${doc.asset.mtime}` : null;
+  useEffect(() => {
+    if (!sampleKey || !doc?.asset || sampleFont?.key === sampleKey) return;
+    let live = true;
+    void fontSheet(doc.asset.file).then((font) => { if (live && font) setSampleFont({ key: sampleKey, font }); });
+    return () => { live = false; };
+  }, [sampleKey]);
   useLayoutEffect(() => {
     const sheet = canvasRef.current, canvas = sampleCanvas.current;
     if (!sheet || !canvas || !doc || !isFont) return;
-    const columns = Math.max(1, Math.floor(doc.width / 8)), glyphs = columns * Math.floor(doc.height / 8);
-    const at = (char: string) => { const index = char.charCodeAt(0) - 32; return index < 0 || index >= glyphs ? null : { sx: (index % columns) * 8, sy: Math.floor(index / columns) * 8 }; };
-    const widthOf = (char: string) => {
-      const glyph = at(char);
-      if (!glyph || !doc.keyMagenta) return 8;
-      let width = 8;
-      while (width > 1 && Array.from({ length: 8 }, (_, y) => doc.pixels[(glyph.sy + y) * doc.width + glyph.sx + width - 1] === CLEAR).every(Boolean)) width -= 1;
-      return width;
-    };
+    const font = sampleFont && sampleFont.key === sampleKey ? sampleFont.font
+      : readFontSheet(sheet.getContext("2d")!.getImageData(0, 0, Math.min(doc.width, sheet.width), Math.min(doc.height, sheet.height)).data, Math.min(doc.width, sheet.width), Math.min(doc.height, sheet.height));
     const SCREEN = 160, MARGIN = 8, ROOM = SCREEN - 2 * MARGIN;
     const lines: string[] = [];
     for (const paragraph of sampleText.split("\n")) {
       let line = "", used = 0;
       for (const word of paragraph.split(" ")) {
-        const wordWidth = [...word].reduce((sum, char) => sum + widthOf(char), 0), space = line ? widthOf(" ") : 0;
+        const wordWidth = textWidth(font, word), space = line ? textWidth(font, " ") : 0;
         if (line && used + space + wordWidth > ROOM) { lines.push(line); line = ""; used = 0; }
         line += (line ? " " : "") + word;
         used += (line === word ? 0 : space) + wordWidth;
@@ -1878,10 +1881,11 @@ export default function PaintApp() {
     context.clearRect(0, 0, canvas.width, canvas.height);
     lines.forEach((line, row) => {
       let pen = MARGIN;
-      for (const char of line) {
-        const glyph = at(char), width = widthOf(char);
-        if (glyph && pen + width <= SCREEN - MARGIN) context.drawImage(sheet, glyph.sx, glyph.sy, width, 8, pen, MARGIN + row * 8, width, 8);
-        pen += width;
+      for (const code of encodeText(font, line)) {
+        const glyph = glyphOf(font, code);
+        if (!glyph) continue;
+        if (glyph.width && pen + glyph.width <= SCREEN - MARGIN) context.drawImage(sheet, glyph.sx, glyph.sy, glyph.width, 8, pen, MARGIN + row * 8, glyph.width, 8);
+        pen += glyph.width;
       }
     });
   });

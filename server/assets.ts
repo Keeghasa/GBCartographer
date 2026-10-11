@@ -47,7 +47,7 @@ export interface ProjectPalette { id: string; name: string; colors: string[]; /*
  * the two cells it covers, -1 on cells no slice uses). `slots`: the eight palette ids those slots mean (the
  * scene's background palettes, or the project's sprite palettes). `metaMtime`: the sidecar's time, or null.
  */
-export interface AssetInfo { mtime: number; width: number; height: number; tileColors: number[]; slots: string[]; /** A background's scene parallax layers (top first; speed n scrolls at 1 / 2ⁿ, 128 fixed). */ parallax: { height: number; speed: number }[]; /** A sprite sheet's GB Studio animation speed: 60 / (animSpeed + 1) frames a second; 255 none. */ animSpeed: number | null; /** The scene whose palette list the slots are (null: the project's defaults). */ slotScene: string | null; /** GB Studio's Automatic color (backgrounds): it reads the colors from the PNG itself. */ autoColor: boolean; metaMtime: number | null; /** A sprite sheet's animations (every state's), each a list of frames made of 8 × 16 slices. */ animations: SpriteAnimation[] }
+export interface AssetInfo { mtime: number; width: number; height: number; tileColors: number[]; slots: string[]; /** A background's scene parallax layers (top first; speed n scrolls at 1 / 2ⁿ, 128 fixed). */ parallax: { height: number; speed: number }[]; /** A sprite sheet's GB Studio animation speed: 60 / (animSpeed + 1) frames a second; 255 none. */ animSpeed: number | null; /** The scene whose palette list the slots are (null: the project's defaults). */ slotScene: string | null; /** GB Studio's Automatic color (backgrounds): it reads the colors from the PNG itself. */ autoColor: boolean; metaMtime: number | null; /** A sprite sheet's animations (every state's), each a list of frames made of 8 × 16 slices. */ animations: SpriteAnimation[]; /** A font's .json beside its PNG (GB Studio 4.3: `mapping` text → codes, `table` character → glyph), read only. */ fontMap?: { mapping?: Record<string, number | number[]>; table?: Record<string, number> } | null }
 export interface SpriteFrame { tiles: { x: number; y: number; sliceX: number; sliceY: number; flipX: boolean; flipY: boolean }[] }
 export interface SpriteAnimation { name: string; frames: SpriteFrame[] }
 
@@ -310,7 +310,9 @@ export function assetInfo(project: string, kind: AssetKind, path: string): Asset
     source = slotSource(project, kind, id);
   }
   const slots = source ? resolveScenePaletteIds(source.ids, source.defaults) : [];
-  return { mtime: statSync(path).mtimeMs, width: size.width, height: size.height, tileColors, slots, parallax: source?.parallax ?? [], animSpeed: kind === "sprites" && typeof sidecar?.animSpeed === "number" ? sidecar.animSpeed : null, slotScene: source?.scene ?? null, autoColor: sidecar?.autoColor === true, metaMtime: hasSidecar ? statSync(`${path}.gbsres`).mtimeMs : null, animations: kind === "sprites" && sidecar ? spriteAnimations(sidecar) : [] };
+  const fontJson = kind === "fonts" ? readJson(path.replace(/\.png$/i, ".json")) : null;
+  const fontMap = fontJson ? { ...(fontJson.mapping && typeof fontJson.mapping === "object" ? { mapping: fontJson.mapping as Record<string, number | number[]> } : {}), ...(fontJson.table && typeof fontJson.table === "object" ? { table: fontJson.table as Record<string, number> } : {}) } : null;
+  return { mtime: statSync(path).mtimeMs, width: size.width, height: size.height, tileColors, slots, parallax: source?.parallax ?? [], animSpeed: kind === "sprites" && typeof sidecar?.animSpeed === "number" ? sidecar.animSpeed : null, slotScene: source?.scene ?? null, autoColor: sidecar?.autoColor === true, metaMtime: hasSidecar ? statSync(`${path}.gbsres`).mtimeMs : null, animations: kind === "sprites" && sidecar ? spriteAnimations(sidecar) : [], fontMap };
 }
 
 /** Reads a sidecar for writing: it must exist and be unchanged since `expectedMtime` (unless forced). */

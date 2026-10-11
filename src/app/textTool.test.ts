@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLEAR } from "../paint";
+import { encodeText } from "../gb/font";
 import { readFontSheet, renderText } from "./textTool";
 
 /** A 128 × 16 sheet (two rows of 16 glyphs from character 32) in the Game Boy greens: "!" (index 1) is a 2-wide bar
@@ -18,11 +19,20 @@ function sheet(variable: boolean, paper = [224, 248, 207]) {
 
 describe("text tool", () => {
   it("reads glyph widths as GB Studio does: magenta and white columns trim, the lightest green is paper", () => {
-    expect(sheet(true).widths[1]).toBe(3);
-    expect(sheet(false).widths[1]).toBe(8);
-    expect(sheet(true).widths[16]).toBe(8);
-    expect(sheet(false, [255, 255, 255]).widths[1]).toBe(2);
-    expect(sheet(false).ink[8 * 0 + 2]).toBe(0);
+    expect(sheet(true).glyphs[1].width).toBe(3);
+    expect(sheet(false).glyphs[1].width).toBe(8);
+    expect(sheet(true).glyphs[16].width).toBe(8);
+    expect(sheet(false, [255, 255, 255]).glyphs[1].width).toBe(2);
+    expect(sheet(false).shades[2]).toBe(0);
+  });
+
+  it("maps characters through the font's .json (GB Studio 4.3) and starts a full 16-row sheet at code 0", () => {
+    const width = 128, height = 16, rgba = new Uint8ClampedArray(width * height * 4);
+    for (let at = 0; at < width * height; at += 1) rgba.set([224, 248, 207, 255], at * 4);
+    for (let y = 0; y < 8; y += 1) for (let x = 8; x < 10; x += 1) rgba.set([7, 24, 33, 255], (y * width + x) * 4);
+    const mapped = readFontSheet(rgba, width, height, { mapping: { "♥": 33 } });
+    expect(renderText(mapped, "♥", { ink: 3, invert: false, box: false, leading: 0 }).pixels[1]).toBe(3);
+    expect(encodeText(mapped, "\\041")).toEqual([33]);
   });
 
   it("draws letters in the ink shade on see-through, one line per newline", () => {

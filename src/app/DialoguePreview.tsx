@@ -9,6 +9,7 @@ import { MessageSquareText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { GB_SHADES, gbStudioShade, hexRgb } from "../paint";
 import { Chip, Dialog, Field, Select } from "../ui/kit";
+import { CLEAR_PIXEL, encodeText, fetchFontMap, glyphOf, readFont, textWidth, type GbFont } from "../gb/font";
 import type { Asset } from "./model";
 import "./DialoguePreview.css";
 
@@ -31,7 +32,7 @@ export function DialoguePreview({ backgrounds, hasFrame, onClose }: { background
   const [font, setFont] = useState("");
   const [background, setBackground] = useState("");
   const [text, setText] = useState("Hello! It's cold out\nhere. Come inside?");
-  const [images, setImages] = useState<{ frame: ImageData | null; font: ImageData | null; scene: HTMLImageElement | null }>({ frame: null, font: null, scene: null });
+  const [images, setImages] = useState<{ frame: ImageData | null; font: GbFont | null; scene: HTMLImageElement | null }>({ frame: null, font: null, scene: null });
   const canvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -44,30 +45,23 @@ export function DialoguePreview({ backgrounds, hasFrame, onClose }: { background
       const sheet = font ? await load(`./__cartographer/gbstudio-asset?${new URLSearchParams({ kind: "fonts", file: font })}`) : null;
       const picked = backgrounds.find((item) => item.file === background);
       const scene = picked ? await load(`./__cartographer/gbstudio-asset-preview?${new URLSearchParams({ kind: "backgrounds", file: picked.file })}&v=${Math.round(picked.mtime)}&pv=2`) : null;
-      if (live) setImages({ frame: frame ? pixelsOf(frame) : null, font: sheet ? pixelsOf(sheet) : null, scene });
+      const map = font ? await fetchFontMap(font) : null;
+      const fontPixels = sheet ? pixelsOf(sheet) : null;
+      if (live) setImages({ frame: frame ? pixelsOf(frame) : null, font: fontPixels ? readFont(fontPixels.data, fontPixels.width, fontPixels.height, map) : null, scene });
     })();
     return () => { live = false; };
   }, [font, background, hasFrame, backgrounds]);
   const palette = (settings?.uiPalette ?? [...GB_SHADES]).map(hexRgb);
-  // A glyph's width in the font sheet: 8, or for a variable-width font the columns before its magenta (unused) ones.
+  // How wide text is in the font, as GB Studio reads it (src/gb/font.ts: trimmed glyphs, the .json map).
   const sheetFont = images.font;
-  const glyphWidth = (char: string) => {
-    const index = char.charCodeAt(0) - 32;
-    if (!sheetFont || index < 0) return 8;
-    const sx = (index % 16) * 8, sy = Math.floor(index / 16) * 8;
-    if (sy + 8 > sheetFont.height) return 8;
-    const magenta = (x: number, y: number) => { const p = (y * sheetFont.width + x) * 4; return sheetFont.data[p] > 249 && sheetFont.data[p + 2] > 249 && sheetFont.data[p + 1] < 250; };
-    let width = 8;
-    while (width > 0 && Array.from({ length: 8 }, (_, y) => magenta(sx + width - 1, sy + y)).every(Boolean)) width -= 1;
-    return Math.max(1, width);
-  };
+  const glyphWidth = (word: string) => sheetFont ? textWidth(sheetFont, word) : [...word].length * 8;
   // The text wrapped at word breaks to the box's inside (144 px), as a text box would; four lines show at once.
   const ROOM = 144, SHOWN_LINES = 4;
   const wrapped: string[] = [];
   for (const paragraph of text.split("\n")) {
     let line = "", used = 0;
     for (const word of paragraph.split(" ")) {
-      const wordWidth = [...word].reduce((sum, char) => sum + glyphWidth(char), 0), space = line ? glyphWidth(" ") : 0;
+      const wordWidth = glyphWidth(word), space = line ? glyphWidth(" ") : 0;
       if (line && used + space + wordWidth > ROOM) { wrapped.push(line); line = "", used = 0; }
       if (!line && wordWidth > ROOM) {
         // A word longer than a line breaks where it runs out of room.
@@ -112,30 +106,21 @@ export function DialoguePreview({ backgrounds, hasFrame, onClose }: { background
         }
       }
     }
-    // The text: 8 × 8 glyphs from character 32, 16 a row. GB Studio's font rule: white (green above 249) and
-    // magenta are see-through; a variable-width font marks a glyph's unused columns in magenta, so each glyph
-    // advances by the columns before them.
+    // The text, each glyph as GB Studio reads the font (src/gb/font.ts): see-through pixels skipped, the paper too
+    // (the box shows through), the rest in its shade.
     const sheet = images.font;
     if (sheet) {
-      const at = (x: number, y: number) => (y * sheet.width + x) * 4;
-      const magenta = (p: number) => sheet.data[p] > 249 && sheet.data[p + 2] > 249 && sheet.data[p + 1] < 250;
       lines.forEach((line, row) => {
         let pen = 8;
-        for (const char of line) {
-          const index = char.charCodeAt(0) - 32;
-          if (index < 0) continue;
-          const sx = (index % 16) * 8, sy = Math.floor(index / 16) * 8;
-          if (sy + 8 > sheet.height) continue;
-          let width = 8;
-          while (width > 0 && Array.from({ length: 8 }, (_, y) => magenta(at(sx + width - 1, sy + y))).every(Boolean)) width -= 1;
-          if (pen + width > 152) break;
-          for (let y = 0; y < 8; y += 1) for (let x = 0; x < width; x += 1) {
-            const p = at(sx + x, sy + y);
-            if (sheet.data[p + 3] < 128 || sheet.data[p + 1] > 249 || magenta(p)) continue;
-            const shade = gbStudioShade(sheet.data[p + 1]);
-            if (shade > 0) put(pen + x, top + 8 + row * 8 + y, shade);
+        for (const code of encodeText(sheet, line)) {
+          const glyph = glyphOf(sheet, code);
+          if (!glyph) continue;
+          if (pen + glyph.width > 152) break;
+          for (let y = 0; y < 8; y += 1) for (let x = 0; x < glyph.width; x += 1) {
+            const shade = sheet.shades[(glyph.sy + y) * sheet.width + glyph.sx + x];
+            if (shade !== CLEAR_PIXEL && shade > 0) put(pen + x, top + 8 + row * 8 + y, shade);
           }
-          pen += Math.max(1, width);
+          pen += glyph.width;
         }
       });
     }
