@@ -13,7 +13,7 @@
  *   POST /__cartographer/gbstudio-new-asset   ?kind=&name= a new PNG in assets/<kind>/ (never replaces a file; no sidecar)
  *   POST /__cartographer/gbstudio-tile-colors { slots } per-cell palette slots into the sidecar (?kind=&file=&metaMtime=&force=1)
  *   GET  /__cartographer/gbstudio-asset-delete  a picture's files and what mentions it; POST deletes it into the backups (?kind=&file=)
- *   POST /__cartographer/stamp-autotile       { autotile: "box" | "wang" | null } a saved stamp's auto-tile setting (?file=)
+ *   POST /__cartographer/stamp-autotile       { autotile: kind | null } a saved stamp's auto-tile (src/app/autotile.ts kinds) (?file=)
  *   POST /__cartographer/stamp-meta           { slots, tileColors, tags? } a saved stamp's tile palettes and tags (?file=&metaMtime=&force=1),
  *                                             in Cartographer/stamps/<file>.json (stamps: kind=stamps on the asset routes)
  *   POST /__cartographer/gbstudio-palette     { name, colors } adds a palette file to the project; { id, name, colors } rewrites one
@@ -42,7 +42,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -374,7 +374,7 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         return true;
       }
       const body = JSON.parse((await readBody(req)).toString("utf8")) as { autotile?: unknown };
-      reply(res, 200, { ok: true, ...writeStampAutotile(path, body.autotile === "box" || body.autotile === "wang" ? body.autotile : null, backup) });
+      reply(res, 200, { ok: true, ...writeStampAutotile(path, isAutotile(body.autotile) ? body.autotile : null, backup) });
       return true;
     }
     if (url.pathname === "/__cartographer/stamp-meta" && req.method === "POST") {

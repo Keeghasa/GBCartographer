@@ -3,6 +3,7 @@
  * the shape of an open picture (Doc). No React here.
  */
 import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect } from "../paint";
+import type { AutotileKind } from "./autotile";
 
 export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text";
 
@@ -60,7 +61,7 @@ export type PickerWindow = Window & {
 export const PNG_TYPES = [{ description: "PNG image", accept: { "image/png": [".png"] } }];
 
 /** One PNG under the GB Studio project's assets folder. */
-export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: "box" | "wang" }
+export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: AutotileKind }
 /** A project palette also carries its file's modification time, sent back with a rewrite (changed-on-disk check). */
 export interface Project { name: string; path: string; assets: Asset[]; palettes: (Palette & { mtime?: number })[] }
 /** A sprite sheet's frames: 8 × 16 slices placed at frame-local x, y (see server/assets.ts). */
@@ -114,8 +115,10 @@ export type Drag =
   | { kind: "stamp"; origin: Point; last: Point }
   /** A box auto-tile stamp stretched over a dragged rectangle (redrawn over `base` as the pointer moves). */
   | { kind: "box"; origin: Point; base: Uint8Array; baseCells: Uint8Array }
-  /** A Wang auto-tile stamp painted (or, with Alt, cleared) tile by tile. */
-  | { kind: "wang"; last: Point; erase: boolean }
+  /** A tile-sheet auto-tile stamp (Wang, edges, path, wall face) painted (or, with Alt, cleared) tile by tile. */
+  | { kind: "auto"; last: Point; erase: boolean }
+  /** A corner-Wang stamp painted at grid corners (`last` is a corner, in tiles). */
+  | { kind: "corner"; last: Point; erase: boolean }
   | { kind: "shape"; start: Point; base: Uint8Array }
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }

@@ -5,6 +5,7 @@
  */
 import type { AssetKind } from "../app/model";
 import type { Canvas } from "./pen";
+import type { AutotileKind } from "../app/autotile";
 
 export interface WireAsset {
   id: string; name: string; group: string; kind: AssetKind;
@@ -12,5 +13,5 @@ export interface WireAsset {
   about?: string;
   make: () => Canvas;
   /** A stamp template that is an auto-tile (src/app/autotile.ts): added with its 9 or W already set. */
-  autotile?: "box" | "wang";
+  autotile?: AutotileKind;
 }

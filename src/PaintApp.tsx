@@ -59,7 +59,7 @@ import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
 import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
-import { canBox, canWang } from "./app/autotile";
+import { autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -1082,20 +1082,30 @@ export default function PaintApp() {
 
   /** Picks up a saved stamp as the stamp in hand, with its tile palettes, and switches to the Stamp tool. */
   /** What a saved stamp's 9 / W setting makes of it at this size (autotile.ts), and a note when the size doesn't fit. */
-  function autotileOf(asset: Asset, w: number, h: number): { flags: { box?: boolean; wang?: boolean }; note: string } {
-    if (asset.autotile === "box") return canBox(w, h) ? { flags: { box: true }, note: " Box (9): drag a rectangle." } : { flags: {}, note: " (Box needs whole tiles, at least 3 × 3.)" };
-    if (asset.autotile === "wang") return canWang(w, h) ? { flags: { wang: true }, note: " Wang (W): paint tiles and they fit together; Alt clears." } : { flags: {}, note: " (Wang needs a sheet of 8 × 6 tiles.)" };
-    return { flags: {}, note: " Click or drag to stamp it on the grid." };
+  function autotileOf(asset: Asset, w: number, h: number): { flags: { auto?: AutotileKind }; note: string } {
+    const kind = autotileKind(asset.autotile);
+    if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
+    if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface"].includes(kind.id) ? " Alt clears." : ""}` };
   }
+  /** An animated stamp stamps its first frame (square, from the left). */
+  const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
+    if (auto !== "anim") return stamp;
+    const size = stamp.h, pixels = new Uint8Array(size * size);
+    for (let y = 0; y < size; y += 1) pixels.set(stamp.pixels.subarray(y * stamp.w, y * stamp.w + size), y * size);
+    const cw = stamp.w / 8, fw = size / 8;
+    const cells = stamp.cells ? Uint8Array.from({ length: fw * fw }, (_, at) => stamp.cells![Math.floor(at / fw) * cw + (at % fw)]) : undefined;
+    return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}) };
+  };
 
   /** Sets a saved stamp's auto-tile (9 box, W Wang, or none) in its own sidecar; the stamp in hand follows. */
-  async function setStampAutotile(asset: Asset, autotile: "box" | "wang" | null) {
+  async function setStampAutotile(asset: Asset, autotile: AutotileKind | null) {
     const response = await fetch(`./__cartographer/stamp-autotile?${new URLSearchParams({ file: asset.file })}`, { method: "POST", body: JSON.stringify({ autotile }) }).catch(() => null);
     if (!response?.ok) { say(`Could not change ${asset.name}: ${response?.statusText ?? "no answer"}`); return; }
     await loadProject();
     const fresh = projectRef.current?.assets.find((item) => item.kind === "stamps" && item.file === asset.file);
     if (fresh && heldStamp.current === asset.file) await useSavedStamp(fresh);
-    else say(`${asset.name}: ${autotile === "box" ? "box auto-tile (9)" : autotile === "wang" ? "Wang auto-tile (W)" : "a plain stamp"}.`);
+    else { const kind = autotileKind(autotile ?? undefined); say(`${asset.name}: ${kind ? `${kind.name} (${kind.glyph})` : "a plain stamp"}.`); }
   }
   const heldStamp = useRef<string | null>(null);
 
@@ -1107,7 +1117,7 @@ export default function PaintApp() {
     if (open && open !== doc) {
       const whole = open.width % CELL === 0 && open.height % CELL === 0;
       const auto = autotileOf(asset, open.width, open.height);
-      setStamp({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes), ...auto.flags });
+      setStamp(firstFrame({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes), ...auto.flags }, auto.flags.auto));
       heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
       return say(`Stamp: ${asset.name} (${open.width} × ${open.height}).${auto.note}`);
@@ -1126,7 +1136,7 @@ export default function PaintApp() {
       const tinted = info.tileColors.length ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
       const whole = bitmap.width % CELL === 0 && bitmap.height % CELL === 0;
       const auto = autotileOf(asset, bitmap.width, bitmap.height);
-      setStamp({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags });
+      setStamp(firstFrame({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags }, auto.flags.auto));
       heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
       say(`Stamp: ${asset.name} (${bitmap.width} × ${bitmap.height}).${auto.note}`);

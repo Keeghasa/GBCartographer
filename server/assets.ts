@@ -16,6 +16,10 @@ import { KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, sprite
 
 /** The picture folders under assets/. Emotes are read like sprites (key green see-through); avatars and the UI
  * frame and cursor (assets/ui, no sidecars) like background tiles. Only backgrounds, sprites and tilesets carry palettes. */
+/** A stamp's auto-tile kinds (src/app/autotile.ts). */
+export const AUTOTILE_NAMES = ["box", "wang", "across", "down", "path", "edges", "corner", "wallface", "anim"] as const;
+export type AutotileName = typeof AUTOTILE_NAMES[number];
+export const isAutotile = (value: unknown): value is AutotileName => (AUTOTILE_NAMES as readonly unknown[]).includes(value);
 export const ASSET_KINDS = ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui", "stamps"] as const;
 /**
  * GB Cartographer's own folder inside a project, for what it needs and GB Studio doesn't (approved by the author
@@ -39,7 +43,7 @@ const sidecarOf = (path: string, kind: AssetKind) => kind === "stamps" ? `${path
 /** Where backups go: the backups folder and the project the written file belongs to (see backups.ts). */
 export interface Backup { dir: string; project: string }
 
-export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[]; /** A stamp drawn as an auto-tile (its own sidecar): "box" stretches it over a dragged rectangle, "wang" fits each tile to its neighbours. */ autotile?: "box" | "wang" }
+export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[]; /** A stamp drawn as an auto-tile (its own sidecar; src/app/autotile.ts). */ autotile?: AutotileName }
 export interface ProjectPalette { id: string; name: string; colors: string[]; /** The palette file's modification time (for the changed-on-disk check). */ mtime: number }
 /**
  * What GB Cartographer needs besides the pixels. `tileColors`: one attribute per 8 × 8 cell whose low three bits are the
@@ -181,7 +185,7 @@ export function listAssets(project: string): AssetEntry[] {
       const name = typeof sidecar?.name === "string" && sidecar.name ? sidecar.name : file.replace(/\.png$/i, "");
       const meta = kind === "stamps" ? readJson(`${path}.json`) : null;
       const tags = kind === "stamps" ? stampTags(meta) : undefined;
-      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}), ...(meta?.autotile === "box" || meta?.autotile === "wang" ? { autotile: meta.autotile as "box" | "wang" } : {}) });
+      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}), ...(isAutotile(meta?.autotile) ? { autotile: meta!.autotile as AutotileName } : {}) });
     }
   }
   return entries;
@@ -697,7 +701,7 @@ export function writeStampMeta(path: string, slots: readonly string[], tileColor
   // Tags not sent stay as they are (an edited stamp's palettes are written without them).
   const kept = tags === undefined ? stampTags(readJson(meta)) : stampTags({ tags });
   const oldAutotile = readJson(meta)?.autotile;
-  const autotile = oldAutotile === "box" || oldAutotile === "wang" ? { autotile: oldAutotile } : {};
+  const autotile = isAutotile(oldAutotile) ? { autotile: oldAutotile } : {};
   const clean = { _resourceType: "cartographerStamp", slots: slots.slice(0, 8).map((id) => typeof id === "string" ? id : ""), tileColors: tileColors.map((value) => Number.isInteger(value) && value >= 0 && value < 8 ? value : -1), ...(kept.length ? { tags: kept } : {}), ...autotile };
   if (existsSync(meta)) return { mtime: writeSidecar(meta, clean, backup) };
   writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`);
@@ -705,7 +709,7 @@ export function writeStampMeta(path: string, slots: readonly string[], tileColor
 }
 
 /** Sets a stamp's auto-tile ("box", "wang" or none) in its own sidecar (Cartographer/stamps/<file>.json; backed up first). */
-export function writeStampAutotile(path: string, autotile: "box" | "wang" | null, backup: Backup): { mtime: number } {
+export function writeStampAutotile(path: string, autotile: AutotileName | null, backup: Backup): { mtime: number } {
   const meta = `${path}.json`;
   const old = readJson(meta) ?? { _resourceType: "cartographerStamp", slots: [], tileColors: [] };
   const { autotile: _old, ...rest } = old;

@@ -146,3 +146,7 @@
 .app-side-handle { flex: none; align-self: stretch; width: var(--k-2); margin-inline: calc(var(--k-2) * -1); padding: 0; background: none; border: 0; border-radius: 4px; cursor: pointer; }
 .app-side-handle:hover { background: var(--k-hover); }
 .app-side-handle:last-child { margin-right: 0; }
+/* The auto-tile menu: each kind's glyph in a small square, lit when set; its name over what it does. */
+.app-auto-glyph { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--k-edge-2); border-radius: 5px; font: 700 11px/1 var(--k-font); }
+.app-auto-glyph[data-on] { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); }
+.app-auto-item { display: flex; flex-direction: column; max-width: 300px; } .app-auto-item small { color: var(--k-ink-3); white-space: normal; }

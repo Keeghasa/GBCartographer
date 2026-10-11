@@ -6,6 +6,8 @@
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { ASSET_URL, PREVIEW_VERSION, type Asset } from "./model";
+import { autotileOf, type AutotileKind } from "./autotile";
+import { AnimThumb } from "./AnimThumb";
 
 interface Props {
   stamps: Asset[];
@@ -14,7 +16,7 @@ interface Props {
   onUse: (stamp: Asset) => void;
   onOpen: (stamp: Asset) => void;
   /** A stamp's auto-tile (9 box, W Wang) is set on its card in the project panel; here it shows as a badge. */
-  onAutotile?: (stamp: Asset, autotile: "box" | "wang" | null) => void;
+  onAutotile?: (stamp: Asset, autotile: AutotileKind | null) => void;
 }
 
 export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
@@ -32,9 +34,9 @@ export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
         {shown.map((stamp) => (
           <span key={stamp.file} className="app-stamp">
             <button className="app-frame named" title={`${stamp.name} · ${stamp.width} × ${stamp.height}${stamp.tags?.length ? ` · ${stamp.tags.join(", ")}` : ""} · click to use`} onClick={() => onUse(stamp)}>
-              <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
+              {stamp.autotile === "anim" ? <AnimThumb src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />}
               <small>{stamp.name}</small>
-              {stamp.autotile && <i className="app-stamp-badge" title={stamp.autotile === "box" ? "Box auto-tile (9)" : "Wang auto-tile (W)"}>{stamp.autotile === "box" ? "9" : "W"}</i>}
+              {autotileOf(stamp.autotile) && <i className="app-stamp-badge" title={autotileOf(stamp.autotile)!.name}>{autotileOf(stamp.autotile)!.glyph}</i>}
             </button>
             <button type="button" className="app-stamp-edit" title={`Edit ${stamp.name}`} aria-label={`Edit ${stamp.name}`} onClick={(event) => { event.stopPropagation(); onOpen(stamp); }}><Pencil size={11} /></button>
           </span>

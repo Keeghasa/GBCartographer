@@ -8,11 +8,13 @@
  */
 import { useEffect, useState } from "react";
 import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, type Project } from "./model";
+import type { AutotileKind } from "./autotile";
 import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
 import { Archive, ArchiveRestore, Pencil } from "lucide-react";
 import { readStored, store } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
+import { AnimThumb } from "./AnimThumb";
 import { Chip, IconButton } from "../ui/kit";
 
 interface ProjectPanelProps {
@@ -31,7 +33,7 @@ interface ProjectPanelProps {
   /** A saved stamp's card: a click takes it as the stamp in hand (its hover pencil opens it to edit instead). */
   onUseStamp: (asset: Asset) => void;
   /** A saved stamp's 9 / W auto-tile toggles. */
-  onAutotile: (asset: Asset, autotile: "box" | "wang" | null) => void;
+  onAutotile: (asset: Asset, autotile: AutotileKind | null) => void;
   onMenu: (asset: Asset, x: number, y: number) => void;
 }
 
@@ -95,6 +97,7 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, slotsVersi
             const card = (
               <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}${isHidden ? " is-hidden" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : onOpen(asset)}>
                 {isHidden ? <span className="gbp-asset-thumb app-card-blank" aria-hidden="true" style={fit} />
+                  : stamp && asset.autotile === "anim" ? <AnimThumb className="gbp-asset-thumb" style={{ ...fit, aspectRatio: "1" }} src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
                   : sheet?.kind === asset.kind && sheet.cells.has(asset.file)
                   ? <SheetThumb sheet={sheet.image} cell={sheet.cells.get(asset.file)!} style={fit} />
                   : !sheetFailed && sheet?.kind !== asset.kind ? <span className="gbp-asset-thumb" aria-hidden="true" style={fit} />

@@ -6,7 +6,7 @@
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
-import { maskAt, WANG_COLUMNS, WANG_MASKS, wangSlot } from "./autotile";
+import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
 
 interface Painting {
   doc: Doc | null;
@@ -53,7 +53,7 @@ export function usePainting(app: Painting) {
   const drag = useRef<Drag | null>(null);
   const lastPoint = useRef<Point | null>(null);
   /** The stamp tool's block: pixels, tile palettes when whole tiles, and the palettes they refer to. */
-  const stamp = useRef<(Floating & { palettes: Palette[]; /** A box auto-tile: corners, edges and middle stretch over a dragged rectangle. */ box?: boolean; /** A Wang sheet (autotile.ts): tiles fit their neighbours. */ wang?: boolean }) | null>(null);
+  const stamp = useRef<(Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind }) | null>(null);
   /** During a stroke with linked tiles: the groups, the pixels before the stroke, and after the last step. */
   const linkStroke = useRef<{ link: ReturnType<typeof linkGroups>; base: Uint8Array; previous: Uint8Array } | null>(null);
   /** Where the pointer last was over the picture, so the brush outline follows size and tool changes ([ and ]) at once. */
@@ -117,59 +117,112 @@ export function usePainting(app: Painting) {
   }
 
   /**
-   * A box auto-tile over whole tiles from `a` to `b`: the stamp's corner tiles in the corners, its edge tiles repeated
-   * along the sides, its middle tiles repeated inside (a 3 × 3-tile stamp is the classic nine-slice).
+   * Box (9), 3-slice across (↔) and down (↕) over whole tiles from `a` to `b`: the stamp's end tiles at the ends, its
+   * middle tiles repeated between (a 3 × 3-tile box stamp is the classic nine-slice). Across keeps the stamp's height,
+   * down its width.
    */
   function putBox(target: Doc, a: Point, b: Point) {
     const source = stamp.current;
     if (!source) return;
     const sw = source.w / CELL, sh = source.h / CELL;
-    const x0 = Math.min(a.x, b.x) & ~7, y0 = Math.min(a.y, b.y) & ~7;
-    const w = Math.max(2, ((Math.max(a.x, b.x) & ~7) - x0) / CELL + 1), h = Math.max(2, ((Math.max(a.y, b.y) & ~7) - y0) / CELL + 1);
-    const pick = (at: number, size: number, of: number) => at === 0 ? 0 : at === size - 1 ? of - 1 : 1 + ((at - 1) % (of - 2));
+    const stretchX = source.auto !== "down", stretchY = source.auto !== "across";
+    const x0 = (stretchX ? Math.min(a.x, b.x) : a.x) & ~7, y0 = (stretchY ? Math.min(a.y, b.y) : a.y) & ~7;
+    const w = stretchX ? Math.max(2, ((Math.max(a.x, b.x) & ~7) - x0) / CELL + 1) : sw, h = stretchY ? Math.max(2, ((Math.max(a.y, b.y) & ~7) - y0) / CELL + 1) : sh;
+    const pick = (at: number, size: number, of: number, stretch: boolean) => !stretch ? at : at === 0 ? 0 : at === size - 1 ? of - 1 : 1 + ((at - 1) % (of - 2));
     const pixels = new Uint8Array(w * CELL * h * CELL), cells = source.cells ? new Uint8Array(w * h) : undefined;
     for (let ty = 0; ty < h; ty += 1) for (let tx = 0; tx < w; tx += 1) {
-      const sx = pick(tx, w, sw), sy = pick(ty, h, sh);
+      const sx = pick(tx, w, sw, stretchX), sy = pick(ty, h, sh, stretchY);
       for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((sy * CELL + y) * source.w + sx * CELL, (sy * CELL + y) * source.w + sx * CELL + CELL), (ty * CELL + y) * w * CELL + tx * CELL);
       if (cells && source.cells) cells[ty * w + tx] = source.cells[sy * sw + sx];
     }
     putStamp(target, { x: x0, y: y0 }, { pixels, w: w * CELL, h: h * CELL, x: x0, y: y0, ...(cells ? { cells } : {}), palettes: source.palettes });
   }
 
-  // ---- Wang auto-tiles (autotile.ts): a tile is "filled" when its pixels are one of the sheet's 47 tiles ----
+  // ---- tile-sheet auto-tiles (autotile.ts): a tile belongs when its pixels are one of the sheet's tiles ----------
   const tileKey = (pixels: Uint8Array, width: number, x: number, y: number) => {
     let key = "";
     for (let row = 0; row < CELL; row += 1) key += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";";
     return key;
   };
-  function wangKeys() {
-    const source = stamp.current!;
-    return new Set(WANG_MASKS.map((_, index) => tileKey(source.pixels, source.w, (index % WANG_COLUMNS) * CELL, Math.floor(index / WANG_COLUMNS) * CELL)));
+  /** The sheet's tiles by their pixels: key → slot index (column + row × columns). */
+  function sheetKeys(columns: number, count: number) {
+    const source = stamp.current!, keys = new Map<string, number>();
+    for (let index = 0; index < count; index += 1) {
+      const key = tileKey(source.pixels, source.w, (index % columns) * CELL, Math.floor(index / columns) * CELL);
+      if (!keys.has(key)) keys.set(key, index);
+    }
+    return keys;
   }
-  /** Draws the sheet's tile for (tx, ty)'s shape, with its tile palette when the sheet has them. */
-  function putWangTile(target: Doc, tx: number, ty: number, filled: (tx: number, ty: number) => boolean) {
+  /** Draws the sheet's tile at (column, row) on tile (tx, ty), with its tile palette when the sheet has them. */
+  function putSheetTile(target: Doc, tx: number, ty: number, column: number, row: number) {
     const source = stamp.current!;
-    const { column, row } = wangSlot(maskAt(filled, tx, ty));
     const pixels = new Uint8Array(CELL * CELL);
     for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((row * CELL + y) * source.w + column * CELL, (row * CELL + y) * source.w + column * CELL + CELL), y * CELL);
     const cells = source.cells ? new Uint8Array([source.cells[row * cellsWide(source.w) + column]]) : undefined;
     putStamp(target, { x: tx * CELL, y: ty * CELL }, { pixels, w: CELL, h: CELL, x: tx * CELL, y: ty * CELL, ...(cells ? { cells } : {}), palettes: source.palettes });
   }
-  /** Fills (or clears) tile (tx, ty) and redraws it and its filled neighbours to fit. */
-  function paintWang(target: Doc, tx: number, ty: number, erase: boolean) {
+
+  /**
+   * Fills (or with `erase` clears) tile (tx, ty) for the sheet auto-tiles (Wang, edges, path, wall face) and redraws
+   * the tiles around it that belong, each as its shape says.
+   */
+  function paintAuto(target: Doc, tx: number, ty: number, erase: boolean) {
+    const auto = stamp.current?.auto;
     const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL);
-    if (tx < 0 || ty < 0 || tx >= cw || ty >= ch) return;
-    const keys = wangKeys();
+    if (!auto || tx < 0 || ty < 0 || tx >= cw || ty >= ch) return;
+    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
+    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * CELL, y * CELL);
+    if (auto === "wallface") return paintWallFace(target, tx, ty, erase, inside, keyAt);
+    const keys = auto === "wang" ? sheetKeys(WANG_COLUMNS, WANG_MASKS.length) : sheetKeys(4, 16);
     const marked = new Map<string, boolean>([[`${tx},${ty}`, !erase]]);
-    const filled = (x: number, y: number) => {
-      if (x < 0 || y < 0 || x >= cw || y >= ch) return true;
-      return marked.get(`${x},${y}`) ?? keys.has(tileKey(target.pixels, target.width, x * CELL, y * CELL));
-    };
+    // Off the picture: a Wang area runs on past the edge; a path stops there.
+    const filled = (x: number, y: number) => !inside(x, y) ? auto !== "path" : marked.get(`${x},${y}`) ?? keys.has(keyAt(x, y));
     if (erase) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, app.blank(target));
     for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
       const x = tx + dx, y = ty + dy;
-      if (x < 0 || y < 0 || x >= cw || y >= ch || !filled(x, y)) continue;
-      putWangTile(target, x, y, filled);
+      if (!inside(x, y) || !filled(x, y) || (auto !== "wang" && dx && dy)) continue;
+      const { column, row } = auto === "wang" ? wangSlot(maskAt(filled, x, y)) : slot16(edgeMask(filled, x, y));
+      putSheetTile(target, x, y, column, row);
+    }
+  }
+
+  /**
+   * Wall face: (tx, ty) becomes floor (or, erasing, nothing); then the walls around it follow: the two tiles above a
+   * floor that aren't floor are the lower and upper wall rows (drawn over whatever is there), ends drawn where the row
+   * stops; tiles of the sheet that are no longer wall become nothing.
+   */
+  function paintWallFace(target: Doc, tx: number, ty: number, erase: boolean, inside: (x: number, y: number) => boolean, keyAt: (x: number, y: number) => string) {
+    const keys = sheetKeys(4, 12);
+    const FLOOR = 0;
+    const marked = new Map<string, boolean>([[`${tx},${ty}`, !erase]]);
+    const floor = (x: number, y: number) => inside(x, y) && (marked.get(`${x},${y}`) ?? keys.get(keyAt(x, y)) === FLOOR);
+    const kind = (x: number, y: number) => floor(x, y) ? "floor" : floor(x, y + 1) ? "lower" : floor(x, y + 2) ? "upper" : "none";
+    putSheetTile(target, tx, ty, erase ? 1 : 0, 0);
+    for (let y = ty - 2; y <= ty + 1; y += 1) for (let x = tx - 2; x <= tx + 2; x += 1) {
+      if (!inside(x, y) || (x === tx && y === ty)) continue;
+      const here = kind(x, y), ours = keys.has(keyAt(x, y));
+      if (here === "floor") continue;
+      // Walls grow over whatever is above a floor; "nothing" only replaces the sheet's own tiles.
+      if (here === "none") { if (ours) putSheetTile(target, x, y, 1, 0); continue; }
+      const left = kind(x - 1, y) !== here, right = kind(x + 1, y) !== here;
+      putSheetTile(target, x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+    }
+    // The tile just painted may itself sit in a wall's place when erased.
+    if (erase && kind(tx, ty) !== "none") {
+      const here = kind(tx, ty), left = kind(tx - 1, ty) !== here, right = kind(tx + 1, ty) !== here;
+      putSheetTile(target, tx, ty, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+    }
+  }
+
+  /** Corner Wang: sets (or clears) the second terrain at grid corner (vx, vy); the four tiles meeting there redraw. */
+  function paintCorner(target: Doc, vx: number, vy: number, erase: boolean) {
+    const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL);
+    const keys = sheetKeys(4, 16);
+    for (const [x, y, bit] of [[vx - 1, vy - 1, CORNER_SE], [vx, vy - 1, CORNER_SW], [vx - 1, vy, CORNER_NE], [vx, vy, CORNER_NW]] as const) {
+      if (x < 0 || y < 0 || x >= cw || y >= ch) continue;
+      const now = keys.get(tileKey(target.pixels, target.width, x * CELL, y * CELL)) ?? 0;
+      const { column, row } = slot16(erase ? now & ~bit : now | bit);
+      putSheetTile(target, x, y, column, row);
     }
   }
 
@@ -286,11 +339,16 @@ export function usePainting(app: Painting) {
       app.dropFloat(doc);
       app.pushUndo(doc);
       const origin = { x: point.x & ~7, y: point.y & ~7 };
-      if (stamp.current.wang) {
+      const auto = stamp.current.auto;
+      if (auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface") {
         const erase = event.altKey;
-        paintWang(doc, point.x >> 3, point.y >> 3, erase);
-        drag.current = { kind: "wang", last: point, erase };
-      } else if (stamp.current.box) {
+        paintAuto(doc, point.x >> 3, point.y >> 3, erase);
+        drag.current = { kind: "auto", last: point, erase };
+      } else if (auto === "corner") {
+        const erase = event.altKey, vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
+        paintCorner(doc, vertex.x, vertex.y, erase);
+        drag.current = { kind: "corner", last: vertex, erase };
+      } else if (auto === "box" || auto === "across" || auto === "down") {
         drag.current = { kind: "box", origin, base: doc.pixels.slice(), baseCells: doc.cells.slice() };
         putBox(doc, origin, origin);
       } else {
@@ -366,9 +424,13 @@ export function usePainting(app: Painting) {
           state.last = at;
         }
       }
-    } else if (state.kind === "wang") {
-      for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintWang(doc, x, y, state.erase);
+    } else if (state.kind === "auto") {
+      for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintAuto(doc, x, y, state.erase);
       state.last = point;
+    } else if (state.kind === "corner") {
+      const vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
+      for (const [x, y] of linePoints(state.last.x, state.last.y, vertex.x, vertex.y)) paintCorner(doc, x, y, state.erase);
+      state.last = vertex;
     } else if (state.kind === "box") {
       doc.pixels.set(state.base);
       doc.cells.set(state.baseCells);
@@ -386,7 +448,7 @@ export function usePainting(app: Painting) {
       const step = (distance: number) => snap ? Math.round(distance / CELL) * CELL : distance;
       app.moveFloat(doc, state.ox + step(point.x - state.start.x), state.oy + step(point.y - state.start.y));
     }
-    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "wang") followLinks(doc);
+    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "auto" || state.kind === "corner") followLinks(doc);
     app.bump();
   }
 
@@ -401,7 +463,7 @@ export function usePainting(app: Painting) {
   }
 
   /** Picks up a saved stamp (pixels, tile palettes when whole tiles, and the palettes they refer to). */
-  function setStamp(value: Floating & { palettes: Palette[]; box?: boolean; wang?: boolean }) {
+  function setStamp(value: Floating & { palettes: Palette[]; auto?: AutotileKind }) {
     stamp.current = value;
   }
 
