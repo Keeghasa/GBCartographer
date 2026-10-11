@@ -68,7 +68,7 @@ function sheet16(draw: (t: Pen, mask: number) => void, fill: number): Canvas {
   return out;
 }
 
-/** Path: a road (shade 1, edged in 3) on grass (0), joining the tile's sides its mask names. */
+/** Path: a road (shade 1) on grass (0), joining the tile's sides its mask names, edged in 3 wherever it meets grass. */
 export function pathTemplate(): Canvas {
   return sheet16((t, mask) => {
     t.fill(0);
@@ -77,11 +77,11 @@ export function pathTemplate(): Canvas {
     if (mask & EDGE_S) t.rect(2, 6, 4, 2, 1);
     if (mask & EDGE_W) t.rect(0, 2, 2, 4, 1);
     if (mask & EDGE_E) t.rect(6, 2, 2, 4, 1);
-    // Edges of the road: dark where it stops.
-    if (!(mask & EDGE_N)) t.rect(2, 1, 4, 1, 3);
-    if (!(mask & EDGE_S)) t.rect(2, 6, 4, 1, 3);
-    if (!(mask & EDGE_W)) t.rect(1, 2, 1, 4, 3);
-    if (!(mask & EDGE_E)) t.rect(6, 2, 1, 4, 3);
+    // Grass next to road becomes its edge, so every arm is edged along its length.
+    const road = (x: number, y: number) => x >= 0 && y >= 0 && x < 8 && y < 8 && t.get(x, y) === 1;
+    const edge: [number, number][] = [];
+    for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) if (!road(x, y) && (road(x - 1, y) || road(x + 1, y) || road(x, y - 1) || road(x, y + 1))) edge.push([x, y]);
+    for (const [x, y] of edge) t.dot(x, y, 3);
   }, 0);
 }
 

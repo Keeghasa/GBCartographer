@@ -26,4 +26,8 @@ describe("graphics library", () => {
       if (asset.kind === "backgrounds") expect(countUniqueTiles(art.pixels, art.width, art.height, false), asset.id).toBeLessThanOrEqual(192);
     }
   });
+
+  it("names every piece so it can be a plain file name (letters, digits, spaces, - _ ( ) .)", () => {
+    for (const asset of GRAPHICS) expect(asset.name, asset.id).toMatch(/^[\w ()\-.]+$/);
+  });
 });
