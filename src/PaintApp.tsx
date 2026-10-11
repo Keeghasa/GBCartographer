@@ -54,6 +54,7 @@ import { StampsStrip } from "./app/StampsStrip";
 import { TextStrip, type TextSettings } from "./app/TextStrip";
 import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
+import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -109,6 +110,8 @@ export default function PaintApp() {
   const [showHealth, setShowHealth] = useState(false);
   const [showPictureWizard, setShowPictureWizard] = useState(false);
   /** The wizard open (W2…W8 from the Wizards menu), if any. */
+  /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
+  const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean } | null>(null);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "newBackground" | "budget" | "checkup" | GeneratorMode | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
@@ -1036,6 +1039,15 @@ export default function PaintApp() {
   /** Picks up a saved stamp as the stamp in hand, with its tile palettes, and switches to the Stamp tool. */
   async function useSavedStamp(asset: Asset) {
     await palettesReady.current;
+    if (!doc) return say(`Open a picture first, then click ${asset.name} to stamp it on.`);
+    // Open with unsaved edits: the stamp is what's on screen, not the file.
+    const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file);
+    if (open && open !== doc) {
+      const whole = open.width % CELL === 0 && open.height % CELL === 0;
+      setStamp({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes) });
+      if (tool !== "stamp") setTool("stamp");
+      return say(`Stamp: ${asset.name} (${open.width} × ${open.height}). Click or drag to stamp it on the grid.`);
+    }
     try {
       const [blob, info] = await Promise.all([
         fetch(`${ASSET_URL}?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.blob()),
@@ -1477,8 +1489,59 @@ export default function PaintApp() {
   }
 
   // Listeners registered once call the handlers of the latest render.
-  const latest = useRef({ keyDown, zoomBy, openFiles, pasteClip, writeSession, checkDisk, zoom: doc?.zoom ?? 1 });
-  latest.current = { keyDown, zoomBy, openFiles, pasteClip, writeSession, checkDisk, zoom: doc?.zoom ?? 1 };
+  /** What closing would leave unsaved: project files Save would write (pictures, edited palettes) and other pictures. */
+  function closingChanges(): ClosingChanges {
+    const here = projectRef.current?.path;
+    const dirty = docs.current.filter((item) => item.dirty);
+    const inProject = (item: Doc) => Boolean(item.asset && (!item.asset.project || item.asset.project === here));
+    const where = (kind: AssetKind, file: string) => kind === "stamps" ? `Cartographer/stamps/${file}` : `assets/${kind}/${file}`;
+    return {
+      project: [
+        ...dirty.filter(inProject).map((item) => ({ path: where(item.asset!.kind, item.asset!.file), detail: hasSlots(item.asset!.kind) ? "picture and tile palettes" : "picture" })),
+        ...(projectRef.current ? editedProjectPalettes() : []).map((palette) => ({ path: `project/palettes: ${palette.name}`, detail: "palette colors", palette: true })),
+      ],
+      loose: dirty.filter((item) => !inProject(item)).map((item) => item.name),
+    };
+  }
+
+  /** The desktop window wants to close: straight away when nothing is unsaved, else Unsaved changes asks first. */
+  async function requestClose(): Promise<"close" | "ask"> {
+    if (doc) dropFloat(doc);
+    await writeSession();
+    const changes = closingChanges();
+    if (!changes.project.length && !changes.loose.length) return "close";
+    setClosing({ changes, busy: false });
+    return "ask";
+  }
+
+  async function finishClose() {
+    await writeSession();
+    setClosing(null);
+    (window as PickerWindow).gbc?.closeWindow?.();
+  }
+
+  /** Save to GB Studio project: every unsaved project picture and edited palette, then close (stays open if any failed). */
+  async function saveAndClose() {
+    setClosing((now) => now && { ...now, busy: true });
+    const here = projectRef.current?.path;
+    for (const item of docs.current.filter((entry) => entry.dirty && entry.asset && (!entry.asset.project || entry.asset.project === here))) await saveDoc(item, false, false);
+    const edited = projectRef.current ? editedProjectPalettes() : [];
+    if (edited.length && await okToWriteProjectJson()) for (const palette of edited) await writeProjectPalette(palette);
+    bump();
+    const left = closingChanges();
+    if (left.project.length) { say("Some files weren't saved: they're still listed."); setClosing({ changes: left, busy: false }); return; }
+    await finishClose();
+  }
+
+  /** Discard changes: unsaved pictures close without saving (project files stay as they are on disk). */
+  async function discardAndClose() {
+    docs.current = docs.current.filter((item) => !item.dirty);
+    if (!docs.current.some((item) => item.id === activeId)) setActiveId(docs.current[0]?.id ?? null);
+    await finishClose();
+  }
+
+  const latest = useRef({ keyDown, zoomBy, openFiles, pasteClip, writeSession, checkDisk, requestClose, zoom: doc?.zoom ?? 1 });
+  latest.current = { keyDown, zoomBy, openFiles, pasteClip, writeSession, checkDisk, requestClose, zoom: doc?.zoom ?? 1 };
   // The desktop app's File menu: Close Tab (Ctrl/Cmd+W) closes the open picture, not the window.
   (window as PickerWindow & { __gbcCloseTab?: () => boolean }).__gbcCloseTab = () => { if (!doc) return false; closeDoc(doc); return true; };
 
@@ -1507,6 +1570,7 @@ export default function PaintApp() {
     window.addEventListener("pagehide", onHide);
     // The desktop app waits for this before its window closes.
     (window as PickerWindow).__gbcFlushSession = () => latest.current.writeSession();
+    (window as PickerWindow).__gbcRequestClose = () => latest.current.requestClose();
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -1870,7 +1934,7 @@ export default function PaintApp() {
   const needProject = noProject ? "Open a GB Studio project first" : null;
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
-    { thumb: "dns", name: "Day, sunset and night", icon: <PxCloudMoon size={15} />, about: "Time-of-day versions of the open picture's slot palettes, named so GB Studio events can swap them.", blocked: sceneOpen ? null : "Open a project background or sprite sheet first", onStart: () => setWizard("dns") },
+    { thumb: "dns", name: "Sunset and night", icon: <PxCloudMoon size={15} />, about: "Sunset and night versions of the open picture's slot palettes (as they are, they're the day), named so GB Studio events can swap them.", blocked: sceneOpen ? null : "Open a project background or sprite sheet first", onStart: () => setWizard("dns") },
     { thumb: "paletteSet", name: "A palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
     { thumb: "newBackground", name: "New background", icon: <FilePlus />, about: "A blank background sized in screens, with a palette set in its slots.", blocked: needProject, onStart: () => setWizard("newBackground") },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
@@ -1919,8 +1983,8 @@ export default function PaintApp() {
       <div className="app-tabs" role="tablist" aria-label="Open pictures">
         {docs.current.map((item) => (
           <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px`} onClick={() => setActiveId(item.id)}>
-            <span>{item.name}{item.dirty && <span className="dirty"> *</span>}</span>
             <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
+            <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
           </div>
         ))}
         <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
@@ -1935,6 +1999,7 @@ export default function PaintApp() {
             slotsVersion={slotsVersion}
             stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
+            onUseStamp={(asset) => void useSavedStamp(asset)}
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
@@ -2036,6 +2101,7 @@ export default function PaintApp() {
       {showMapRoom && project && <MapRoom project={project} onClose={() => setShowMapRoom(false)} onOpen={(asset) => { setProjectKind("backgrounds"); void openAsset(asset); }} onProjectChanged={async () => { await loadProject(); setSlotsVersion((value) => value + 1); }} onExport={(blob, name) => saveBlob(blob, name, PNG_TYPES)} say={say} />}
       {showDialogue && project && <DialoguePreview backgrounds={project.assets.filter((asset) => asset.kind === "backgrounds")} hasFrame={project.assets.some((asset) => asset.kind === "ui" && asset.file === "frame.png")} onClose={() => setShowDialogue(false)} />}
       {stampSave && <SaveStampDialog hint={stampSave.hint} known={[...new Set((project?.assets ?? []).flatMap((asset) => asset.tags ?? []))]} onClose={() => stampSave.resolve(null)} onSave={(save) => stampSave.resolve(save)} />}
+      {closing && <CloseWindow changes={closing.changes} busy={closing.busy} onSave={() => void saveAndClose()} onKeep={() => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { setClosing(null); (window as PickerWindow).gbc?.cancelClose?.(); }} />}
       {wizard === "dns" && doc && project && (
         <DnsWizard slots={slotPalettes.map((index) => { const palette = index >= 0 ? docPalettes[index] : null; return palette?.id ? { id: palette.id, name: palette.name, colors: [...palette.colors] } : null; })} where={slotWhere} existing={project.palettes.map((palette) => palette.name)}
           picture={{ pixels: doc.pixels, cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }} onClose={() => setWizard(null)} onCreate={addPalettes} />

@@ -1,4 +1,4 @@
-/* Day, sunset and night (src/app/DnsWizard.tsx): the step strip, the palette list, the version cards and previews. */
+/* Sunset and night (src/app/DnsWizard.tsx): the step strip, the palette list, the version cards and previews. */
 .dw-steps { display: flex; gap: 6px; margin-bottom: var(--k-4); }
 .dw-step { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; color: var(--k-ink-3); background: var(--k-sunk); border: 1px solid var(--k-edge); font: 600 var(--k-text-xs) var(--k-font); white-space: nowrap; }
 .dw-step:not(:disabled) { cursor: pointer; } .dw-step:not(:disabled):hover { border-color: var(--k-hover-edge); }

@@ -1,0 +1,6 @@
+/* Unsaved changes on closing (src/app/CloseWindow.tsx): the files that would change, one per row. */
+.cw-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; margin: 0; padding: 4px; overflow-y: auto; list-style: none; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-card); }
+.cw-list li { display: flex; align-items: center; gap: var(--k-2); min-width: 0; padding: 4px 8px; font-size: var(--k-text-sm); }
+.cw-list li svg { flex: none; color: var(--k-ink-3); }
+.cw-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-list li .k-xs { flex: none; margin-left: auto; }

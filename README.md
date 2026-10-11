@@ -47,7 +47,7 @@ palettes straight back into the project.
   and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 54 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
   window frames and cursors, tile sheets (with tall trees), whole scenes, and a village cut into Map Room screens.
-- **Wizards and generators.** A picture to a background, day / sunset / night versions of a scene's palettes, a
+- **Wizards and generators.** A picture to a background, sunset and night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
   palettes.

@@ -250,7 +250,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
     if (!picked || !valid) return;
     const four = colors.map((color) => normalize(color)!);
     const base = (name.trim() || picked.name).replace(/ [DNS]$/, "");
-    const made = (["D", "N", "S"] as const).map((variant) => ({ name: `${base} ${variant}`, colors: paletteVariant(four, variant) }));
+    const made = (["S", "N"] as const).map((variant) => ({ name: `${base} ${variant}`, colors: paletteVariant(four, variant) }));
     const list = [...mine, ...made];
     saveMine(list);
     choose("mine", mine.length);
@@ -455,7 +455,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
               <div className="k-row">
                 <input type="text" className="k-input" aria-label="Palette name" value={name} onChange={(event) => edit({ name: event.target.value })} />
                 <Button title="A copy in Mine, to edit freely" onClick={() => copyToMine(true)}>Duplicate</Button>
-                <Button disabled={!valid} title="Make D, N and S versions of this palette in Mine (D lilac, N dark and blue, S warm), modeled on the DWC set: a starting point to tune" onClick={makeVariants}>Day, night, sunset</Button>
+                <Button disabled={!valid} title="Make sunset and night versions of this palette in Mine (S warm, N dark and blue; the palette itself is the day), modeled on the DWC set: a starting point to tune" onClick={makeVariants}>Sunset and night</Button>
                 {collection !== "mine" && <Button disabled={!valid} title="Keep this palette in Mine" onClick={() => copyToMine(false)}>Copy to Mine</Button>}
               </div>
               <div className="pm-colors">

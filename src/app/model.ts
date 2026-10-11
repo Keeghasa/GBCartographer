@@ -52,8 +52,10 @@ export type PickerWindow = Window & {
   showOpenFilePicker?: (options: object) => Promise<FileHandle[]>;
   showSaveFilePicker?: (options: object) => Promise<FileHandle>;
   __gbcFlushSession?: () => Promise<boolean>;
-  /** The desktop app's bridge (electron/preload.ts): a native folder dialog. */
-  gbc?: { platform: string; chooseProject(): Promise<string | null> };
+  /** The desktop app asks before its window closes: "close" (nothing unsaved, session written) or "ask" (the page shows Unsaved changes). */
+  __gbcRequestClose?: () => Promise<"close" | "ask">;
+  /** The desktop app's bridge (electron/preload.ts): a native folder dialog, and closing the window after Unsaved changes. */
+  gbc?: { platform: string; chooseProject(): Promise<string | null>; closeWindow?(): void; cancelClose?(): void };
 };
 export const PNG_TYPES = [{ description: "PNG image", accept: { "image/png": [".png"] } }];
 

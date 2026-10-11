@@ -71,20 +71,37 @@ async function createWindow() {
     void shell.openExternal(url);
     return { action: "deny" };
   });
-  // Closing: the page gets a moment to write its session, then the window goes. One click always closes it.
-  let closing = false;
+  // Closing: the page writes its session and says whether anything is unsaved. If so it shows Unsaved changes
+  // (save to the project, keep in GB Cartographer, discard, or cancel) and closes the window itself through the
+  // bridge. A page that doesn't answer within 3 seconds doesn't hold the window open.
+  let asking = false;
   window.on("close", (event) => {
-    if (closing) return;
-    closing = true;
     event.preventDefault();
+    if (asking) return;
+    asking = true;
     const finish = () => { if (!window.isDestroyed()) window.destroy(); };
     const giveUp = setTimeout(finish, 3000);
-    window.webContents.executeJavaScript("window.__gbcFlushSession ? window.__gbcFlushSession() : true", true)
-      .catch(() => null)
-      .finally(() => { clearTimeout(giveUp); finish(); });
+    window.webContents.executeJavaScript("window.__gbcRequestClose ? window.__gbcRequestClose() : (window.__gbcFlushSession ? window.__gbcFlushSession() : true)", true)
+      .then((answer) => {
+        clearTimeout(giveUp);
+        if (answer !== "ask") return finish();
+        quitting = false;
+        if (!window.isDestroyed()) window.show();
+      })
+      .catch(() => { clearTimeout(giveUp); finish(); })
+      .finally(() => { asking = false; });
   });
   await window.loadURL(target);
 }
+
+/** Unsaved changes is done (saved, kept or discarded): the window closes; a quit that asked goes on quitting. */
+let quitAfterClose = false;
+ipcMain.on("gbc-close-window", (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window && !window.isDestroyed()) window.destroy();
+  if (quitAfterClose) app.quit();
+});
+ipcMain.on("gbc-cancel-close", () => { quitAfterClose = false; });
 
 /** The page asks for a project folder; the choice is kept for next time. Returns the folder, or null when cancelled. */
 ipcMain.handle("gbc-choose-project", async (event) => {
@@ -143,7 +160,7 @@ app.whenReady().then(() => {
   return createWindow();
 });
 let quitting = false;
-app.on("before-quit", () => { quitting = true; });
+app.on("before-quit", () => { quitting = true; quitAfterClose = true; });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin" || quitting) app.quit();
 });

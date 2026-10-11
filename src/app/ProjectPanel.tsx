@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, type Project } from "./model";
 import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
+import { Pencil } from "lucide-react";
 import { Chip, IconButton } from "../ui/kit";
 
 interface ProjectPanelProps {
@@ -21,12 +22,14 @@ interface ProjectPanelProps {
   /** How a picture stands in the painter: not open, open, or the one on show; and whether it has unsaved changes. */
   stateOf: (asset: Asset) => { open: boolean; active: boolean; dirty: boolean };
   onOpen: (asset: Asset) => void;
+  /** A saved stamp's card: a click takes it as the stamp in hand (its hover pencil opens it to edit instead). */
+  onUseStamp: (asset: Asset) => void;
   onMenu: (asset: Asset, x: number, y: number) => void;
 }
 
 const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchParams({ kind: asset.kind, file: asset.file });
 
-export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateOf, onOpen, onMenu }: ProjectPanelProps) {
+export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateOf, onOpen, onUseStamp, onMenu }: ProjectPanelProps) {
   const [filter, setFilter] = useState("");
   const [sheet, setSheet] = useState<{ kind: AssetKind; image: HTMLImageElement; cells: Map<string, SheetCell> } | null>(null);
   const [sheetFailed, setSheetFailed] = useState(false);
@@ -66,8 +69,9 @@ export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateO
             const state = stateOf(asset);
             // The thumbnail box takes the picture's own shape (kept between 4:5 and 2:1), so the picture fills it.
             const fit = { aspectRatio: String(Math.min(2, Math.max(0.8, asset.width / Math.max(1, asset.height)))) };
-            return (
-              <button key={asset.file} role="listitem" aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}`} onClick={() => onOpen(asset)}>
+            const stamp = asset.kind === "stamps";
+            const card = (
+              <button key={asset.file} role={stamp ? undefined : "listitem"} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : onOpen(asset)}>
                 {sheet?.kind === asset.kind && sheet.cells.has(asset.file)
                   ? <SheetThumb sheet={sheet.image} cell={sheet.cells.get(asset.file)!} style={fit} />
                   : !sheetFailed && sheet?.kind !== asset.kind ? <span className="gbp-asset-thumb" aria-hidden="true" style={fit} />
@@ -76,6 +80,9 @@ export function ProjectPanel({ project, kind, open, onKind, slotsVersion, stateO
                 <small>{asset.width} × {asset.height}</small>
               </button>
             );
+            return stamp
+              ? <span key={asset.file} role="listitem" className="app-stamp app-card-slot">{card}<button type="button" className="app-stamp-edit" title={`Edit ${asset.name}`} aria-label={`Edit ${asset.name}`} onClick={() => onOpen(asset)}><Pencil size={11} /></button></span>
+              : card;
           })}
           {shown.length === 0 && <p className="k-muted k-small" style={{ gridColumn: "1 / -1" }}>No {label.toLowerCase()} {wanted ? "match" : "in this project"}.</p>}
         </div>

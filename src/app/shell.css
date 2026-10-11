@@ -16,12 +16,13 @@
 
 /* Picture tabs. */
 .app-tabs { display: flex; align-items: center; gap: var(--k-1); padding: 0 var(--k-3) var(--k-1); min-height: 32px; overflow-x: auto; scrollbar-width: none; }
-.app-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 240px; height: 28px; padding: 0 4px 0 var(--k-3); color: var(--k-ink-2); background: var(--k-ctl); border: 1px solid var(--k-edge); border-radius: var(--k-r-group); font-size: var(--k-text-sm); cursor: pointer; }
+.app-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 240px; height: 28px; padding: 0 var(--k-3) 0 4px; color: var(--k-ink-2); background: var(--k-ctl); border: 1px solid var(--k-edge); border-radius: var(--k-r-group); font-size: var(--k-text-sm); cursor: pointer; }
 .app-tab > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-tab:hover { background: var(--k-hover); color: var(--k-hover-ink); }
 .app-tab.active { color: #fff; background: var(--k-raised); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); }
 .app-tab .k-btn { width: 20px; height: 20px; border-radius: 6px; } .app-tab .k-btn svg { width: 12px; height: 12px; }
-.app-tab .dirty { color: var(--k-acc-text); }
+/* Unsaved: the name in italics and orange, with a *, on tabs and cards alike. */
+.app-tab .dirty, .app-card b.dirty { color: var(--k-warn); font-style: italic; }
 
 /* The body: rail, project panel, tools, picture, inspector. */
 .app-body { min-width: 0; display: flex; gap: var(--k-2); padding: 0 var(--k-2) var(--k-2); min-height: 0; }
@@ -40,9 +41,11 @@
 /* Names sit at the foot of the card, so a row's names line up whatever its thumbnails' shapes. */
 .app-card b { margin-top: auto; }
 .app-card b { font-size: var(--k-text-sm); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-card b.dirty::after { content: " *"; color: var(--k-acc-text); }
+.app-card b.dirty::after { content: " *"; }
 .app-card small { color: var(--k-ink-3); font-size: 10px; font-variant-numeric: tabular-nums; }
 .app-card.open { background: var(--k-ctl-2); }
+/* A saved stamp's card: the card stamps with it, the pencil (on hover) opens it to edit. */
+.app-card-slot { display: flex; min-width: 0; } .app-card-slot > .app-card { flex: 1; } .app-card-slot > .app-stamp-edit { top: 6px; right: 6px; width: 22px; height: 22px; }
 
 /* Tool column: two columns of icon buttons, the view toggles, the brush size. */
 .app-tools { flex: none; width: 76px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; justify-items: center; gap: 2px; padding: 6px; overflow-y: auto; }

@@ -1,10 +1,11 @@
 /**
- * Day, sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one
- * go. Three steps: pick the palettes and times, look at the versions (with a strength and the open picture under
- * each time), then add them to the project. Versions are named "<base> D", "<base> S" and "<base> N", so with
- * Time-of-day palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
+ * Sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one go.
+ * The palettes as they are are the day (people paint the day; the author, 2026-10-10), so only sunset and night are
+ * made. Three steps: pick the palettes and times, look at the versions (with a strength and the open picture under
+ * each time), then add them to the project. Versions are named "<base> S" and "<base> N", so with Time-of-day
+ * palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
  */
-import { ArrowLeft, ArrowRight, Check, Moon, Sun, Sunset } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Moon, Sunset } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba } from "../paint";
 import { Button, Checkbox, Chip, Dialog, Field, Slider } from "../ui/kit";
@@ -27,9 +28,8 @@ export interface DnsWizardProps {
   onCreate: (palettes: { name: string; colors: string[] }[]) => Promise<number>;
 }
 
-type Time = "D" | "S" | "N";
+type Time = "S" | "N";
 const TIMES: { key: Time; name: string; icon: ReactNode; hint: string }[] = [
-  { key: "D", name: "Day", icon: <Sun size={14} />, hint: "Cooler and lilac" },
   { key: "S", name: "Sunset", icon: <Sunset size={14} />, hint: "Warm and saturated" },
   { key: "N", name: "Night", icon: <Moon size={14} />, hint: "Dark and blue" },
 ];
@@ -81,7 +81,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
 
   const [step, setStep] = useState(0);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(bases.usable.map((base) => base.id)));
-  const [times, setTimes] = useState<Set<Time>>(() => new Set<Time>(["D", "S", "N"]));
+  const [times, setTimes] = useState<Set<Time>>(() => new Set<Time>(["S", "N"]));
   const [strength, setStrength] = useState(100);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
@@ -114,7 +114,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       const version = versions.find((entry) => entry.time === time && (palette.id ? entry.base.id === palette.id : entry.base.name === palette.name));
       return version ? { ...palette, colors: version.colors } : palette;
     }));
-    return [{ key: "now", label: "As it is", rgba: draw(null) }, ...pickedTimes.map((time) => ({ key: time.key, label: time.name, rgba: draw(time.key) }))];
+    return [{ key: "now", label: "Day (as it is)", rgba: draw(null) }, ...pickedTimes.map((time) => ({ key: time.key, label: time.name, rgba: draw(time.key) }))];
   }, [step, picture, versions, pickedTimes]);
 
   const toggle = <T,>(set: Set<T>, value: T, on: boolean) => { const next = new Set(set); if (on) next.add(value); else next.delete(value); return next; };
@@ -159,6 +159,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       </div>
       <div className="k-stack k-stack--tight">
         <span className="k-eyebrow">Times to make</span>
+        <span className="k-muted k-xs">Your palettes as they are are the day.</span>
         {TIMES.map((time) => (
           <button key={time.key} type="button" className="k-card k-card--button dw-time" aria-pressed={times.has(time.key)} onClick={() => setTimes(toggle(times, time.key, !times.has(time.key)))}>
             {time.icon}<b>{time.name}</b><span className="k-muted k-xs">{time.hint}</span><span className="k-spacer" /><span className="k-muted k-xs" title={`The new palettes' names end in " ${time.key}"`}>name + {time.key}</span>
@@ -229,7 +230,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   </>;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} wide title="Day, sunset and night" sub="Time-of-day versions of your palettes, named so GB Studio events can swap them" icon={<PxCloudMoon size={18} />} footer={footer}>
+    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} wide title="Sunset and night" sub="Your palettes are the day: sunset and night versions, named so GB Studio events can swap them" icon={<PxCloudMoon size={18} />} footer={footer}>
       {steps}
       {step === 0 ? palettesStep : step === 1 ? versionsStep : createStep}
     </Dialog>
