@@ -865,11 +865,11 @@ export default function PaintApp() {
    * The wizard's result as a new background in the project: the PNG (in GB greens) goes to assets/backgrounds, the
    * palettes are added to the project and put in the default slots 1…n, and the tiles' slots are written.
    */
-  async function saveFittedBackground(result: FittedPicture, name: string): Promise<boolean> {
+  async function saveFittedBackground(result: FittedPicture, name: string, asked = false): Promise<boolean> {
     if (!projectRef.current) return false;
     // The default slots are what every scene without its own palettes uses: say so before changing them.
     const count = result.palettes.length;
-    if (count && !window.confirm(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\nThey go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
+    if (count && !asked && !window.confirm(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\nThey go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
     if (count && !await okToWriteProjectJson()) return false;
     const ids: string[] = [];
     for (const [index, colors] of result.palettes.entries()) {
@@ -903,6 +903,38 @@ export default function PaintApp() {
     await rereadSlots();
     setSlotsVersion((value) => value + 1);
     say(`Made assets/backgrounds/${made.file} with ${ids.length} palettes in slots 1–${ids.length}.${target?.dirty ? " Its tile palettes wait until GB Studio has read the project once: then Save it here again." : ""}`);
+    return true;
+  }
+
+  /**
+   * A generated map cut into one background per screen, 160 × 144 every 152 × 136 px (neighbours share a tile at each
+   * edge, as the Map Room expects), named "<name> <column>-<row>", then laid out as a Map Room map and shown there.
+   */
+  async function saveGeneratedMap(picture: Generated, name: string, columns: number, rows: number): Promise<boolean> {
+    if (!projectRef.current) return false;
+    const whole = generatedPicture(picture);
+    const taken = new Set(projectRef.current.assets.filter((item) => item.kind === "backgrounds").map((item) => item.name.toLowerCase()));
+    const clash = Array.from({ length: columns * rows }, (_, at) => `${name} ${at % columns + 1}-${Math.floor(at / columns) + 1}`).find((screen) => taken.has(screen.toLowerCase()));
+    if (clash) { say(`The project already has a background called ${clash}: pick another name.`); return false; }
+    const count = whole.palettes.length;
+    if (!window.confirm(`Make ${columns * rows} backgrounds (${name} 1-1 to ${name} ${columns}-${rows}) and a Map Room map "${name}"?${count ? `\n\nTheir ${count} palette${count === 1 ? "" : "s"} go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up).` : ""}`)) return false;
+    const W = 160, H = 144, STEP_X = 152, STEP_Y = 136, cw = cellsWide(whole.width);
+    const cells: { x: number; y: number; file: string }[] = [];
+    for (let row = 0; row < rows; row += 1) for (let column = 0; column < columns; column += 1) {
+      const x0 = column * STEP_X, y0 = row * STEP_Y;
+      const pixels = new Uint8Array(W * H), tileCells = new Uint8Array((W / CELL) * (H / CELL));
+      for (let y = 0; y < H; y += 1) pixels.set(whole.pixels.subarray((y0 + y) * whole.width + x0, (y0 + y) * whole.width + x0 + W), y * W);
+      for (let ty = 0; ty < H / CELL; ty += 1) for (let tx = 0; tx < W / CELL; tx += 1) tileCells[ty * (W / CELL) + tx] = whole.cells[(y0 / CELL + ty) * cw + x0 / CELL + tx] ?? 0;
+      const screen = `${name} ${column + 1}-${row + 1}`;
+      if (!await saveFittedBackground({ ...whole, width: W, height: H, pixels, cells: tileCells }, screen, true)) return false;
+      cells.push({ x: column, y: row, file: `${screen}.png` });
+    }
+    // The screens' tabs close again once saved (one still waiting for GB Studio stays open, unsaved).
+    for (const item of docs.current.filter((entry) => entry.asset?.kind === "backgrounds" && cells.some((cell) => cell.file === entry.asset!.file) && !entry.dirty)) dropDoc(item);
+    const maps = await fetch("./__cartographer/maps", { cache: "no-cache" }).then((response) => response.json() as Promise<{ maps?: unknown[] }>).then((result) => result.maps ?? []).catch(() => []);
+    const saved = await fetch("./__cartographer/maps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maps: [...maps, { id: `map-${Date.now().toString(36)}`, name, screen: { width: W, height: H }, overlap: 1, cells }] }) }).catch(() => null);
+    say(saved?.ok ? `Made ${cells.length} backgrounds and the Map Room map ${name}.` : `Made ${cells.length} backgrounds; the Map Room map couldn't be saved.`);
+    if (saved?.ok) setShowMapRoom(true);
     return true;
   }
 
@@ -2300,7 +2332,7 @@ export default function PaintApp() {
       )}
       {(wizard === "cave" || wizard === "world") && (
         <GeneratorWizard mode={wizard} projectName={project?.name ?? null} limit={budget.limit} onClose={() => setWizard(null)}
-          onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} />
+          onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)} />
       )}
       {wizard === "newBackground" && project && <NewBackgroundWizard projectName={project.name} palettes={project.palettes} onClose={() => setWizard(null)} onCreate={createBackground} />}
       {wizard === "budget" && doc && (

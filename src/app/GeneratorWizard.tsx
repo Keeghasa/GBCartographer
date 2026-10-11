@@ -22,6 +22,8 @@ interface Props {
   onClose: () => void;
   onOpen: (picture: Generated, name: string) => void;
   onSave: (picture: Generated, name: string) => Promise<boolean>;
+  /** Cuts it into one background per screen (sharing a tile at each edge) and lays them out as a Map Room map. */
+  onSaveMap: (picture: Generated, name: string, columns: number, rows: number) => Promise<boolean>;
 }
 
 const newSeed = () => Math.floor(Math.random() * 1_000_000);
@@ -36,7 +38,7 @@ function Setting({ label, value, unit = "", min, max, step, onChange, title }: {
   );
 }
 
-export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave }: Props) {
+export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap }: Props) {
   const [cave, setCave] = useState<CaveSettings>(() => ({ ...CAVE_DEFAULTS, seed: newSeed(), theme: "V20-5-Stone" }));
   const [world, setWorld] = useState<WorldSettings>(() => ({ ...WORLD_DEFAULTS, seed: newSeed() }));
   const [name, setName] = useState(mode === "cave" ? "Cave" : "Overworld");
@@ -66,6 +68,12 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
     setBusy(false);
     if (done) onClose();
   }
+  async function saveMap() {
+    setBusy(true);
+    const done = await onSaveMap(picture, name.trim(), columns, rows);
+    setBusy(false);
+    if (done) onClose();
+  }
 
   const reroll = <IconButton label="New layout (another seed)" onClick={() => mode === "cave" ? setC({ seed: newSeed() }) : setW({ seed: newSeed() })}><Dices /></IconButton>;
   return (
@@ -76,6 +84,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
         <span className="k-label">Name</span><input className="k-input gw-name" aria-label="Name" value={name} onChange={(event) => setName(event.target.value)} />
         <span className="k-spacer" />
         <Button onClick={() => { onOpen(picture, name.trim() || "Map"); onClose(); }} disabled={busy}>Open as picture</Button>
+        {columns * rows > 1 && <Button disabled={!projectName || !valid || busy} title={!projectName ? "Open a GB Studio project first" : `Makes ${columns * rows} backgrounds (${name.trim()} 1-1 …), one per screen sharing a tile at each edge, and a Map Room map of them`} onClick={() => void saveMap()}>Make map ({columns * rows} screens)</Button>}
         <Button variant="primary" disabled={!projectName || !valid || busy} title={!projectName ? "Open a GB Studio project first" : valid ? `Makes assets/backgrounds/${name.trim()}.png (never replaces a file)` : "Give it a name (letters, digits, spaces, - _ ( ) .)"} onClick={() => void save()}>{busy ? "Making…" : "Make background"}</Button>
       </>}>
       <div className="gw">
