@@ -50,7 +50,7 @@ palettes straight back into the project.
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
-  palettes.
+  palettes, as one background or cut into screens laid out in the Map Room.
 - **The Map Room.** Lay backgrounds out as an adventure-style grid of screens, see whether neighbouring edges
   match, add a screen next to another, and export the whole map as one picture.
 - **Palettes edited in place.** Click a shade square again to change that color; Save writes the recolored
