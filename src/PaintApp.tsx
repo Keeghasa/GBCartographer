@@ -38,7 +38,7 @@ import type { FitResult } from "./app/pictureFit";
 /** A finished picture from a wizard: shades, each tile's palette (1-based, 0 none) and those palettes. */
 type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[] };
 import { NewPictureWindow, ResizeWindow, type NewPicture } from "./app/NewPictureWindow";
-import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, type MenuEntry } from "./ui/kit";
+import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, useConfirm, type MenuEntry } from "./ui/kit";
 import "./app/shell.css";
 import { StartScreen } from "./app/StartScreen";
 import { ProjectPanel } from "./app/ProjectPanel";
@@ -114,6 +114,8 @@ export default function PaintApp() {
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
+  /** Yes / no questions in a kit dialog (in place of the browser's confirm box). */
+  const [confirmDialog, confirmBox] = useConfirm();
   /** The right-hand panel (swatches, Palettes and Picture tabs): the thin handle beside it hides and shows it. */
   const [showSide, setShowSide] = useState(() => readStored("gbc-side", true));
   /** Delete… on a picture: what goes and what mentions it, while the confirm is up. */
@@ -216,9 +218,10 @@ export default function PaintApp() {
     onPlaceText: (point) => void placeText(point),
   });
 
+  /** A message at the foot of the picture: longer ones stay longer (4 to 10 seconds); a click puts it away. */
   function say(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast((current) => current === message ? "" : current), 4000);
+    window.setTimeout(() => setToast((current) => current === message ? "" : current), Math.min(10000, 4000 + message.length * 40));
   }
 
   function setTool(next: ToolId) {
@@ -457,11 +460,11 @@ export default function PaintApp() {
     const dirty = projectDocs().filter((item) => item.dirty);
     if (!dirty.length) return true;
     const names = dirty.map((item) => item.name).join(", ");
-    if (window.confirm(`Save your changes to ${names} before leaving ${projectRef.current?.name ?? "this project"}?`)) {
+    if (await confirmBox(`Save your changes to ${names} before leaving ${projectRef.current?.name ?? "this project"}?`)) {
       await save(false);
       return !projectDocs().some((item) => item.dirty);
     }
-    return window.confirm(`Leave ${projectRef.current?.name ?? "this project"} and discard the changes to ${names}?`);
+    return await confirmBox(`Leave ${projectRef.current?.name ?? "this project"} and discard the changes to ${names}?`, { yes: "Discard and leave", danger: true });
   }
 
   /** After the project changed: the old project's pictures close (their files belong to that project). */
@@ -503,7 +506,7 @@ export default function PaintApp() {
   /** Asks for a GB Studio project folder: the desktop app's folder dialog, or a typed path on the dev server. `demo` opens a copy of the shipped demo instead. */
   async function chooseProject(demo = false, reset = false) {
     const native = (window as PickerWindow).gbc;
-    if (reset && !window.confirm("Start the demo project over? Your painted copy is moved to the backups folder (nothing is deleted), and a fresh copy of the demo opens.")) return;
+    if (reset && !await confirmBox("Start the demo project over? Your painted copy is moved to the backups folder (nothing is deleted), and a fresh copy of the demo opens.", { yes: "Start over", danger: true })) return;
     if (!await readyToLeaveProject()) return;
     const oldPath = projectRef.current?.path;
     try {
@@ -539,7 +542,7 @@ export default function PaintApp() {
     const status = await fetch("./__cartographer/gbstudio-running", { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ running?: boolean }> : null).catch(() => null);
     if (!status?.running) return true;
     gbStudioWarned.current = true;
-    return window.confirm("GB Studio looks open. It keeps the project in memory and may overwrite palettes and tile colors written here when it saves. Close it, or reload the project there afterwards.\n\nWrite anyway?");
+    return await confirmBox("GB Studio looks open. It keeps the project in memory and may overwrite palettes and tile colors written here when it saves. Close it, or reload the project there afterwards.\n\nWrite anyway?");
   }
 
   /** Doc palettes (by GB Studio id) whose colors or name differ from the project's: the active picture's copy wins. */
@@ -566,7 +569,7 @@ export default function PaintApp() {
       const post = (force: boolean) => fetch("./__cartographer/gbstudio-palette", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...palette, ...(mtime !== undefined ? { mtime } : {}), force }) });
       let response = await post(false);
       if (response.status === 409) {
-        if (!window.confirm(`${palette.name} changed on disk since the project was read (GB Studio or another app saved it). Replace it with these colors?`)) return null;
+        if (!await confirmBox(`${palette.name} changed on disk since the project was read (GB Studio or another app saved it). Replace it with these colors?`)) return null;
         response = await post(true);
       }
       const result = await response.json() as { ok?: boolean; error?: string; id?: string };
@@ -615,7 +618,7 @@ export default function PaintApp() {
   async function restoreFromBackup(file: string, version: string): Promise<boolean> {
     const match = /^assets\/(backgrounds|sprites|tilesets|fonts)\/([^/]+\.png)(\.gbsres)?$/i.exec(file);
     const open = match ? docs.current.find((item) => item.asset?.kind === match[1] && item.asset.file === match[2] && (!item.asset.project || item.asset.project === projectRef.current?.path)) : undefined;
-    if (open?.dirty && !window.confirm(`${open.name} has unsaved changes. Restoring replaces them with the backup. Go on?`)) return false;
+    if (open?.dirty && !await confirmBox(`${open.name} has unsaved changes. Restoring replaces them with the backup. Go on?`)) return false;
     if (!file.endsWith(".png") && !await okToWriteProjectJson()) return false;
     try {
       const response = await fetch("./__cartographer/backup-restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, version }) });
@@ -719,16 +722,16 @@ export default function PaintApp() {
   /** Writes the picture over its GB Studio asset (the server keeps a backup and refuses a file that changed on disk). */
   async function saveAsset(target: Doc, blob: Blob): Promise<boolean> {
     const asset = target.asset!;
-    if (asset.autoColor && !window.confirm(`${asset.name} uses GB Studio's Automatic color: GB Studio reads its colors straight from the PNG. Saving writes it in the four GB greens, so those colors are lost (the old file goes to Backups). Save anyway?`)) return false;
+    if (asset.autoColor && !await confirmBox(`${asset.name} uses GB Studio's Automatic color: GB Studio reads its colors straight from the PNG. Saving writes it in the four GB greens, so those colors are lost (the old file goes to Backups). Save anyway?`)) return false;
     if (asset.project && asset.project !== projectRef.current?.path) {
       say(`${asset.name} belongs to ${asset.project}. Open that project to save it, or use Export.`);
       return false;
     }
-    if (target.resized && !window.confirm(`Save ${asset.name} at its new size, ${target.width} × ${target.height}? The old file goes to Backups.${asset.kind === "backgrounds" ? " Scenes showing it take their size from it in GB Studio." : ""}`)) return false;
+    if (target.resized && !await confirmBox(`Save ${asset.name} at its new size, ${target.width} × ${target.height}? The old file goes to Backups.${asset.kind === "backgrounds" ? " Scenes showing it take their size from it in GB Studio." : ""}`)) return false;
     const post = (force: boolean) => fetch(`${ASSET_URL}?${assetQuery(asset)}&mtime=${asset.mtime}${force ? "&force=1" : ""}${target.resized ? "&resize=1" : ""}`, { method: "POST", body: blob });
     let response = await post(false);
     if (response.status === 409) {
-      if (!window.confirm(`${asset.name} changed on disk since you opened it (GB Studio or another app saved it). Replace it with this picture?`)) return false;
+      if (!await confirmBox(`${asset.name} changed on disk since you opened it (GB Studio or another app saved it). Replace it with this picture?`)) return false;
       response = await post(true);
     }
     const result = await response.json() as { ok?: boolean; error?: string; mtime?: number };
@@ -768,7 +771,7 @@ export default function PaintApp() {
 
   /** W4: a blank background, and with a library set its palettes added and put in the default slots. */
   async function createBackground({ name, width, height, palettes: set }: NewBackground): Promise<boolean> {
-    if (set?.length && !window.confirm(`Add the ${set.length} palettes to the project and put them in its default background slots 1–${set.length}?\n\nEvery scene without its own palettes uses the defaults (the old ones are backed up).`)) return false;
+    if (set?.length && !await confirmBox(`Add the ${set.length} palettes to the project and put them in its default background slots 1–${set.length}?\n\nEvery scene without its own palettes uses the defaults (the old ones are backed up).`)) return false;
     if (!await createPicture({ kind: "backgrounds", name, width, height })) return false;
     if (!set?.length) return true;
     if (!await okToWriteProjectJson()) return true;
@@ -830,7 +833,7 @@ export default function PaintApp() {
   /** W3: adds a palette set to the project (reusing palettes it already has), and when asked puts it in slots 1…n. */
   async function addPaletteSet(list: { name: string; colors: string[] }[], inSlots: boolean): Promise<number> {
     const target = inSlots ? setSlotsAsset() : null;
-    if (inSlots && target && !window.confirm(`Add the ${list.length} palettes to the project and put them in ${target.where}, slots 1–${list.length}?\n\nThe old settings are backed up.`)) return 0;
+    if (inSlots && target && !await confirmBox(`Add the ${list.length} palettes to the project and put them in ${target.where}, slots 1–${list.length}?\n\nThe old settings are backed up.`)) return 0;
     if (!list.length || !await okToWriteProjectJson()) return 0;
     const ids: string[] = [];
     for (const palette of list) {
@@ -870,7 +873,7 @@ export default function PaintApp() {
     if (!projectRef.current) return false;
     // The default slots are what every scene without its own palettes uses: say so before changing them.
     const count = result.palettes.length;
-    if (count && !asked && !window.confirm(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\nThey go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
+    if (count && !asked && !await confirmBox(`Make assets/backgrounds/${name}.png and add its ${count} palette${count === 1 ? "" : "s"} to the project?\n\nThey go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up). Put them in a scene's own slots later with Put in slot.`)) return false;
     if (count && !await okToWriteProjectJson()) return false;
     const ids: string[] = [];
     for (const [index, colors] of result.palettes.entries()) {
@@ -918,7 +921,7 @@ export default function PaintApp() {
     const clash = Array.from({ length: columns * rows }, (_, at) => `${name} ${at % columns + 1}-${Math.floor(at / columns) + 1}`).find((screen) => taken.has(screen.toLowerCase()));
     if (clash) { say(`The project already has a background called ${clash}: pick another name.`); return false; }
     const count = whole.palettes.length;
-    if (!window.confirm(`Make ${columns * rows} backgrounds (${name} 1-1 to ${name} ${columns}-${rows}) and a Map Room map "${name}"?${count ? `\n\nTheir ${count} palette${count === 1 ? "" : "s"} go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up).` : ""}`)) return false;
+    if (!await confirmBox(`Make ${columns * rows} backgrounds (${name} 1-1 to ${name} ${columns}-${rows}) and a Map Room map "${name}"?${count ? `\n\nTheir ${count} palette${count === 1 ? "" : "s"} go in the project's default background slots 1–${count}, which every scene without its own palettes uses (the old defaults are backed up).` : ""}`, { yes: "Make the map" })) return false;
     const W = 160, H = 144, STEP_X = 152, STEP_Y = 136, cw = cellsWide(whole.width);
     const cells: { x: number; y: number; file: string }[] = [];
     for (let row = 0; row < rows; row += 1) for (let column = 0; column < columns; column += 1) {
@@ -1057,7 +1060,7 @@ export default function PaintApp() {
     const meta = stampMeta(target.cells, target.palettes);
     let response = await postStampMeta(asset.file, meta, asset.metaMtime);
     if (response.status === 409) {
-      if (!window.confirm(`The palettes of the stamp ${asset.name} changed on disk since you opened it. Replace them?`)) return ["Stamp palettes not written"];
+      if (!await confirmBox(`The palettes of the stamp ${asset.name} changed on disk since you opened it. Replace them?`)) return ["Stamp palettes not written"];
       response = await postStampMeta(asset.file, meta, asset.metaMtime, true);
     }
     const result = await response.json().catch(() => ({})) as { ok?: boolean; error?: string; mtime?: number };
@@ -1193,7 +1196,7 @@ export default function PaintApp() {
     const post = (force: boolean) => fetch(`./__cartographer/gbstudio-tile-colors?${new URLSearchParams({ kind: asset.kind, file: asset.file })}${asset.metaMtime != null ? `&metaMtime=${asset.metaMtime}` : ""}${force ? "&force=1" : ""}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slots, ...(flagged ? { priority } : {}) }) });
     let response = await post(false);
     if (response.status === 409) {
-      if (!window.confirm(`The palettes of ${asset.name} changed in GB Studio since you opened it. Replace them with this picture's?`)) return ["Tile palettes not written"];
+      if (!await confirmBox(`The palettes of ${asset.name} changed in GB Studio since you opened it. Replace them with this picture's?`)) return ["Tile palettes not written"];
       response = await post(true);
     }
     const result = await response.json() as { ok?: boolean; error?: string; mtime?: number; changed?: boolean; cells?: number };
@@ -1241,7 +1244,7 @@ export default function PaintApp() {
     if (!target || !asset?.slots || !palette) return;
     if (!palette.id) return say(`${palette.name} is not in the project yet: add it from the palette manager first.`);
     if (asset.project && asset.project !== projectRef.current?.path) return say(`${asset.name} belongs to ${asset.project}. Open that project to change its slots.`);
-    if (slot === UI_SLOT && asset.kind !== "sprites" && !window.confirm(`Slot 8 is the UI palette: GB Studio draws dialogue boxes and menus with it. Put ${palette.name} there anyway?`)) return;
+    if (slot === UI_SLOT && asset.kind !== "sprites" && !await confirmBox(`Slot 8 is the UI palette: GB Studio draws dialogue boxes and menus with it. Put ${palette.name} there anyway?`, { yes: "Use slot 8" })) return;
     if (!await okToWriteProjectJson()) return;
     const old = asset.slots[slot];
     const oldPalette = target.palettes.find((item) => item.id === old);
@@ -1251,7 +1254,7 @@ export default function PaintApp() {
       if (response.status === 409) {
         const { current } = await response.json() as { current?: string };
         const now = target.palettes.find((item) => item.id === current)?.name ?? "another palette";
-        if (!window.confirm(`Slot ${slot + 1} changed on disk: it now holds ${now}. Replace it with ${palette.name}?`)) { await rereadSlots(); bump(); return; }
+        if (!await confirmBox(`Slot ${slot + 1} changed on disk: it now holds ${now}. Replace it with ${palette.name}?`)) { await rereadSlots(); bump(); return; }
         response = await post();
       }
       const result = await response.json() as { ok?: boolean; error?: string; slots?: string[]; scene?: string | null };
@@ -1601,6 +1604,14 @@ export default function PaintApp() {
 
   // ---- zoom --------------------------------------------------------------------------------------------------------
 
+  /** The biggest zoom step at which the whole picture fits the stage. */
+  function fitView() {
+    if (!doc) return;
+    const next = fitZoom(doc.width, doc.height);
+    flushSync(() => { doc.zoom = next; bump(); });
+    say(`Zoom ${next * 100}%: the whole picture fits.`);
+  }
+
   function zoomBy(direction: 1 | -1): number | null {
     if (!doc) return null;
     const next = nextStep(ZOOMS, doc.zoom, direction);
@@ -1634,6 +1645,7 @@ export default function PaintApp() {
         : key === "a" ? () => { if (doc) { dropFloat(doc); doc.sel = { x: 0, y: 0, w: doc.width, h: doc.height }; setToolState("select"); bump(); } }
         : key === "=" || key === "+" ? () => zoomBy(1)
         : key === "-" ? () => zoomBy(-1)
+        : key === "0" ? fitView
         : null;
       if (!action) return;
       event.preventDefault();
@@ -1650,6 +1662,12 @@ export default function PaintApp() {
     if (found) return setTool(found[0]);
     if (event.shiftKey && key === "m") return setMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length]);
     if (key === "d" && !event.shiftKey) return cyclePattern();
+    if (key === "\\") {
+      // Focus: both side panels hide (or come back) at once.
+      const show = !(showProject || showSide);
+      setShowProject(show); setShowSide(show); store("gbc-side", show);
+      return say(show ? "Panels back" : "Panels hidden: \\ brings them back");
+    }
     if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
     if (key === "f" || (key === "t" && doc?.sel)) return transformSelection(key === "t" ? "turn" : event.shiftKey ? "y" : "x");
     if (key >= "1" && key <= "4") return setShade(Number(key) - 1);
@@ -1913,9 +1931,9 @@ export default function PaintApp() {
     say(intoProject ? `${fit.report.after} palettes added to the project and put in slots 1–${fit.report.after}. Save writes the picture and its tiles' slots.` : `Fitted to ${fit.report.after} palettes. Undo brings the old colors back.`);
   }
 
-  function mergeNear() {
+  async function mergeNear() {
     if (!doc || !shownUsage || !nearCount) return;
-    if (!window.confirm(`Make ${nearCount} tile${nearCount === 1 ? "" : "s"} that differ from another tile in at most 3 pixels into copies of it? This saves ${nearCount} tile${nearCount === 1 ? "" : "s"} of the budget; undo brings them back.`)) return;
+    if (!await confirmBox(`Make ${nearCount} tile${nearCount === 1 ? "" : "s"} that differ from another tile in at most 3 pixels into copies of it? This saves ${nearCount} tile${nearCount === 1 ? "" : "s"} of the budget; undo brings them back.`, { yes: "Merge them" })) return;
     dropFloat(doc);
     pushUndo(doc);
     const merged = mergeNearTiles(doc.pixels, doc.width, doc.height, shownUsage);
@@ -2167,7 +2185,7 @@ export default function PaintApp() {
         <span className="k-seg" role="group" aria-label="File">
           <Button icon={<FilePlus />} title={project ? `A new blank picture: in ${project.name} or just here` : "A new blank picture"} onClick={() => setShowNew(true)}><span className="app-bar-label">New</span></Button>
           <Button icon={<FolderOpen />} title="Open PNG files · Ctrl+O (or drop them on the window)" onClick={() => void pickFiles()}><span className="app-bar-label">Open</span></Button>
-          <Button icon={<Save />} disabled={!doc} title={`Save every changed picture · Ctrl+S${doc?.asset ? ` (this one over ${doc.asset.file} in the project; old files go to the backups folder)` : doc?.handle ? ` (this one over ${doc.name})` : " (this one asks where)"}`} onClick={() => void save(false)}><span className="app-bar-label">Save</span></Button>
+          <Button icon={<Save />} disabled={!doc} className={docs.current.some((item) => item.dirty) ? "app-unsaved" : undefined} title={`Save every changed picture · Ctrl+S${docs.current.some((item) => item.dirty) ? ` (${docs.current.filter((item) => item.dirty).length} unsaved)` : ""}${doc?.asset ? ` (this one over ${doc.asset.file} in the project; old files go to the backups folder)` : doc?.handle ? ` (this one over ${doc.name})` : " (this one asks where)"}`} onClick={() => void save(false)}><span className="app-bar-label">Save</span></Button>
           <Menu open={Boolean(exportMenu) && Boolean(doc)} onOpenChange={(open) => setExportMenu(open ? { x: 0, y: 0 } : null)} items={exportItems} trigger={<Button icon={<Rocket />} disabled={!doc} title="Export a copy in the GB greens (Ctrl+E), or an image to share"><span className="app-bar-label">Export</span></Button>} />
         </span>
         <span className="k-seg" role="group" aria-label="Maps and palettes">
@@ -2182,7 +2200,7 @@ export default function PaintApp() {
         <span className="k-spacer" />
         <span className="k-seg app-zoom" role="group" aria-label="Zoom">
           <IconButton label="Zoom out" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(-1)}><Minus /></IconButton>
-          <b className={doc ? undefined : "k-muted"}>{doc ? `${doc.zoom * 100}%` : "–"}</b>
+          <button type="button" className="app-zoom-fit" disabled={!doc} title="Fit the picture to the window · Ctrl+0" onClick={() => fitView()}><b className={doc ? undefined : "k-muted"}>{doc ? `${doc.zoom * 100}%` : "–"}</b></button>
           <IconButton label="Zoom in" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(1)}><Plus /></IconButton>
         </span>
         <span className="k-seg" role="group" aria-label="View">
@@ -2194,9 +2212,9 @@ export default function PaintApp() {
         <IconButton label="Help: tools, keys and what Save writes" keys="?" pressed={showHelp} onClick={() => setShowHelp(!showHelp)} aria-label="Help"><PxLightbulb size={16} /></IconButton>
       </header>
       <div className="app-tabs">
-        <div className="app-tabs-scroll" ref={tabsRef} role="tablist" aria-label="Open pictures" onScroll={tabFades}>
+        <div className="app-tabs-scroll" ref={tabsRef} role="tablist" aria-label="Open pictures" onScroll={tabFades} onWheel={(event) => { if (event.deltaY && !event.deltaX && tabsRef.current) tabsRef.current.scrollLeft += event.deltaY; }}>
           {docs.current.map((item) => { const from = foreignProject(item); return (
-            <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""}`} onClick={() => setActiveId(item.id)}>
+            <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""} · middle-click closes`} onClick={() => setActiveId(item.id)} onMouseDown={(event) => { if (event.button === 1) event.preventDefault(); }} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeDoc(item); } }}>
               <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
               {from && <button type="button" className="app-tab-foreign" aria-label={`${item.name} is from another project`} title={`From another project (${from}): Save won't write it into this one. Click for Pictures from other projects.`} onClick={(event) => { event.stopPropagation(); setShowForeign(true); }}><Plane /></button>}
               <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
@@ -2231,7 +2249,7 @@ export default function PaintApp() {
           {doc?.changedOnDisk && !doc.changedOnDisk.kept && (
             <div className="k-card app-strip app-strip--alert" role="alert">
               <span className="app-strip-label"><b>{doc.name}</b> changed on disk (GB Studio or another app saved it) while you have unsaved changes here.</span>
-              <Button variant="primary" size="sm" onClick={() => { if (window.confirm(`Reload ${doc.name} from disk? Your unsaved changes here are lost.`)) { const target = doc; target.changedOnDisk = undefined; if (target.asset) void reloadAsset(target); else if (target.handle) void target.handle.getFile().then((file) => openFiles([{ file, handle: target.handle, replace: target.id }])); } }}>Reload from disk</Button>
+              <Button variant="primary" size="sm" onClick={async () => { if (await confirmBox(`Reload ${doc.name} from disk? Your unsaved changes here are lost.`, { yes: "Reload", danger: true })) { const target = doc; target.changedOnDisk = undefined; if (target.asset) void reloadAsset(target); else if (target.handle) void target.handle.getFile().then((file) => openFiles([{ file, handle: target.handle, replace: target.id }])); } }}>Reload from disk</Button>
               <Button size="sm" title="Keep painting; Save will ask before replacing the file on disk" onClick={() => { doc.changedOnDisk = { ...doc.changedOnDisk!, kept: true }; bump(); }}>Keep mine</Button>
             </div>
           )}
@@ -2312,7 +2330,7 @@ export default function PaintApp() {
           </Tooltip>
         )}
       </footer>
-      {toast && <div className="app-toast" role="status">{toast}</div>}
+      {toast && <div className="app-toast" role="status" title="Click to put it away" onClick={() => setToast("")}>{toast}</div>}
       {slotMenu && slotItems.length > 0 && <MenuAt x={slotMenu.x} y={slotMenu.y} items={slotItems} label="Put in slot" onClose={() => setSlotMenu(null)} />}
       {selectionMenu && selectionItems.length > 0 && <MenuAt x={selectionMenu.x} y={selectionMenu.y} items={selectionItems} label="Selection" onClose={() => setSelectionMenu(null)} />}
       {assetMenu && <MenuAt x={assetMenu.x} y={assetMenu.y} items={assetItems} label={assetMenu.asset.name} onClose={() => setAssetMenu(null)} />}
@@ -2329,6 +2347,7 @@ export default function PaintApp() {
         onCloseTab={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) closeDoc(item); }}
         onCloseAll={() => { const listed = docs.current.filter((item) => foreignProject(item)); for (const item of listed.filter((entry) => !entry.dirty)) dropDoc(item); const dirty = listed.find((item) => item.dirty); if (dirty) closeDoc(dirty); }}
         onClose={() => setShowForeign(false)} />}
+      {confirmDialog}
       {deleting && <DeleteAssetDialog name={deleting.asset.name} files={deleting.files} uses={deleting.uses} busy={deleting.busy} onDelete={() => void confirmDelete()} onCancel={() => setDeleting(null)} />}
       {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tab={closing.tab?.name} onSave={() => void saveAndClose()} onKeep={closing.tab ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tab = closing.tab; setClosing(null); if (!tab) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
       {wizard === "dns" && doc && project && (

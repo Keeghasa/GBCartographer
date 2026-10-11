@@ -6,7 +6,7 @@ import { PhPuzzlePiece, PhSelection, PhSticker, PxAvatar, PxHand, PxImage, PxMes
 /** id, label, icon, key, one-clause hint (status bar), the longer explanation (the ? help). */
 export const TOOLS = [
   ["pencil", "Pencil", Pencil, "B", "drag to paint · Shift-click line · right-click picks a shade", "Drag to paint with the active shade. Shift-click draws a straight line from the last point. Right-click picks the shade under the pointer."],
-  ["eraser", "Eraser", Eraser, "E", "drag to erase", "Drag to erase to the lightest shade, or to see-through in a picture that has see-through pixels."],
+  ["eraser", "Eraser", Eraser, "E", "drag to erase", "Drag to erase: to see-through on stamps, sprites and pictures with see-through pixels, else to the lightest shade."],
   ["spray", "Spray can", SprayCan, "S", "drag to scatter pixels", "Drag to scatter pixels of the active shade inside the brush."],
   ["line", "Line", LineEnds, "L", "drag from one end to the other", "Drag from one end of the line to the other."],
   ["rect", "Rectangle", Square, "R", "drag a box", "Drag a box to outline it in the active shade."],

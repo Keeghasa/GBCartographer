@@ -10,7 +10,7 @@
 import { Download, Map as MapIcon, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, gbStudioShade } from "../paint";
-import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select } from "../ui/kit";
+import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, useConfirm } from "../ui/kit";
 import { PxSnake } from "../ui/setIcons";
 import { copyEdge, edgeMatch, OFFSET, OPPOSITE, SIDES, type Picture, type Side } from "./mapEdges";
 import { MapWizard, type MapPlan } from "./MapWizard";
@@ -61,6 +61,7 @@ function tilesOf(picture: Picture) {
 }
 
 export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, say }: { project: Project; onClose: () => void; onOpen: (asset: Asset) => void; onProjectChanged: () => Promise<void>; onExport: (blob: Blob, name: string) => Promise<boolean>; say: (text: string) => void }) {
+  const [confirmDialog, confirmBox] = useConfirm();
   const [maps, setMaps] = useState<MapLayout[] | null>(null);
   const [mapId, setMapId] = useState("");
   const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
@@ -153,7 +154,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
     const post = (force: boolean) => fetch(`./__cartographer/gbstudio-asset?${query(file)}&mtime=${asset.mtime}${force ? "&force=1" : ""}`, { method: "POST", body: blob });
     let response = await post(false);
     if (response.status === 409) {
-      if (!window.confirm(`${asset.name} changed on disk since the Map Room read it. Replace it anyway?`)) return false;
+      if (!await confirmBox(`${asset.name} changed on disk since the Map Room read it. Replace it anyway?`)) return false;
       response = await post(true);
     }
     if (!response.ok) { say(`Could not write ${asset.name}: ${(await response.json().catch(() => ({ error: response.statusText })) as { error?: string }).error}`); return false; }
@@ -168,7 +169,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
     const a = pictureOf(mine.file), b = pictureOf(theirs.file);
     if (!a || !b) return;
     const [fromCell, toCell, from, to, toSide] = toNeighbour ? [mine, theirs, a, b, OPPOSITE[side]] : [theirs, mine, b, a, side];
-    if (!window.confirm(`Copy ${overlap} tile${overlap === 1 ? "" : "s"} of ${assetOf(fromCell.file)?.name}'s edge onto ${assetOf(toCell.file)?.name}? Its old file goes to Backups.`)) return;
+    if (!await confirmBox(`Copy ${overlap} tile${overlap === 1 ? "" : "s"} of ${assetOf(fromCell.file)?.name}'s edge onto ${assetOf(toCell.file)?.name}? Its old file goes to Backups.`)) return;
     setBusy(true);
     const picture = { ...to.picture, rgba: new Uint8ClampedArray(to.picture.rgba) };
     copyEdge(from.picture, picture, toSide, overlap);
@@ -224,7 +225,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
       {map ? <span className="k-muted k-small mr-legend"><i className="match" /> edge matches · <i className="differ" /> edge differs · click a screen to select, double-click to paint it</span>
         : <span className="k-muted k-small">Each screen stays a normal background PNG.</span>}
       <span className="k-spacer" />
-      {map && <Button variant="danger" icon={<Trash2 />} title="Only the layout goes; every PNG stays in the project" onClick={() => { if (window.confirm(`Delete the map ${map.name}? Only the layout goes; every PNG stays in the project.`)) { void save(maps.filter((item) => item.id !== map.id)); setMapId(""); } }}>Delete this map</Button>}
+      {map && <Button variant="danger" icon={<Trash2 />} title="Only the layout goes; every PNG stays in the project" onClick={async () => { if (await confirmBox(`Delete the map ${map.name}? Only the layout goes; every PNG stays in the project.`, { yes: "Delete the map", danger: true })) { void save(maps.filter((item) => item.id !== map.id)); setMapId(""); } }}>Delete this map</Button>}
       <Button icon={<Download />} disabled={!cells.length} title="The whole map as one PNG, in its palettes" onClick={() => void exportMap()}>Export map PNG</Button>
     </>
   );
@@ -342,6 +343,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
       </div>
       {/* Rendered inside the Map Room's dialog so it stacks over it (a nested Radix dialog: Esc closes only it). */}
       {making && <MapWizard suggestedName={maps.length ? `Map ${maps.length + 1}` : "Overworld"} backgrounds={backgrounds} onCancel={() => setMaking(false)} onCreate={newMap} />}
+      {confirmDialog}
     </Dialog>
   );
 }

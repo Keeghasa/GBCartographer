@@ -46,7 +46,8 @@
 .app-card .gbp-asset-thumb, .app-card-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; image-rendering: pixelated; background: repeating-conic-gradient(#20232a 0 25%, #17191e 0 50%) 0 0 / 12px 12px; border-radius: 6px; }
 /* Names sit at the foot of the card, so a row's names line up whatever its thumbnails' shapes. */
 .app-card b { margin-top: auto; }
-.app-card b { font-size: var(--k-text-sm); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Names get two lines (credited names run long), then an ellipsis. */
+.app-card b { font-size: var(--k-text-sm); font-weight: 500; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .app-card b.dirty::after { content: " *"; }
 .app-card small { color: var(--k-ink-3); font-size: 10px; font-variant-numeric: tabular-nums; }
 .app-card.open { background: var(--k-ctl-2); }
@@ -125,6 +126,8 @@
 .app-facts { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .app-facts b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-facts span { padding-left: 10px; color: var(--k-ink-3); font-size: var(--k-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The file path wraps (credited names run long) instead of cutting off. */
+.app-facts span.k-mono { white-space: normal; overflow-wrap: anywhere; }
 
 /* Status bar. */
 .app-status { display: flex; align-items: center; gap: var(--k-4); padding: 4px var(--k-4) 8px; color: var(--k-ink-2); font-size: var(--k-text-sm); white-space: nowrap; overflow: hidden; }
@@ -152,3 +155,8 @@
 .app-auto-item { display: flex; flex-direction: column; gap: 1px; max-width: 300px; } .app-auto-item small { color: var(--k-ink-3); white-space: normal; line-height: 1.3; }
 .k-menu-item:has(.app-auto-item) { height: auto; min-height: 30px; padding-block: 6px; align-items: flex-start; }
 .k-menu-item[data-highlighted] .app-auto-item small { color: inherit; opacity: .8; }
+/* The zoom % in the header: a click fits the picture. */
+.app-zoom-fit { padding: 0 4px; color: inherit; background: none; border: 0; border-radius: 6px; font: inherit; cursor: pointer; } .app-zoom-fit:hover:not(:disabled) { background: var(--k-hover); color: var(--k-hover-ink); } .app-zoom-fit:disabled { cursor: default; }
+.app-toast { cursor: pointer; }
+/* Something unsaved: an orange dot on the Save button (the orange of unsaved names). */
+.app-unsaved { position: relative; } .app-unsaved::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: var(--k-warn); border-radius: 50%; box-shadow: 0 0 0 2px var(--k-ctl); }

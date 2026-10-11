@@ -3,6 +3,9 @@ import { Button, Chip, Kbd } from "../ui/kit";
 import "./StartScreen.css";
 
 /** The splash without a project (dev server or desktop app): open a project, the demo, PNG files, or a recent project. It fills the window. */
+/** A path with the home folder as ~ (/Users/name, /home/name, C:\\Users\\name), shorter to read. */
+const homeShort = (path: string) => path.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Za-z]:\\Users\\[^\\]+)/, "~");
+
 export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOpenRecent, onAbout }: { recent: { name: string; path: string }[]; onChooseProject: () => void; onDemo: (() => void) | null; onOpenFiles: () => void; onOpenRecent: (path: string) => void; onAbout: () => void }) {
   return (
     <div className="ss-splash k">
@@ -21,7 +24,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       {recent.length > 0 && (
         <div className="ss-recent">
           <span className="k-eyebrow ss-recent-head">Recent</span>
-          {recent.map((item) => <button type="button" key={item.path} className="ss-row" title={item.path} onClick={() => onOpenRecent(item.path)}><b>{item.name}</b><span className="k-muted k-xs">{item.path}</span></button>)}
+          {recent.map((item) => <button type="button" key={item.path} className="ss-row" title={item.path} onClick={() => onOpenRecent(item.path)}><b>{item.name}</b><span className="k-muted k-xs">{homeShort(item.path)}</span></button>)}
         </div>
       )}
       <p className="k-muted k-xs ss-foot">Save writes only the PNG, tile and slice palettes, palette files and palette slots into your project. The old file is kept in Backups.</p>

@@ -8,7 +8,7 @@ import { ArrowDown, ArrowUp, Download, Globe, Plus, SwatchBook, Trash2, Upload }
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import library from "./palettes/library.json";
 import { closeShades, colorize, paletteVariant, shadeLut, spriteShades, type Palette } from "./paint";
-import { Button, Checkbox, Chip, Dialog, IconButton, Segmented, usePrompt } from "./ui/kit";
+import { Button, Checkbox, Chip, Dialog, IconButton, Segmented, useConfirm, usePrompt } from "./ui/kit";
 import "./PaletteManager.css";
 
 type Collection = "project" | "mine" | string;
@@ -123,6 +123,7 @@ export function addToMine(palettes: { name: string; colors: string[] }[]) {
 
 export default function PaletteManager({ projectName, projectPalettes, focus, sceneSlots, picture, onClose, onWriteProject, onPick, onSlotMenu, onRemoveProject }: PaletteManagerProps) {
   const [promptDialog, askText] = usePrompt();
+  const [confirmDialog, confirmBox] = useConfirm();
   const [collection, setCollection] = useState<Collection>(projectPalettes.length || focus ? "project" : LIBRARY[0]?.name ?? "mine");
   const [filter, setFilter] = useState("");
   const [mine, setMine] = useState<Palette[]>(() => readMine());
@@ -344,7 +345,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
 
   async function removeFromProject() {
     if (collection !== "project" || !picked?.id || !onRemoveProject || busy) return;
-    if (!window.confirm(`Take ${picked.name} out of the project? Nothing uses it; its file goes to the backups folder (Backups… can put it back).`)) return;
+    if (!await confirmBox(`Take ${picked.name} out of the project? Nothing uses it; its file goes to the backups folder (Backups… can put it back).`)) return;
     setBusy(true);
     try {
       if (await onRemoveProject(picked.id, picked.name)) choose("project", Math.max(0, selected - 1));
@@ -481,6 +482,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
         </div>
       </div>
       {promptDialog}
+      {confirmDialog}
     </Dialog>
   );
 }

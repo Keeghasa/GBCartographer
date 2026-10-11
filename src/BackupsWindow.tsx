@@ -245,6 +245,8 @@ export default function BackupsWindow({ projectName, initialFile, onClose, onRes
   const [stamp, setStamp] = useState(0);
   /** Backups from before history was kept exist (a flat folder, any project): offered as a folder to look in. */
   const [older, setOlder] = useState(false);
+  const [filter, setFilter] = useState("");
+  const wanted = filter.trim().toLowerCase();
 
   useEffect(() => {
     let live = true;
@@ -282,10 +284,12 @@ export default function BackupsWindow({ projectName, initialFile, onClose, onRes
       footer={<><span className="k-muted k-small">Restoring backs up the current file first, so you can undo it here.</span><span className="k-spacer" /><Button variant="primary" disabled={busy || !entry || !chosen} onClick={() => void restore()}>Restore this version</Button></>}>
       <div className="bw-two">
         <nav className="bw-list" aria-label="Backed-up files">
+          {(files?.length ?? 0) > 6 && <input type="search" className="k-input bw-filter" placeholder="Filter files" aria-label="Filter backed-up files" value={filter} onChange={(event) => setFilter(event.target.value)} />}
           {files === null && <p className="k-muted k-small bw-note">Reading…</p>}
           {files?.length === 0 && <p className="k-muted k-small bw-note">Nothing backed up yet. Every save keeps the file it replaces here (the last 10 versions of each).</p>}
           {older && <button type="button" className="bw-row" title="One copy per file name, from before backups kept history (any project); open the folder to look" onClick={() => void fetch("./__cartographer/reveal?backups=older", { method: "POST" })}><b>Older backups…</b><small>from before history was kept · opens the folder</small></button>}
-          {files?.map((item) => {
+          {wanted && files?.every((item) => !item.file.toLowerCase().includes(wanted)) && <p className="k-muted k-small bw-note">No backed-up file matches.</p>}
+          {files?.filter((item) => !wanted || item.file.toLowerCase().includes(wanted)).map((item) => {
             const { name, kind } = describe(item.file);
             return (
               <button type="button" key={item.file} className="bw-row" aria-pressed={item.file === picked} title={item.file} onClick={() => { setPicked(item.file); setVersion(null); }}>

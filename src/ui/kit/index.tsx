@@ -207,3 +207,24 @@ export function usePrompt(): [ReactNode, (options: AskOptions) => Promise<string
   );
   return [element, ask];
 }
+
+/**
+ * Asks a yes / no question in a kit dialog, in place of the browser's own confirm box (2026-10-11). `message` is the
+ * question; after a blank line, the rest is the explanation. Resolves to true for the yes button.
+ */
+export function useConfirm(): [ReactNode, (message: string, options?: { yes?: string; no?: string; danger?: boolean }) => Promise<boolean>] {
+  const [asking, setAsking] = useState<{ message: string; options: { yes?: string; no?: string; danger?: boolean }; resolve: (value: boolean) => void } | null>(null);
+  const ask = useCallback((message: string, options: { yes?: string; no?: string; danger?: boolean } = {}) => new Promise<boolean>((resolve) => setAsking({ message, options, resolve })), []);
+  const close = (result: boolean) => { asking?.resolve(result); setAsking(null); };
+  // The question is the first paragraph, or its first sentence when there's only one; the rest explains.
+  const paragraphs = (asking?.message ?? "").split(/\n\n/);
+  const sentence = paragraphs.length === 1 ? /^(.+?[.?!])\s+(.+)$/s.exec(paragraphs[0]) : null;
+  const [question, ...rest] = sentence ? [sentence[1], sentence[2]] : paragraphs;
+  const element = asking && (
+    <Dialog open onOpenChange={(open) => { if (!open) close(false); }} title={question}
+      footer={<><span className="k-spacer" /><Button onClick={() => close(false)}>{asking.options.no ?? "Cancel"}</Button><Button variant={asking.options.danger ? "danger" : "primary"} autoFocus onClick={() => close(true)}>{asking.options.yes ?? "OK"}</Button></>}>
+      {rest.length ? <div className="k-stack">{rest.map((paragraph, at) => <p key={at} className="k-confirm-text">{paragraph}</p>)}</div> : null}
+    </Dialog>
+  );
+  return [element, ask];
+}

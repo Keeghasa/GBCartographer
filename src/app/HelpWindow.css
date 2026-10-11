@@ -13,3 +13,6 @@
 .hp-save ul { margin: 6px 0; padding-left: 18px; }
 .hp-save code { color: var(--k-ink); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: var(--k-text-xs); }
 @media (max-width: 720px) { .hp-row { grid-template-columns: 24px 1fr; } .hp-keys, .hp-row p { grid-column: 2; } }
+/* While filtering: a section with no row left hides. */
+.hp-row[hidden], .hp-section[hidden] { display: none; }
+.hp-section:not(:has(.hp-row:not([hidden]))):has(.hp-row) { display: none; }

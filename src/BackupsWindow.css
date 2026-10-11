@@ -20,3 +20,4 @@
 .bw-color { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .bw-color i { width: 14px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px var(--k-edge-2); }
 .bw-raw { margin: 0; max-height: 320px; overflow: auto; padding: 10px 12px; color: var(--k-ink-2); background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: 6px; font-size: var(--k-text-xs); line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
+.bw-filter { flex: none; margin-bottom: var(--k-1); }

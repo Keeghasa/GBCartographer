@@ -1,13 +1,24 @@
 import { Info, Keyboard } from "lucide-react";
-import type { ReactNode } from "react";
+import { createContext, isValidElement, useContext, useState, type ReactNode } from "react";
 import { Button, Dialog, Kbd } from "../ui/kit";
 import { TOOLS } from "./tools";
 import "./HelpWindow.css";
 
-/** One line of help: an optional icon, the name, its keys, and what it does. */
+/** The words a piece of help says (for the filter). */
+function words(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(words).join(" ");
+  if (isValidElement<{ children?: ReactNode }>(node)) return words(node.props.children);
+  return "";
+}
+const Filter = createContext("");
+
+/** One line of help: an optional icon, the name, its keys, and what it does. Hidden when the filter doesn't find it. */
 function Row({ icon, name, keys = [], children }: { icon?: ReactNode; name: string; keys?: string[]; children: ReactNode }) {
+  const wanted = useContext(Filter);
+  const hidden = Boolean(wanted) && !`${name} ${keys.join(" ")} ${words(children)}`.toLowerCase().includes(wanted);
   return (
-    <div className="hp-row">
+    <div className="hp-row" hidden={hidden}>
       <span className="hp-icon">{icon}</span>
       <b>{name}</b>
       <span className="hp-keys">{keys.map((key) => <Kbd key={key}>{key}</Kbd>)}</span>
@@ -22,10 +33,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 /** The ? window: every tool with its key and the long explanation, the other keys, and what Save writes. */
 export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout: () => void }) {
+  const [filter, setFilter] = useState("");
   return (
+    <Filter.Provider value={filter.trim().toLowerCase()}>
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide tall title="Tools and keys" icon={<Keyboard size={18} />}
       headExtra={<Button variant="ghost" size="sm" icon={<Info />} onClick={onAbout}>About · v{__APP_VERSION__}</Button>}>
       <div className="k-stack k-stack--loose">
+        <input type="search" className="k-input" autoFocus placeholder="Find a tool or key (say “stamp” or “Ctrl+Z”)" aria-label="Find a tool or key" value={filter} onChange={(event) => setFilter(event.target.value)} />
         <Section title="Tools">
           {TOOLS.map(([id, label, Icon, keys, , long]) => <Row key={id} icon={<Icon size={16} />} name={label} keys={[keys]}>{long}</Row>)}
         </Section>
@@ -47,25 +61,30 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Open, save, export" keys={["Ctrl+O", "Ctrl+S", "Ctrl+E"]}>Open PNGs, save, export a copy.</Row>
           <Row name="Undo, redo" keys={["Ctrl+Z", "Ctrl+Shift+Z"]}>Undo also brings back palette colors changed in the sidebar.</Row>
           <Row name="Zoom" keys={["Ctrl+=", "Ctrl+-"]}>Zoom in and out.</Row>
+          <Row name="Fit" keys={["Ctrl+0"]}>The biggest zoom that shows the whole picture (or click the zoom % in the header).</Row>
+          <Row name="Hide the panels" keys={["\\"]}>Hides both side panels for room to paint, and brings them back. The empty part of the left rail and the gap beside the right panel hide one each.</Row>
         </Section>
         <Section title="Tabs">
           <Row name="Next, previous" keys={["Ctrl+Tab", "Ctrl+PgDn", "Ctrl+PgUp"]}>The next and previous picture (Shift+Ctrl+Tab goes back).</Row>
-          <Row name="Close" keys={["Alt+W"]}>Closes the picture (Ctrl+W too, in the desktop app).</Row>
+          <Row name="Close" keys={["Alt+W", "Middle-click"]}>Closes the picture (Ctrl+W too, in the desktop app); middle-click a tab to close it. The mouse wheel scrolls the tab strip.</Row>
         </Section>
-        <section className="hp-section">
+        <section className="hp-section" hidden={Boolean(filter.trim())}>
           <h3 className="k-eyebrow">What Save writes</h3>
           <div className="k-well hp-save">
             <p>Into a GB Studio project, Save writes only:</p>
             <ul>
-              <li>the PNG (same size, or the new size after Resize), and a new PNG from New</li>
+              <li>the PNG (same size, or the new size after Resize), and new PNGs from New, the wizards, the Map Room, Graphics or Duplicate (never replacing a file)</li>
               <li>a background's tile palettes (<code>tileColors</code>) and a sprite sheet's slice palettes (<code>paletteIndex</code>)</li>
               <li>palette files from the palette manager</li>
               <li>when you put a palette in a slot: the scene's palette list or the project's default palettes</li>
+              <li>its own folder, <code>Cartographer/</code>: saved stamps and Map Room maps</li>
+              <li>Delete (asked every time) moves a picture's files into the backups</li>
             </ul>
             <p className="k-muted">Nothing else. The old file is backed up first (Backups… in the project menu).</p>
           </div>
         </section>
       </div>
     </Dialog>
+    </Filter.Provider>
   );
 }
