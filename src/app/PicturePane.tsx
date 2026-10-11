@@ -6,7 +6,9 @@
 import { CELL, type Look } from "../paint";
 import { FONTS, type FontChoice } from "../ui/theme";
 import { BUDGETS, BUILT_IN_TINTS, type Doc } from "./model";
-import { Button, Meter, Segmented, Select } from "../ui/kit";
+import { Pause, Play } from "lucide-react";
+import { Button, IconButton, Meter, Segmented, Select } from "../ui/kit";
+import { TIMES, type TimeKey } from "./useTimeOfDay";
 
 interface Props {
   doc: Doc | null;
@@ -20,11 +22,13 @@ interface Props {
   /** The tile budget view's counts, once worked out. */
   usage: { usedOnce: number; nearCount: number } | null;
   budgetView: boolean; onBudgetView: (on: boolean) => void; onMerge: () => void;
+  /** Time of day (view only): which, whether it plays through a day, and how many palettes have versions. */
+  time: TimeKey; onTime: (key: TimeKey) => void; playing: boolean; onPlaying: (on: boolean) => void; timesAvailable: number;
 }
 
 const LOOKS: [Look, string, string][] = [["plain", "Plain", "As the file and palettes say"], ["dmg", "GB", "Game Boy: green LCD, shades only"], ["pocket", "Pocket", "Game Boy Pocket: grey, shades only"], ["gbc", "GBC", "Game Boy Color: its screen's colors"]];
 
-export function PicturePane({ doc, tileCount, budget, onBudget, look, onLook, tint, onTint, paletteNames, customTint, onCustomTint, font, onFont, onResize, onFit, usage, budgetView, onBudgetView, onMerge }: Props) {
+export function PicturePane({ time, onTime, playing, onPlaying, timesAvailable, doc, tileCount, budget, onBudget, look, onLook, tint, onTint, paletteNames, customTint, onCustomTint, font, onFont, onResize, onFit, usage, budgetView, onBudgetView, onMerge }: Props) {
   const folder = doc?.asset ? (doc.asset.kind === "stamps" ? "Cartographer/stamps" : `assets/${doc.asset.kind}`) : "";
   return (
     <>
@@ -53,6 +57,14 @@ export function PicturePane({ doc, tileCount, budget, onBudget, look, onLook, ti
       <section className="app-section">
         <span className="k-label">Tile budget</span>
         <Segmented fill size="sm" label="Tile budget" value={budget.id as string} onChange={onBudget} options={BUDGETS.map((item) => ({ value: item.id, label: `${item.id === "colorOnly" ? "Color" : "Mono"} · ${item.limit}`, title: item.label }))} />
+      </section>
+      <section className="app-section" title="The picture with each palette's dawn, sunset or night version (names ending in D, S or N), fading between them. The palettes as painted are the day. Nothing is saved.">
+        <span className="k-label">Time of day{timesAvailable ? null : <span className="k-muted"> · no versions yet</span>}</span>
+        <div className="k-row">
+          <Segmented fill size="sm" label="Time of day" value={time} onChange={(key) => onTime(key as TimeKey)} options={TIMES.map(({ key, name }) => ({ value: key, label: name, disabled: !timesAvailable && key !== "day" }))} />
+          <IconButton size="sm" label={playing ? "Stop" : "Play a day (dawn, day, sunset, night)"} pressed={playing} disabled={!timesAvailable} onClick={() => onPlaying(!playing)}>{playing ? <Pause /> : <Play />}</IconButton>
+        </div>
+        {!timesAvailable && <span className="k-muted k-xs">Make dawn, sunset and night versions with the Dawn, sunset and night wizard.</span>}
       </section>
       <section className="app-section" title="How the picture shows while you paint, like a real Game Boy screen. Never saved.">
         <span className="k-label">Screen</span>

@@ -33,10 +33,10 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonProps & { label: s
 });
 
 /** Pick one of a few (Radix toggle group): screen look, tile budget, export size. */
-export function Segmented<T extends string>({ value, onChange, options, fill, label, size }: { value: T; onChange: (value: T) => void; options: { value: T; label: ReactNode; title?: string }[]; fill?: boolean; label: string; size?: "sm" }) {
+export function Segmented<T extends string>({ value, onChange, options, fill, label, size }: { value: T; onChange: (value: T) => void; options: { value: T; label: ReactNode; title?: string; disabled?: boolean }[]; fill?: boolean; label: string; size?: "sm" }) {
   return (
     <ToggleGroup.Root type="single" aria-label={label} className={cx("k-seg", fill && "k-seg--fill")} value={value} onValueChange={(next) => next && onChange(next as T)}>
-      {options.map((option) => <ToggleGroup.Item key={option.value} value={option.value} title={option.title} className={cx("k-btn", size && `k-btn--${size}`)}>{option.label}</ToggleGroup.Item>)}
+      {options.map((option) => <ToggleGroup.Item key={option.value} value={option.value} title={option.title} disabled={option.disabled} className={cx("k-btn", size && `k-btn--${size}`)}>{option.label}</ToggleGroup.Item>)}
     </ToggleGroup.Root>
   );
 }

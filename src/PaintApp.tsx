@@ -57,6 +57,7 @@ import { encodeText, fetchFontMap, glyphOf, textWidth } from "./gb/font";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
+import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -193,7 +194,9 @@ export default function PaintApp() {
   const docPalettes = doc?.palettes ?? palettes;
   // On a sprite sheet a palette's color 0 is see-through, so its colors 1-3 dress the shades.
   const shown = (colors: readonly string[]) => doc?.keyGreen ? spriteShades(colors) : colors;
-  const luts = [tintColors, ...docPalettes.map((palette) => shown(palette.colors))].map((colors) => shadeLut(colors));
+  // The Picture tab's time of day: each palette drawn as its dawn / sunset / night version (view only).
+  const timeOfDay = useTimeOfDay();
+  const luts = [tintColors, ...docPalettes.map((palette) => shown(timeColors(palette, palettes, timeOfDay.view)))].map((colors) => shadeLut(colors));
   const picked = activePalette ? docPalettes[activePalette - 1] : undefined;
   const swatchColors = picked ? shown(picked.colors) : tintColors;
   const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id }) => ({ name, colors: [...colors], ...(id ? { id } : {}) }));
@@ -2140,7 +2143,7 @@ export default function PaintApp() {
                 onRecolor={recolorPalette} say={say} copiedColors={copiedColors} onCopy={(colors) => { setCopiedColors(colors); say(`Copied the colors of ${picked?.name}`); }} />
             </Tabs.Content>
             <Tabs.Content value="picture" className="app-side-body">
-              <PicturePane doc={doc} tileCount={tileCount} budget={budget} onBudget={setBudgetId} look={look} onLook={(next) => { setLook(next); store(LOOK_KEY, next); }}
+              <PicturePane time={timeOfDay.view.to} onTime={(key) => { timeOfDay.setPlaying(false); timeOfDay.go(key); }} playing={timeOfDay.playing} onPlaying={timeOfDay.setPlaying} timesAvailable={palettesWithTimes(docPalettes, palettes)} doc={doc} tileCount={tileCount} budget={budget} onBudget={setBudgetId} look={look} onLook={(next) => { setLook(next); store(LOOK_KEY, next); }}
                 tint={tint} onTint={setTint} paletteNames={palettes.map(({ name }) => name)} customTint={customTint} onCustomTint={setCustomTint} font={font} onFont={(next) => { setFont(next); applyFont(next); }}
                 onResize={() => setShowResize(true)} onFit={() => { if (!doc) return; const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); setFitting(toRgba(flat, doc.cells, doc.width, doc.palettes)); }}
                 usage={shownUsage ? { usedOnce, nearCount } : null} budgetView={budgetView} onBudgetView={setBudgetView} onMerge={mergeNear} />
@@ -2152,6 +2155,7 @@ export default function PaintApp() {
         <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>
         <span ref={readoutRef} className="gbp-readout" />
         <span className="k-spacer" />
+        {timeOfDay.view.to !== "day" && <Button size="sm" title="The picture shows its palettes' time-of-day versions (Picture tab → Time of day); nothing is changed. Click for day." onClick={() => { timeOfDay.setPlaying(false); timeOfDay.go("day"); }}>{TIMES.find((time) => time.key === timeOfDay.view.to)?.name} preview<X /></Button>}
         {look !== "plain" && <Button size="sm" title="The picture shows like a real screen (Picture tab → Screen); the file is unchanged. Click for plain." onClick={() => { setLook("plain"); store(LOOK_KEY, "plain"); }}>{lookName}<X /></Button>}
         {doc?.sel && <span>Selection {doc.sel.w} × {doc.sel.h} at {doc.sel.x}, {doc.sel.y}</span>}
         {doc && <span title={doc.asset ? `${doc.asset.kind === "stamps" ? "Cartographer/stamps" : `assets/${doc.asset.kind}`}/${doc.asset.file}` : doc.name}>{doc.width} × {doc.height} · {Math.ceil(doc.width / CELL)} × {Math.ceil(doc.height / CELL)} tiles</span>}
