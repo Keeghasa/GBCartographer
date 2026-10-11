@@ -52,7 +52,8 @@ export function contrastPairs(detail: string): [number, number][] {
 
 /** The other palettes a "same colors" detail names ("The same four colors as A, B."), checked against the known names. */
 export function twinNames(detail: string, known: readonly string[]): string[] {
-  const list = detail.replace(/^The same four colors as /, "").replace(/\.$/, "");
+  // The first sentence only: a second one may name the palettes' dawn / sunset / night versions.
+  const list = detail.replace(/^The same four colors as /, "").split(/\.(?:\s|$)/)[0];
   // Known names first (a name may hold a comma); otherwise the plain comma split.
   const found = known.filter((name) => list === name || list.startsWith(`${name}, `) || list.endsWith(`, ${name}`) || list.includes(`, ${name}, `));
   return found.length ? found : list.split(", ").filter(Boolean);

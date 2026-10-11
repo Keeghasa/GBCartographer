@@ -683,7 +683,7 @@ const fromHsl = (h: number, s: number, l: number): string => {
 const pullHue = (from: number, to: number, amount: number) => { const turn = ((to - from + 540) % 360) - 180; return (from + turn * amount + 360) % 360; };
 
 /**
- * Day-to-night variants of a palette, as a starting point: D cooler and lilac, N dark and blue, S warm and
+ * Time-of-day variants of a day palette, as a starting point: D (dawn) cooler and lilac, N dark and blue, S warm and
  * saturated. Modeled on how the author's DWC set's D, N and S palettes differ from their base palettes.
  */
 export function paletteVariant(colors: readonly string[], variant: "D" | "N" | "S"): string[] {

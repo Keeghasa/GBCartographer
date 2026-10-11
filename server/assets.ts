@@ -704,7 +704,7 @@ export function writeAsset(path: string, bytes: Buffer, backup: Backup, expected
   return { mtime: statSync(path).mtimeMs, backup: copy };
 }
 
-export interface HealthIssue { level: "problem" | "warning" | "note"; kind: AssetKind | "palettes" | "project"; file?: string; title: string; detail: string }
+export interface HealthIssue { level: "problem" | "warning" | "note"; kind: AssetKind | "palettes" | "project"; file?: string; title: string; detail: string; /** More, shown on hover (e.g. the contrast numbers). */ tip?: string }
 
 /** Unique tile counts by file time (decoding every background is the slow part of a health check). */
 const tileCountCache = new Map<string, number>();
@@ -765,25 +765,44 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   // Time-of-day versions (DWC-2-Computer N) of a palette the project has: unused is expected (events switch them
   // in) and night or sunset ones are meant to be dim, so they skip those two checks; one note counts them.
   let variants = 0;
+  // Same-color pairs are gathered first, so a palette and its dawn / sunset / night versions make one note.
+  const twins: { name: string; twin: string[] }[] = [];
   for (const entry of usage) {
     const palette = byId.get(entry.id);
     if (!palette) continue;
     const variant = timeVariant(palette.name);
     if (variant && names.has(variant.base)) {
       variants += 1;
-      const twin = entry.sameColors.map((id) => byId.get(id)?.name).filter(Boolean);
-      if (twin.length && palette.name.localeCompare(String(twin[0])) < 0) issues.push({ level: "note", kind: "palettes", file: palette.name, title: "Same colors as another", detail: `The same four colors as ${twin.join(", ")}.` });
+      const twin = entry.sameColors.map((id) => byId.get(id)?.name).filter((name): name is string => Boolean(name));
+      if (twin.length && palette.name.localeCompare(twin[0]) < 0) twins.push({ name: palette.name, twin });
       continue;
     }
     if (!entry.uses.length) issues.push({ level: "note", kind: "palettes", file: palette.name, title: "Unused palette", detail: "No scene or default uses it (an event may still switch to it)." });
-    const twin = entry.sameColors.map((id) => byId.get(id)?.name).filter(Boolean);
-    if (twin.length && palette.name.localeCompare(String(twin[0])) < 0) issues.push({ level: "note", kind: "palettes", file: palette.name, title: "Same colors as another", detail: `The same four colors as ${twin.join(", ")}.` });
+    const twin = entry.sameColors.map((id) => byId.get(id)?.name).filter((name): name is string => Boolean(name));
+    if (twin.length && palette.name.localeCompare(twin[0]) < 0) twins.push({ name: palette.name, twin });
     // A palette used only for sprites shows colors 1–3 (color 0 is see-through), so only those are compared.
     const spriteOnly = entry.uses.length > 0 && entry.uses.every((use) => use.kind === "sprite");
     const close = closeShades(palette.colors, spriteOnly);
-    if (close.length) issues.push({ level: "warning", kind: "palettes", file: palette.name, title: "Low contrast", detail: (close.map(({ a, b, delta }) => delta === 0 ? `colors ${a + 1} and ${b + 1} are the same color` : `colors ${a + 1} and ${b + 1} are too alike (${delta})`).join("; ") + " (12 or more tells apart well).").replace(/^c/, "C") });
+    if (close.length) issues.push({ level: "warning", kind: "palettes", file: palette.name, title: "Low contrast",
+      detail: (close.map(({ a, b, delta }) => `colors ${a + 1} and ${b + 1} ${delta === 0 ? "are the same color" : "are hard to tell apart"}`).join("; ") + ".").replace(/^c/, "C"),
+      tip: close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1}: difference ${delta}`).join(" · ") + " (12 or more tells apart well)" });
   }
-  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Day, night and sunset versions (names ending in D, N or S) of the project's palettes: events switch them in, so being unused or dim is expected." });
+  // One note per family: "A has B's colors", and when their dawn / sunset / night versions match too, it says so.
+  const family = (name: string) => { const variant = timeVariant(name); return variant && names.has(variant.base) ? variant.base : name; };
+  const groups = new Map<string, { name: string; twin: string[] }[]>();
+  for (const pair of twins) {
+    const key = `${family(pair.name)}\u0000${pair.twin.map(family).join(",")}`;
+    groups.set(key, [...groups.get(key) ?? [], pair]);
+  }
+  const TIME_WORDS: Record<string, string> = { D: "dawn", S: "sunset", N: "night" };
+  for (const group of groups.values()) {
+    const lead = group.find((pair) => family(pair.name) === pair.name) ?? group[0];
+    const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is "D" | "N" | "S" => Boolean(time)).sort((a, b) => "DSN".indexOf(a) - "DSN".indexOf(b));
+    const words = times.map((time) => TIME_WORDS[time]);
+    const also = times.length ? ` Its ${words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0]} version${times.length === 1 ? "" : "s"} (${times.join(", ")}) match ${[...new Set(lead.twin.map(family))].join(", ")}'s too.` : "";
+    issues.push({ level: "note", kind: "palettes", file: lead.name, title: "Same colors as another", detail: `The same four colors as ${lead.twin.join(", ")}.${also}` });
+  }
+  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Dawn, sunset and night versions (names ending in D, S or N) of the project's palettes: events switch them in, so being unused or dim is expected." });
   const order = { problem: 0, warning: 1, note: 2 };
   issues.sort((a, b) => order[a.level] - order[b.level]);
   // Pictures GB Studio hasn't read yet: one note each when there are a few, one note for all of them past five.

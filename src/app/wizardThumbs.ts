@@ -48,11 +48,11 @@ export function wizardThumb(id: WizardThumb): Generated {
     return out;
   }
   if (id === "dns") {
-    // One scene in three strips: day (the palette as it is), sunset, night.
-    const out = blank(["DWC-1-Cliffs", "DWC-1-Cliffs S", "DWC-1-Cliffs N"]), p = new Pen(out);
+    // One scene in four strips: day (the palette as painted), dawn, sunset, night.
+    const out = blank(["DWC-1-Cliffs", "DWC-1-Cliffs D", "DWC-1-Cliffs S", "DWC-1-Cliffs N"]), p = new Pen(out);
     landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
     for (let y = 0; y < 12; y += 4) p.dot(10 + y * 10, 6 + y, 1);
-    wearBox(out, 0, 0, 56, 96, 1); wearBox(out, 56, 0, 48, 96, 2); wearBox(out, 104, 0, 56, 96, 3);
+    wearBox(out, 0, 0, 40, 96, 1); wearBox(out, 40, 0, 40, 96, 2); wearBox(out, 80, 0, 40, 96, 3); wearBox(out, 120, 0, 40, 96, 4);
     return out;
   }
   if (id === "paletteSet") {

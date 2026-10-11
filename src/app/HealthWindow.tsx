@@ -5,7 +5,7 @@ import { PxHeart } from "../ui/setIcons";
 import type { AssetKind } from "./model";
 import "./HealthWindow.css";
 
-export interface HealthIssue { level: "problem" | "warning" | "note"; kind: AssetKind | "palettes" | "project"; file?: string; title: string; detail: string }
+export interface HealthIssue { level: "problem" | "warning" | "note"; kind: AssetKind | "palettes" | "project"; file?: string; title: string; detail: string; tip?: string }
 
 const LEVELS = { problem: "Problems", warning: "Worth a look", note: "Notes" } as const;
 const COUNT = { problem: ["problem", "problems"], warning: ["warning", "warnings"], note: ["note", "notes"] } as const;
@@ -55,7 +55,7 @@ export function HealthWindow({ projectName, onClose, onOpen }: { projectName: st
                     <div className="hw-text">
                       <b>{issue.title}</b>
                       {issue.file && <small>{KIND_WORD[issue.kind] ?? issue.kind} · {issue.file}</small>}
-                      <span>{issue.detail}</span>
+                      <span title={issue.tip}>{issue.detail}</span>
                     </div>
                     {openable && <Button size="sm" onClick={(event) => { event.stopPropagation(); open(issue); }}>Open</Button>}
                   </div>

@@ -77,7 +77,7 @@ export function PxLightbulb({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M9 4h6v2H9zM7 6h2v2H7zm8 0h2v2h-2zm4-2h2v2h-2zm2-2h2v2h-2zM0 10h3v2H0zm21 0h3v2h-3zM3 4h2v2H3zM1 2h2v2H1zm6 12h2v2H7zm8 0h2v2h-2zM5 8h2v6H5zm12 0h2v6h-2zm-8 8h6v2H9zm0 4h6v2H9zm0-2h2v2H9zm4 0h2v2h-2zM11 0h2v3h-2z"]} />;
 }
 
-/** Pixelarticons: cloud-moon (the Day / Night / Sunset wizard). */
+/** Pixelarticons: cloud-moon (the Dawn, sunset and night wizard). */
 export function PxCloudMoon({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M14 22H4v-2h10v2ZM4 20H2v-4h2v4Zm12 0h-2v-4h2v4Zm-6-2H8v-2h2v2Zm-2-2H4v-2h4v2Zm6 0h-2v-2h2v2Zm6 0h-2v-2h2v2Zm-8-2H8v-2h4v2Zm10 0h-2v-4h-2V8h2V6h2v8Zm-4-2h-4v-2h4v2ZM8 10H6V6h2v4Zm6 0h-2V6h2v4Zm-4-4H8V4h2v2Zm8-2h-2v2h-2V4h-4V2h8v2Z"]} />;
 }

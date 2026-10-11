@@ -37,7 +37,7 @@ palettes straight back into the project.
   I to pick a tile's palette. Save writes them as GB Studio does: `tileColors`, or a sprite slice's `paletteIndex`.
 - **Put a palette in a slot.** Right-click a palette (in the sidebar or the palette manager) to place it in one of
   the eight slots: the scene's palette list, or the project's default palettes. The optional **Time-of-day palettes**
-  switch lets day / night / sunset versions (`Forest Trees N`) save as their base palette's slot.
+  switch lets dawn / sunset / night versions (`Forest Trees D`, `S`, `N`) save as their base palette's slot.
 - **A palette manager.** The project's palettes, a bundled library (Game Boy classics and the author's own CC0
   sets) and your own, with a live preview of the open picture; add palettes to the project or edit its own, and
   see which scenes use each one (unused and duplicate palettes are marked, and an unused one can be taken out);
@@ -47,7 +47,7 @@ palettes straight back into the project.
   and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 54 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
   window frames and cursors, tile sheets (with tall trees), whole scenes, and a village cut into Map Room screens.
-- **Wizards and generators.** A picture to a background, sunset and night versions of a scene's palettes (as painted, they're the day), a
+- **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
   palettes.
