@@ -44,9 +44,9 @@ palettes straight back into the project.
   import palettes from Lospec `.hex` or GIMP `.gpl` files and export your own as JSON.
 - **Graphics.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
-  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 54 placeholder graphics (CC0) to
+  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 56 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
-  window frames and cursors, tile sheets (with tall trees), whole scenes, and a village cut into Map Room screens.
+  window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, and box and Wang auto-tile templates.
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
@@ -61,19 +61,23 @@ palettes straight back into the project.
   even into another picture.
 - **Tile tools.** Linked tiles (paint one tile and every identical copy follows), a seamless view that repeats the
   tile under the pointer 3 × 3, a priority brush for tiles drawn over sprites, saved stamps with their palettes,
-  and a text tool that types with the project's own font sheets.
+  auto-tile stamps (**9**: a box stretched over a dragged rectangle; **W**: the 47-tile Wang set, each tile fitting
+  its neighbours), and a text tool that types with the project's own font sheets (their GB Studio 4.3 character maps
+  too).
 - **New pictures and resizing.** Make a new background, sprite sheet or tileset in the project, or resize one in
   whole tiles.
 - **GB Studio's limits in view.** A tile counter shows unique 8 × 8 tiles against the 192 / 384 budget (with a view
   of which tiles repeat), an overlay shows where each 160 × 144 screen falls, and Project health lists what GB
   Studio will trip on (sizes, tile budgets, missing sidecars, palettes) with a click to each one.
-- **Screen looks.** See a picture as it shows on a Game Boy, a Game Boy Pocket or a Game Boy Color screen; the file
-  stays as it is.
+- **Screen looks and time of day.** See a picture as it shows on a Game Boy, a Game Boy Pocket or a Game Boy Color
+  screen, or at dawn, sunset or night (its palettes' D, S and N versions, fading between them); the file stays as it is.
 - **Sprite frames and font samples.** A sprite sheet shows its animations' frames above it (and plays them at GB
   Studio's speed, or walking over one of the project's backgrounds); a font sheet shows a sample sentence set in
   its own glyphs.
 - **Export to share.** Any picture as shown, in its palettes, or in the greens, scaled up 2× to 8× with crisp pixels,
   and a sprite's animation as a looping GIF.
+- **Tidy the project panel.** Hide pictures you don't need (they wait, greyed, at the bottom), duplicate one to make
+  a variant, or delete one (asked every time; its files go to the backups).
 - **Careful with your files.** The last 10 versions of every file it overwrites, restorable from **Backups…**; a
   warning when a file changed on disk (pictures GB Studio changes reload by themselves) or GB Studio is open; and a
   short, fixed list of what it ever writes (below).
@@ -151,9 +155,11 @@ GB Cartographer is careful with your game files. It only ever writes:
   in its `scene.gbsres`), or of the project's default palettes (`defaultBackgroundPaletteIds` or
   `defaultSpritePaletteIds` in `project/settings.gbsres`);
 - its own folder, `Cartographer/`, beside `assets/` and `project/`: saved stamps in `Cartographer/stamps/` (a PNG
-  each, its tile palettes in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`, and a
+  each, its tile palettes, tags and auto-tile in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`, and a
   `README.txt` saying what the folder is. GB Studio
   doesn't read this folder; it travels with your project.
+
+And when you **Delete** a picture (it asks every time), its PNG and sidecar move into GB Cartographer's backups.
 
 Every other field of those files, and every other file in the project, is left untouched. Before each write the
 old file is copied to GB Cartographer's backups folder (the last 10 versions of each file, kept per project; **Backups…** in the project menu shows them and puts one back), and a file that changed on disk
