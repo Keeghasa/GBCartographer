@@ -56,6 +56,7 @@ import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
 import { encodeText, fetchFontMap, glyphOf, textWidth } from "./gb/font";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
+import type { CaveTiles } from "./app/generators";
 import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
@@ -936,6 +937,23 @@ export default function PaintApp() {
     say(saved?.ok ? `Made ${cells.length} backgrounds and the Map Room map ${name}.` : `Made ${cells.length} backgrounds; the Map Room map couldn't be saved.`);
     if (saved?.ok) setShowMapRoom(true);
     return true;
+  }
+
+  /** A cave tile sheet from one of the project's auto-tile stamps (its shades; the generator's palettes color it). */
+  async function loadCaveTiles(asset: Asset): Promise<CaveTiles | null> {
+    try {
+      const blob = await fetch(`${ASSET_URL}?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.blob());
+      const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+      const canvas = Object.assign(document.createElement("canvas"), { width: bitmap.width, height: bitmap.height });
+      const context = canvas.getContext("2d", { willReadFrequently: true })!;
+      context.drawImage(bitmap, 0, 0);
+      const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, false, false);
+      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" ? asset.autotile : null;
+      return kind ? { kind, pixels: Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
+    } catch {
+      say(`The stamp ${asset.name} could not be read.`);
+      return null;
+    }
   }
 
   /** A generated map as a fitted picture: its tiles' palettes when it has them, else every tile in the greens. */
@@ -2342,7 +2360,8 @@ export default function PaintApp() {
       )}
       {(wizard === "cave" || wizard === "world") && (
         <GeneratorWizard mode={wizard} projectName={project?.name ?? null} limit={budget.limit} onClose={() => setWizard(null)}
-          onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)} />
+          onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
+          tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
       {wizard === "newBackground" && project && <NewBackgroundWizard projectName={project.name} palettes={project.palettes} onClose={() => setWizard(null)} onCreate={createBackground} />}
       {wizard === "budget" && doc && (

@@ -5,6 +5,7 @@
  * (0 lightest … 3 darkest): placeholder art to paint over. Few distinct cells, so the tile count stays low.
  */
 
+import { edgeMask, maskAt, slot16, wangSlot } from "./autotile";
 import { Pen } from "../graphics/pen";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 
@@ -191,12 +192,17 @@ function placeStairs(grid: Uint8Array, w: number, h: number) {
   grid[a] = 2; grid[b] = 2;
 }
 
+/** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
+export interface CaveTiles { kind: "wallface" | "wang" | "edges"; pixels: Uint8Array; width: number }
+
 /**
  * The cave drawn in the author's style (2026-10-10), tile by tile: black for nothing (shade 3), light floors (shade 1),
  * and dark walls (shade 2) two tiles tall wherever nothing sits right above a floor, outlined in white (shade 0) on
  * every side that doesn't meet more wall. Stairs are a box of steps on the floor.
+ * With `tiles`, the project's own auto-tile stamp draws it instead: a wall-face sheet (F) the floor, walls and
+ * nothing; a Wang sheet (W, or E for edges only) the rock around the floor (the floor stays plain).
  */
-export function drawCave(settings: CaveSettings): Generated {
+export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Generated {
   const { w, h, grid } = caveGrid(settings);
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
@@ -206,8 +212,27 @@ export function drawCave(settings: CaveSettings): Generated {
   const tw = w * per, th = h * per;
   const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < tw && y < th && grid[Math.floor(y / per) * w + Math.floor(x / per)] !== 1;
   const wall = (x: number, y: number) => x >= 0 && y >= 0 && x < tw && y < th && !floor(x, y) && (floor(x, y + 1) || (floor(x, y + 2) && !floor(x, y + 1)));
+  const blit = (x: number, y: number, column: number, row: number) => {
+    for (let py = 0; py < 8; py += 1) out.pixels.set(tiles!.pixels.subarray((row * 8 + py) * tiles!.width + column * 8, (row * 8 + py) * tiles!.width + column * 8 + 8), (y * 8 + py) * out.width + x * 8);
+  };
   for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
+    if (tiles?.kind === "wallface") {
+      // As the Wall face stamp paints (usePainting): floor, the lower and upper wall rows with their ends, nothing.
+      const kind = (kx: number, ky: number) => floor(kx, ky) ? "floor" : floor(kx, ky + 1) ? "lower" : floor(kx, ky + 2) ? "upper" : "none";
+      const here = kind(x, y);
+      if (here === "floor" || here === "none") { blit(x, y, here === "floor" ? 0 : 1, 0); continue; }
+      const left = kind(x - 1, y) !== here, right = kind(x + 1, y) !== here;
+      blit(x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+      continue;
+    }
+    if (tiles && !floor(x, y)) {
+      // Rock as a Wang area: off the map counts as rock.
+      const rock = (rx: number, ry: number) => rx < 0 || ry < 0 || rx >= tw || ry >= th || !floor(rx, ry);
+      const slot = tiles.kind === "wang" ? wangSlot(maskAt(rock, x, y)) : slot16(edgeMask(rock, x, y));
+      blit(x, y, slot.column, slot.row);
+      continue;
+    }
     if (floor(x, y)) { pen.fill(1); continue; }
     if (!wall(x, y)) { pen.fill(3); continue; }
     pen.fill(2);

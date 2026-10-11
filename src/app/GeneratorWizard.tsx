@@ -8,7 +8,9 @@ import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
 import { Button, Chip, Dialog, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
-import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, type Generated, type WorldSettings } from "./generators";
+import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
+import type { Asset } from "./model";
+import { autotileOf } from "./autotile";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -24,6 +26,9 @@ interface Props {
   onSave: (picture: Generated, name: string) => Promise<boolean>;
   /** Cuts it into one background per screen (sharing a tile at each edge) and lays them out as a Map Room map. */
   onSaveMap: (picture: Generated, name: string, columns: number, rows: number) => Promise<boolean>;
+  /** The project's stamps a cave can be drawn with (Wall face F, Wang W, Wang edges E), and how to read one. */
+  tileStamps: Asset[];
+  loadTiles: (stamp: Asset) => Promise<CaveTiles | null>;
 }
 
 const newSeed = () => Math.floor(Math.random() * 1_000_000);
@@ -38,7 +43,7 @@ function Setting({ label, value, unit = "", min, max, step, onChange, title }: {
   );
 }
 
-export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap }: Props) {
+export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap, tileStamps, loadTiles }: Props) {
   const [cave, setCave] = useState<CaveSettings>(() => ({ ...CAVE_DEFAULTS, seed: newSeed(), theme: "V20-5-Stone" }));
   const [world, setWorld] = useState<WorldSettings>(() => ({ ...WORLD_DEFAULTS, seed: newSeed() }));
   const [name, setName] = useState(mode === "cave" ? "Cave" : "Overworld");
@@ -49,7 +54,17 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   const theme = themeOf(themes, (mode === "cave" ? cave.theme : world.theme) ?? "");
   const columns = mode === "cave" ? cave.columns : world.columns, rows = mode === "cave" ? cave.rows : world.rows;
 
-  const picture = useMemo(() => mode === "cave" ? drawCave(cave) : drawWorld(world), [mode, cave, world]);
+  // The cave's tiles: placeholder art, or one of the project's F / W / E stamps.
+  const [tilesFile, setTilesFile] = useState("");
+  const [sheet, setSheet] = useState<CaveTiles | null>(null);
+  useEffect(() => {
+    let live = true;
+    const stamp = tileStamps.find((item) => item.file === tilesFile);
+    if (!stamp) { setSheet(null); return; }
+    void loadTiles(stamp).then((loaded) => { if (live) setSheet(loaded); });
+    return () => { live = false; };
+  }, [tilesFile]);
+  const picture = useMemo(() => mode === "cave" ? drawCave(cave, sheet) : drawWorld(world), [mode, cave, world, sheet]);
   const tiles = useMemo(() => countUniqueTiles(picture.pixels, picture.width, picture.height, false), [picture]);
 
   // A state ref: the dialog mounts its content after this component's first effects, so redraw when the canvas arrives.
@@ -94,6 +109,11 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
               options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
+          {mode === "cave" && <div className="k-stack k-stack--tight" title="Draw the cave with one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
+            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)}
+              options={[{ value: "placeholder", label: "Placeholder art" }, ...tileStamps.map((stamp) => { const glyph = autotileOf(stamp.autotile)?.glyph ?? ""; return { value: stamp.file, label: stamp.name.endsWith(`(${glyph})`) ? stamp.name : `${stamp.name} (${glyph})` }; })]} />
+            <span className="k-muted k-xs">{tileStamps.length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Graphics → Art → Auto-tiles) can draw it"}</span>
+          </div>}
           {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (name === "Cave" || name === "Dungeon") setName(style === "cave" ? "Cave" : "Dungeon"); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
           <Setting label="Screens tall" value={rows} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ rows: value }) : setW({ rows: value })} />
