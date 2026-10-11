@@ -4,3 +4,4 @@
 .cw-list li svg { flex: none; color: var(--k-ink-3); }
 .cw-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cw-list li .k-xs { flex: none; margin-left: auto; }
+.cw-thumb { flex: none; width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; background: repeating-conic-gradient(#20232a 0 25%, #17191e 0 50%) 0 0 / 8px 8px; border-radius: 4px; }

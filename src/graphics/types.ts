@@ -11,4 +11,6 @@ export interface WireAsset {
   /** What it is for, and how GB Studio reads it. */
   about?: string;
   make: () => Canvas;
+  /** A stamp template that is an auto-tile (src/app/autotile.ts): added with its 9 or W already set. */
+  autotile?: "box" | "wang";
 }

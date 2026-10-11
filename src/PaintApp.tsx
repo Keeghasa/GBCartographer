@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane } from "lucide-react";
+import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -56,8 +56,10 @@ import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
 import { encodeText, fetchFontMap, glyphOf, textWidth } from "./gb/font";
 import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
+import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
+import { canBox, canWang } from "./app/autotile";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -111,6 +113,8 @@ export default function PaintApp() {
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
+  /** Delete… on a picture: what goes and what mentions it, while the confirm is up. */
+  const [deleting, setDeleting] = useState<{ asset: Asset; files: string[]; uses: string[]; busy: boolean } | null>(null);
   const [showHealth, setShowHealth] = useState(false);
   const [showPictureWizard, setShowPictureWizard] = useState(false);
   /** The wizard open (W2…W8 from the Wizards menu), if any. */
@@ -216,7 +220,7 @@ export default function PaintApp() {
 
   function setTool(next: ToolId) {
     // Picking the stamp with a selection makes the selection the stamp.
-    if (next === "stamp" && doc?.sel) takeStamp(doc, doc.sel);
+    if (next === "stamp" && doc?.sel) { takeStamp(doc, doc.sel); heldStamp.current = null; }
     if (doc && next !== "select" && next !== "move" && next !== "hand") dropFloat(doc);
     if (next !== "eyedropper" && next !== "hand") paintTool.current = next;
     setToolState(next);
@@ -373,7 +377,7 @@ export default function PaintApp() {
         if (old < 0) last = id;
         // Backgrounds and tilesets: each tile's priority flag (bit 7: draws over sprites).
         const flags = asset && info && (asset.kind === "backgrounds" || asset.kind === "tilesets") ? Array.from({ length: picture.cells.length }, (_, cell) => (info.tileColors[cell] ?? 0) >= 0 && (info.tileColors[cell] ?? 0) & 0x80 ? 1 : 0) : null;
-        const opened: Doc = { id, ...(handle && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? file.name, width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen, palettes: picture.palettes, undo: [], redo: [], dirty: false, handle, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
+        const opened: Doc = { id, ...(handle && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? file.name, width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: false, handle, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
         if (old >= 0) docs.current[old] = opened;
         else docs.current.push(opened);
         if (old >= 0) continue;
@@ -1043,6 +1047,24 @@ export default function PaintApp() {
   }
 
   /** Picks up a saved stamp as the stamp in hand, with its tile palettes, and switches to the Stamp tool. */
+  /** What a saved stamp's 9 / W setting makes of it at this size (autotile.ts), and a note when the size doesn't fit. */
+  function autotileOf(asset: Asset, w: number, h: number): { flags: { box?: boolean; wang?: boolean }; note: string } {
+    if (asset.autotile === "box") return canBox(w, h) ? { flags: { box: true }, note: " Box (9): drag a rectangle." } : { flags: {}, note: " (Box needs whole tiles, at least 3 × 3.)" };
+    if (asset.autotile === "wang") return canWang(w, h) ? { flags: { wang: true }, note: " Wang (W): paint tiles and they fit together; Alt clears." } : { flags: {}, note: " (Wang needs a sheet of 8 × 6 tiles.)" };
+    return { flags: {}, note: " Click or drag to stamp it on the grid." };
+  }
+
+  /** Sets a saved stamp's auto-tile (9 box, W Wang, or none) in its own sidecar; the stamp in hand follows. */
+  async function setStampAutotile(asset: Asset, autotile: "box" | "wang" | null) {
+    const response = await fetch(`./__cartographer/stamp-autotile?${new URLSearchParams({ file: asset.file })}`, { method: "POST", body: JSON.stringify({ autotile }) }).catch(() => null);
+    if (!response?.ok) { say(`Could not change ${asset.name}: ${response?.statusText ?? "no answer"}`); return; }
+    await loadProject();
+    const fresh = projectRef.current?.assets.find((item) => item.kind === "stamps" && item.file === asset.file);
+    if (fresh && heldStamp.current === asset.file) await useSavedStamp(fresh);
+    else say(`${asset.name}: ${autotile === "box" ? "box auto-tile (9)" : autotile === "wang" ? "Wang auto-tile (W)" : "a plain stamp"}.`);
+  }
+  const heldStamp = useRef<string | null>(null);
+
   async function useSavedStamp(asset: Asset) {
     await palettesReady.current;
     if (!doc) return say(`Open a picture first, then click ${asset.name} to stamp it on.`);
@@ -1050,9 +1072,11 @@ export default function PaintApp() {
     const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file);
     if (open && open !== doc) {
       const whole = open.width % CELL === 0 && open.height % CELL === 0;
-      setStamp({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes) });
+      const auto = autotileOf(asset, open.width, open.height);
+      setStamp({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes), ...auto.flags });
+      heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
-      return say(`Stamp: ${asset.name} (${open.width} × ${open.height}). Click or drag to stamp it on the grid.`);
+      return say(`Stamp: ${asset.name} (${open.width} × ${open.height}).${auto.note}`);
     }
     try {
       const [blob, info] = await Promise.all([
@@ -1067,9 +1091,11 @@ export default function PaintApp() {
       const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, false, false);
       const tinted = info.tileColors.length ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
       const whole = bitmap.width % CELL === 0 && bitmap.height % CELL === 0;
-      setStamp({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes) });
+      const auto = autotileOf(asset, bitmap.width, bitmap.height);
+      setStamp({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags });
+      heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
-      say(`Stamp: ${asset.name} (${bitmap.width} × ${bitmap.height}). Click or drag to stamp it on the grid.`);
+      say(`Stamp: ${asset.name} (${bitmap.width} × ${bitmap.height}).${auto.note}`);
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
     }
@@ -1434,6 +1460,48 @@ export default function PaintApp() {
     say(`Saved ${item.name} into ${projectRef.current?.name ?? "the project"} as ${result.file} (its tile palettes stay behind). The other project's tab is still open.`);
   }
 
+  /** A copy of a picture beside it ("<name> copy"), as a new PNG; a stamp keeps its tile palettes, tags and auto-tile. */
+  async function duplicateAsset(asset: Asset) {
+    const taken = new Set(projectRef.current?.assets.filter((item) => item.kind === asset.kind).map((item) => item.name.toLowerCase()));
+    let name = `${asset.name} copy`, count = 1;
+    while (taken.has(name.toLowerCase())) name = `${asset.name} copy ${++count}`;
+    const blob = await fetch(`${ASSET_URL}?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.blob()).catch(() => null);
+    if (!blob) return say(`Could not read ${asset.name}.`);
+    const response = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind: asset.kind, name })}`, { method: "POST", body: blob }).catch(() => null);
+    const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;
+    if (!response?.ok || !result?.ok || !result.file) return say(`Could not duplicate ${asset.name}: ${result?.error ?? response?.statusText ?? "no answer"}`);
+    if (asset.kind === "stamps") {
+      const info = await fetch(`${ASSET_URL}-info?${assetQuery(asset)}`, { cache: "no-cache" }).then((reply) => reply.json() as Promise<AssetInfo>).catch(() => null);
+      if (info && (info.tileColors.length || asset.tags?.length)) await postStampMeta(result.file, { slots: info.slots, tileColors: info.tileColors, tags: asset.tags ?? [] }, null);
+      if (asset.autotile) await fetch(`./__cartographer/stamp-autotile?${new URLSearchParams({ file: result.file })}`, { method: "POST", body: JSON.stringify({ autotile: asset.autotile }) }).catch(() => null);
+    }
+    await loadProject();
+    const made = projectRef.current?.assets.find((item) => item.kind === asset.kind && item.file === result.file);
+    if (made) await openAsset(made);
+    say(`Duplicated ${asset.name} as ${result.file}${asset.kind !== "stamps" && hasSlots(asset.kind) ? " (GB Studio adds its settings; the tile palettes stay with the original)" : ""}.`);
+  }
+
+  async function askDelete(asset: Asset) {
+    const check = await fetch(`./__cartographer/gbstudio-asset-delete?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.json() as Promise<{ ok?: boolean; files?: string[]; uses?: string[]; error?: string }>).catch(() => null);
+    if (!check?.ok) return say(`Could not check ${asset.name}: ${check?.error ?? "no answer"}`);
+    setDeleting({ asset, files: check.files ?? [], uses: check.uses ?? [], busy: false });
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    const { asset } = deleting;
+    setDeleting({ ...deleting, busy: true });
+    const response = await fetch(`./__cartographer/gbstudio-asset-delete?${assetQuery(asset)}`, { method: "POST" }).catch(() => null);
+    const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; files?: string[] } | null : null;
+    setDeleting(null);
+    if (!response?.ok || !result?.ok) return say(`Could not delete ${asset.name}: ${result?.error ?? response?.statusText ?? "no answer"}`);
+    // Its tab closes (the file is gone; Backups can bring it back).
+    const here = projectRef.current?.path;
+    for (const item of docs.current.filter((entry) => entry.asset?.kind === asset.kind && entry.asset.file === asset.file && (!entry.asset.project || entry.asset.project === here))) dropDoc(item);
+    await loadProject();
+    say(`Deleted ${asset.name}: ${result.files?.length === 1 ? "its file is" : `${result.files?.length ?? 0} files are`} in the backups (Backups… puts ${result.files?.length === 1 ? "it" : "them"} back).`);
+  }
+
   /** Closes a tab; one with unsaved changes asks first (Unsaved changes: save, discard or cancel). */
   function closeDoc(target: Doc) {
     if (target.dirty) { setClosing({ changes: closingChanges([target]), busy: false, tab: target }); return; }
@@ -1545,6 +1613,15 @@ export default function PaintApp() {
 
   // Listeners registered once call the handlers of the latest render.
   /** What closing would leave unsaved: project files Save would write (pictures, edited palettes) and other pictures. */
+  /** A small picture of an open picture as it is now (unsaved edits too), for the Unsaved changes list. */
+  function thumbOf(item: Doc): string | undefined {
+    try {
+      const canvas = Object.assign(document.createElement("canvas"), { width: item.width, height: item.height });
+      canvas.getContext("2d")!.putImageData(new ImageData(toRgba(item.pixels, item.cells, item.width, item.palettes), item.width, item.height), 0, 0);
+      return canvas.toDataURL("image/png");
+    } catch { return undefined; }
+  }
+
   function closingChanges(only?: Doc[]): ClosingChanges {
     const here = projectRef.current?.path;
     const dirty = (only ?? docs.current).filter((item) => item.dirty);
@@ -1552,10 +1629,10 @@ export default function PaintApp() {
     const where = (kind: AssetKind, file: string) => kind === "stamps" ? `Cartographer/stamps/${file}` : `assets/${kind}/${file}`;
     return {
       project: [
-        ...dirty.filter(inProject).map((item) => ({ path: where(item.asset!.kind, item.asset!.file), detail: hasSlots(item.asset!.kind) ? "picture and tile palettes" : "picture" })),
+        ...dirty.filter(inProject).map((item) => ({ path: where(item.asset!.kind, item.asset!.file), detail: hasSlots(item.asset!.kind) ? "picture and tile palettes" : "picture", thumb: thumbOf(item) })),
         ...(projectRef.current && !only ? editedProjectPalettes() : []).map((palette) => ({ path: `project/palettes: ${palette.name}`, detail: "palette colors", palette: true })),
       ],
-      loose: dirty.filter((item) => !inProject(item)).map((item) => item.name),
+      loose: dirty.filter((item) => !inProject(item)).map((item) => ({ name: item.name, thumb: thumbOf(item) })),
     };
   }
 
@@ -1619,7 +1696,7 @@ export default function PaintApp() {
       .then(() => sessionStore<{ active: number; docs: Omit<Doc, "id" | "undo" | "redo" | "sel" | "float">[] }>("readonly", (objects) => objects.get("open")))
       .then((session) => {
         if (!session?.docs?.length || docs.current.length) return;
-        docs.current = session.docs.map((saved, index) => ({ ...saved, palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: index + 1, undo: [], redo: [], sel: null, float: null }));
+        docs.current = session.docs.map((saved, index) => ({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: index + 1, undo: [], redo: [], sel: null, float: null }));
         setActiveId(docs.current[Math.max(0, session.active)]?.id ?? docs.current[0].id);
         void rereadSlots();
       });
@@ -1997,8 +2074,11 @@ export default function PaintApp() {
     { label: FILE_MANAGER_LABEL, icon: <FolderSearch />, onSelect: () => void fetch(`./__cartographer/reveal?${assetQuery(assetMenu.asset)}`, { method: "POST" }) },
     { label: "Copy file path", icon: <Copy />, onSelect: () => void navigator.clipboard?.writeText(`${project?.path ?? ""}/${assetFolder(assetMenu.asset)}/${assetMenu.asset.file}`).then(() => say("Copied the file path")) },
     { label: "Earlier versions…", icon: <History />, onSelect: () => setBackups({ file: `${assetFolder(assetMenu.asset)}/${assetMenu.asset.file}` }) },
+    { label: "Duplicate", icon: <CopyPlus />, title: "A new PNG beside it, to make a variant (never replaces a file)", onSelect: () => void duplicateAsset(assetMenu.asset) },
     { separator: true },
     { label: "Show project folder", icon: <FolderTree />, onSelect: () => void fetch("./__cartographer/reveal", { method: "POST" }) },
+    { separator: true },
+    { label: "Delete…", icon: <Trash2 />, title: "Asks first: the files go to the backups", onSelect: () => void askDelete(assetMenu.asset) },
   ] : [];
   // The wizards (W1…W8, the author's picks 2026-10-10); the text tool (W5) is in the tool column.
   const noProject = !project, sceneOpen = Boolean(doc?.asset?.slots?.length);
@@ -2076,13 +2156,14 @@ export default function PaintApp() {
             stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file && !foreignProject(item)); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
             onUseStamp={(asset) => void useSavedStamp(asset)}
+            onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)}
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
         <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
-          {doc && tool === "stamp" && project && project.assets.some((asset) => asset.kind === "stamps") && <StampsStrip stamps={project.assets.filter((asset) => asset.kind === "stamps")} slotsVersion={slotsVersion} onUse={(asset) => void useSavedStamp(asset)} onOpen={(asset) => { setProjectKind("stamps"); void openAsset(asset); }} />}
+          {doc && tool === "stamp" && project && project.assets.some((asset) => asset.kind === "stamps") && <StampsStrip stamps={project.assets.filter((asset) => asset.kind === "stamps")} slotsVersion={slotsVersion} onUse={(asset) => void useSavedStamp(asset)} onOpen={(asset) => { setProjectKind("stamps"); void openAsset(asset); }} onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)} />}
           {doc && frames.length > 0 && <FramesStrip animations={animations} frame={frame} onFrame={setFrame} playing={playing} onPlaying={setPlaying} animSpeed={animSpeed} fps={fps} canvases={frameCanvases} onBackground={project?.assets.some((asset) => asset.kind === "backgrounds") ? () => setOnBackground(composeFrames()) : undefined} backgrounds={project?.assets.filter((asset) => asset.kind === "backgrounds") ?? []} />}
           {doc?.changedOnDisk && !doc.changedOnDisk.kept && (
             <div className="k-card app-strip app-strip--alert" role="alert">
@@ -2184,6 +2265,7 @@ export default function PaintApp() {
         onCloseTab={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) closeDoc(item); }}
         onCloseAll={() => { const listed = docs.current.filter((item) => foreignProject(item)); for (const item of listed.filter((entry) => !entry.dirty)) dropDoc(item); const dirty = listed.find((item) => item.dirty); if (dirty) closeDoc(dirty); }}
         onClose={() => setShowForeign(false)} />}
+      {deleting && <DeleteAssetDialog name={deleting.asset.name} files={deleting.files} uses={deleting.uses} busy={deleting.busy} onDelete={() => void confirmDelete()} onCancel={() => setDeleting(null)} />}
       {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tab={closing.tab?.name} onSave={() => void saveAndClose()} onKeep={closing.tab ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tab = closing.tab; setClosing(null); if (!tab) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
       {wizard === "dns" && doc && project && (
         <DnsWizard slots={slotPalettes.map((index) => { const palette = index >= 0 ? docPalettes[index] : null; return palette?.id ? { id: palette.id, name: palette.name, colors: [...palette.colors] } : null; })} where={slotWhere} existing={project.palettes.map((palette) => palette.name)}
@@ -2199,12 +2281,16 @@ export default function PaintApp() {
         <StoreWindow projectName={project?.name ?? null} projectPalettes={project?.palettes ?? []} onClose={() => setShowStore(false)}
           onAddToProject={async (list) => { const written = await addPalettes(list); if (written) say(`Added ${written} palette${written === 1 ? "" : "s"} to the project.`); return written; }}
           onAddToMine={(list) => { addToMine(list); say(`${list.length} palette${list.length === 1 ? "" : "s"} kept in Mine.`); }}
-          onAddArt={(asset, art) => {
+          onAddArt={async (asset, art) => {
             // A name the project doesn't use yet in that kind ("Hero", "Hero 2", …): new pictures never replace a file.
             const taken = new Set(projectRef.current?.assets.filter((item) => item.kind === asset.kind).map((item) => item.name.toLowerCase()));
             let name = asset.name, count = 1;
             while (taken.has(name.toLowerCase())) name = `${asset.name} ${++count}`;
-            return createPicture({ kind: asset.kind, name, width: art.width, height: art.height, pixels: art.pixels });
+            const made = await createPicture({ kind: asset.kind, name, width: art.width, height: art.height, pixels: art.pixels });
+            // An auto-tile template arrives with its 9 or W set.
+            const stamp = made && asset.autotile ? projectRef.current?.assets.find((item) => item.kind === "stamps" && item.name === name) : undefined;
+            if (stamp && asset.autotile) await setStampAutotile(stamp, asset.autotile);
+            return made;
           }}
           onOpenArt={(asset, art) => { void createPicture({ kind: null, name: asset.name, width: art.width, height: art.height, pixels: art.pixels }); setShowStore(false); }} />
       )}

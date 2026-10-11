@@ -39,7 +39,7 @@ const sidecarOf = (path: string, kind: AssetKind) => kind === "stamps" ? `${path
 /** Where backups go: the backups folder and the project the written file belongs to (see backups.ts). */
 export interface Backup { dir: string; project: string }
 
-export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[] }
+export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[]; /** A stamp drawn as an auto-tile (its own sidecar): "box" stretches it over a dragged rectangle, "wang" fits each tile to its neighbours. */ autotile?: "box" | "wang" }
 export interface ProjectPalette { id: string; name: string; colors: string[]; /** The palette file's modification time (for the changed-on-disk check). */ mtime: number }
 /**
  * What GB Cartographer needs besides the pixels. `tileColors`: one attribute per 8 × 8 cell whose low three bits are the
@@ -179,8 +179,9 @@ export function listAssets(project: string): AssetEntry[] {
       if (!size) continue;
       const sidecar = readJson(`${path}.gbsres`);
       const name = typeof sidecar?.name === "string" && sidecar.name ? sidecar.name : file.replace(/\.png$/i, "");
-      const tags = kind === "stamps" ? stampTags(readJson(`${path}.json`)) : undefined;
-      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}) });
+      const meta = kind === "stamps" ? readJson(`${path}.json`) : null;
+      const tags = kind === "stamps" ? stampTags(meta) : undefined;
+      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}), ...(meta?.autotile === "box" || meta?.autotile === "wang" ? { autotile: meta.autotile as "box" | "wang" } : {}) });
     }
   }
   return entries;
@@ -407,6 +408,27 @@ export function removePalette(project: string, id: string, backup: Backup): { fi
   backupFile(backup.dir, backup.project, join(folder, file));
   unlinkSync(join(folder, file));
   return { file };
+}
+
+/** A picture's files (the PNG, its GB Studio sidecar, a stamp's own .json) and the project files that mention it by id. */
+export function assetDeleteCheck(project: string, kind: AssetKind, path: string): { files: string[]; uses: string[] } {
+  const files = [path, `${path}.gbsres`, ...(kind === "stamps" ? [`${path}.json`] : [])].filter((file) => existsSync(file));
+  const id = readJson(`${path}.gbsres`)?.id;
+  return { files: files.map((file) => file.slice(project.length + 1).split("\\").join("/")), uses: typeof id === "string" && id ? paletteMentions(project, id) : [] };
+}
+
+/**
+ * Deletes a picture the author asked to delete (confirmed every time, 2026-10-10): its PNG, GB Studio sidecar and a
+ * stamp's own .json go to the backups folder (Backups can put them back), never straight to nothing.
+ */
+export function deleteAsset(project: string, kind: AssetKind, path: string, backup: Backup): { files: string[] } {
+  const { files } = assetDeleteCheck(project, kind, path);
+  for (const file of files) {
+    const full = join(project, file);
+    backupFile(backup.dir, backup.project, full);
+    unlinkSync(full);
+  }
+  return { files };
 }
 
 /**
@@ -674,7 +696,20 @@ export function writeStampMeta(path: string, slots: readonly string[], tileColor
   if (existsSync(meta) && !force && expectedMtime !== null && Math.abs(statSync(meta).mtimeMs - expectedMtime) > 1) throw new AssetWriteError("The stamp's palettes changed on disk since it was opened.", 409, statSync(meta).mtimeMs);
   // Tags not sent stay as they are (an edited stamp's palettes are written without them).
   const kept = tags === undefined ? stampTags(readJson(meta)) : stampTags({ tags });
-  const clean = { _resourceType: "cartographerStamp", slots: slots.slice(0, 8).map((id) => typeof id === "string" ? id : ""), tileColors: tileColors.map((value) => Number.isInteger(value) && value >= 0 && value < 8 ? value : -1), ...(kept.length ? { tags: kept } : {}) };
+  const oldAutotile = readJson(meta)?.autotile;
+  const autotile = oldAutotile === "box" || oldAutotile === "wang" ? { autotile: oldAutotile } : {};
+  const clean = { _resourceType: "cartographerStamp", slots: slots.slice(0, 8).map((id) => typeof id === "string" ? id : ""), tileColors: tileColors.map((value) => Number.isInteger(value) && value >= 0 && value < 8 ? value : -1), ...(kept.length ? { tags: kept } : {}), ...autotile };
+  if (existsSync(meta)) return { mtime: writeSidecar(meta, clean, backup) };
+  writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`);
+  return { mtime: statSync(meta).mtimeMs };
+}
+
+/** Sets a stamp's auto-tile ("box", "wang" or none) in its own sidecar (Cartographer/stamps/<file>.json; backed up first). */
+export function writeStampAutotile(path: string, autotile: "box" | "wang" | null, backup: Backup): { mtime: number } {
+  const meta = `${path}.json`;
+  const old = readJson(meta) ?? { _resourceType: "cartographerStamp", slots: [], tileColors: [] };
+  const { autotile: _old, ...rest } = old;
+  const clean = { ...rest, ...(autotile ? { autotile } : {}) };
   if (existsSync(meta)) return { mtime: writeSidecar(meta, clean, backup) };
   writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`);
   return { mtime: statSync(meta).mtimeMs };

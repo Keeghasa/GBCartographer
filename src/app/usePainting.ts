@@ -6,6 +6,7 @@
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
+import { maskAt, WANG_COLUMNS, WANG_MASKS, wangSlot } from "./autotile";
 
 interface Painting {
   doc: Doc | null;
@@ -52,7 +53,7 @@ export function usePainting(app: Painting) {
   const drag = useRef<Drag | null>(null);
   const lastPoint = useRef<Point | null>(null);
   /** The stamp tool's block: pixels, tile palettes when whole tiles, and the palettes they refer to. */
-  const stamp = useRef<(Floating & { palettes: Palette[] }) | null>(null);
+  const stamp = useRef<(Floating & { palettes: Palette[]; /** A box auto-tile: corners, edges and middle stretch over a dragged rectangle. */ box?: boolean; /** A Wang sheet (autotile.ts): tiles fit their neighbours. */ wang?: boolean }) | null>(null);
   /** During a stroke with linked tiles: the groups, the pixels before the stroke, and after the last step. */
   const linkStroke = useRef<{ link: ReturnType<typeof linkGroups>; base: Uint8Array; previous: Uint8Array } | null>(null);
   /** Where the pointer last was over the picture, so the brush outline follows size and tool changes ([ and ]) at once. */
@@ -98,8 +99,7 @@ export function usePainting(app: Painting) {
   }
 
   /** Stamps a copy with its top-left on the 8 px grid under `point` (see-through pixels leave the picture alone). */
-  function putStamp(target: Doc, point: Point) {
-    const source = stamp.current;
+  function putStamp(target: Doc, point: Point, source: (Floating & { palettes: Palette[] }) | null = stamp.current) {
     if (!source) return;
     const x = point.x & ~7, y = point.y & ~7;
     drop(target.pixels, target.width, target.height, { ...source, x, y });
@@ -113,6 +113,63 @@ export function usePainting(app: Painting) {
         return index + 1;
       });
       dropCells(target.cells, target.width, target.height, { ...source, x, y, cells });
+    }
+  }
+
+  /**
+   * A box auto-tile over whole tiles from `a` to `b`: the stamp's corner tiles in the corners, its edge tiles repeated
+   * along the sides, its middle tiles repeated inside (a 3 × 3-tile stamp is the classic nine-slice).
+   */
+  function putBox(target: Doc, a: Point, b: Point) {
+    const source = stamp.current;
+    if (!source) return;
+    const sw = source.w / CELL, sh = source.h / CELL;
+    const x0 = Math.min(a.x, b.x) & ~7, y0 = Math.min(a.y, b.y) & ~7;
+    const w = Math.max(2, ((Math.max(a.x, b.x) & ~7) - x0) / CELL + 1), h = Math.max(2, ((Math.max(a.y, b.y) & ~7) - y0) / CELL + 1);
+    const pick = (at: number, size: number, of: number) => at === 0 ? 0 : at === size - 1 ? of - 1 : 1 + ((at - 1) % (of - 2));
+    const pixels = new Uint8Array(w * CELL * h * CELL), cells = source.cells ? new Uint8Array(w * h) : undefined;
+    for (let ty = 0; ty < h; ty += 1) for (let tx = 0; tx < w; tx += 1) {
+      const sx = pick(tx, w, sw), sy = pick(ty, h, sh);
+      for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((sy * CELL + y) * source.w + sx * CELL, (sy * CELL + y) * source.w + sx * CELL + CELL), (ty * CELL + y) * w * CELL + tx * CELL);
+      if (cells && source.cells) cells[ty * w + tx] = source.cells[sy * sw + sx];
+    }
+    putStamp(target, { x: x0, y: y0 }, { pixels, w: w * CELL, h: h * CELL, x: x0, y: y0, ...(cells ? { cells } : {}), palettes: source.palettes });
+  }
+
+  // ---- Wang auto-tiles (autotile.ts): a tile is "filled" when its pixels are one of the sheet's 47 tiles ----
+  const tileKey = (pixels: Uint8Array, width: number, x: number, y: number) => {
+    let key = "";
+    for (let row = 0; row < CELL; row += 1) key += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";";
+    return key;
+  };
+  function wangKeys() {
+    const source = stamp.current!;
+    return new Set(WANG_MASKS.map((_, index) => tileKey(source.pixels, source.w, (index % WANG_COLUMNS) * CELL, Math.floor(index / WANG_COLUMNS) * CELL)));
+  }
+  /** Draws the sheet's tile for (tx, ty)'s shape, with its tile palette when the sheet has them. */
+  function putWangTile(target: Doc, tx: number, ty: number, filled: (tx: number, ty: number) => boolean) {
+    const source = stamp.current!;
+    const { column, row } = wangSlot(maskAt(filled, tx, ty));
+    const pixels = new Uint8Array(CELL * CELL);
+    for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((row * CELL + y) * source.w + column * CELL, (row * CELL + y) * source.w + column * CELL + CELL), y * CELL);
+    const cells = source.cells ? new Uint8Array([source.cells[row * cellsWide(source.w) + column]]) : undefined;
+    putStamp(target, { x: tx * CELL, y: ty * CELL }, { pixels, w: CELL, h: CELL, x: tx * CELL, y: ty * CELL, ...(cells ? { cells } : {}), palettes: source.palettes });
+  }
+  /** Fills (or clears) tile (tx, ty) and redraws it and its filled neighbours to fit. */
+  function paintWang(target: Doc, tx: number, ty: number, erase: boolean) {
+    const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL);
+    if (tx < 0 || ty < 0 || tx >= cw || ty >= ch) return;
+    const keys = wangKeys();
+    const marked = new Map<string, boolean>([[`${tx},${ty}`, !erase]]);
+    const filled = (x: number, y: number) => {
+      if (x < 0 || y < 0 || x >= cw || y >= ch) return true;
+      return marked.get(`${x},${y}`) ?? keys.has(tileKey(target.pixels, target.width, x * CELL, y * CELL));
+    };
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, app.blank(target));
+    for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+      const x = tx + dx, y = ty + dy;
+      if (x < 0 || y < 0 || x >= cw || y >= ch || !filled(x, y)) continue;
+      putWangTile(target, x, y, filled);
     }
   }
 
@@ -228,9 +285,18 @@ export function usePainting(app: Painting) {
       if (!stamp.current) { app.say("Right-click a tile to pick it up as the stamp, or select a block and pick the stamp tool again."); return; }
       app.dropFloat(doc);
       app.pushUndo(doc);
-      putStamp(doc, point);
       const origin = { x: point.x & ~7, y: point.y & ~7 };
-      drag.current = { kind: "stamp", origin, last: origin };
+      if (stamp.current.wang) {
+        const erase = event.altKey;
+        paintWang(doc, point.x >> 3, point.y >> 3, erase);
+        drag.current = { kind: "wang", last: point, erase };
+      } else if (stamp.current.box) {
+        drag.current = { kind: "box", origin, base: doc.pixels.slice(), baseCells: doc.cells.slice() };
+        putBox(doc, origin, origin);
+      } else {
+        putStamp(doc, point);
+        drag.current = { kind: "stamp", origin, last: origin };
+      }
     } else if (tool === "priority") {
       if (!doc.priority) { app.say("The priority brush is for project backgrounds and tilesets (GB Studio's draw-over-sprites flag)."); return; }
       app.pushUndo(doc);
@@ -300,6 +366,13 @@ export function usePainting(app: Painting) {
           state.last = at;
         }
       }
+    } else if (state.kind === "wang") {
+      for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintWang(doc, x, y, state.erase);
+      state.last = point;
+    } else if (state.kind === "box") {
+      doc.pixels.set(state.base);
+      doc.cells.set(state.baseCells);
+      putBox(doc, state.origin, point);
     } else if (state.kind === "priority") {
       for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) setPriority(doc, { x, y }, state.on);
       state.last = point;
@@ -313,7 +386,7 @@ export function usePainting(app: Painting) {
       const step = (distance: number) => snap ? Math.round(distance / CELL) * CELL : distance;
       app.moveFloat(doc, state.ox + step(point.x - state.start.x), state.oy + step(point.y - state.start.y));
     }
-    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp") followLinks(doc);
+    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "wang") followLinks(doc);
     app.bump();
   }
 
@@ -328,7 +401,7 @@ export function usePainting(app: Painting) {
   }
 
   /** Picks up a saved stamp (pixels, tile palettes when whole tiles, and the palettes they refer to). */
-  function setStamp(value: Floating & { palettes: Palette[] }) {
+  function setStamp(value: Floating & { palettes: Palette[]; box?: boolean; wang?: boolean }) {
     stamp.current = value;
   }
 

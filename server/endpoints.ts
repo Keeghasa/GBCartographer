@@ -12,6 +12,8 @@
  *                                             &resize=1 allows a new size in whole tiles)
  *   POST /__cartographer/gbstudio-new-asset   ?kind=&name= a new PNG in assets/<kind>/ (never replaces a file; no sidecar)
  *   POST /__cartographer/gbstudio-tile-colors { slots } per-cell palette slots into the sidecar (?kind=&file=&metaMtime=&force=1)
+ *   GET  /__cartographer/gbstudio-asset-delete  a picture's files and what mentions it; POST deletes it into the backups (?kind=&file=)
+ *   POST /__cartographer/stamp-autotile       { autotile: "box" | "wang" | null } a saved stamp's auto-tile setting (?file=)
  *   POST /__cartographer/stamp-meta           { slots, tileColors, tags? } a saved stamp's tile palettes and tags (?file=&metaMtime=&force=1),
  *                                             in Cartographer/stamps/<file>.json (stamps: kind=stamps on the asset routes)
  *   POST /__cartographer/gbstudio-palette     { name, colors } adds a palette file to the project; { id, name, colors } rewrites one
@@ -40,7 +42,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampMeta, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -350,6 +352,29 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, mtime: error.mtime });
         else throw error;
       }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/gbstudio-asset-delete") {
+      // GET: what deleting a picture would take out and what mentions it; POST: delete it (into the backups).
+      const kind = url.searchParams.get("kind") ?? "";
+      const path = (ASSET_KINDS as readonly string[]).includes(kind) ? assetPath(project, kind, url.searchParams.get("file") ?? "") : null;
+      if (!path) {
+        reply(res, 404, { error: "No such picture" });
+        return true;
+      }
+      if (req.method === "POST") reply(res, 200, { ok: true, ...deleteAsset(project, kind as AssetKind, path, backup) });
+      else reply(res, 200, { ok: true, ...assetDeleteCheck(project, kind as AssetKind, path) });
+      return true;
+    }
+    if (url.pathname === "/__cartographer/stamp-autotile" && req.method === "POST") {
+      // A saved stamp's auto-tile setting ("box", "wang" or none), in its own sidecar in GB Cartographer's folder.
+      const path = assetPath(project, "stamps", url.searchParams.get("file") ?? "");
+      if (!path) {
+        reply(res, 404, { error: "No such stamp" });
+        return true;
+      }
+      const body = JSON.parse((await readBody(req)).toString("utf8")) as { autotile?: unknown };
+      reply(res, 200, { ok: true, ...writeStampAutotile(path, body.autotile === "box" || body.autotile === "wang" ? body.autotile : null, backup) });
       return true;
     }
     if (url.pathname === "/__cartographer/stamp-meta" && req.method === "POST") {

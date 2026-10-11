@@ -9,6 +9,7 @@ import type { WireAsset } from "./types";
 import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
+import { boxTemplate, wangTemplate } from "./autotiles";
 
 export type { WireAsset };
 
@@ -41,6 +42,8 @@ export const GRAPHICS: WireAsset[] = [
   { id: "tiles-outdoor", name: "Outdoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(OUTDOOR).length} tiles of 16 × 16 (the tall oaks and pines 16 × 32): grass, paths, water, trees, roofs and walls…`, make: () => tileSheet(Object.keys(OUTDOOR)) },
   { id: "tiles-indoor", name: "Indoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(INDOOR).length} tiles: floors, walls, furniture.`, make: () => tileSheet(Object.keys(INDOOR)) },
   { id: "tiles-side", name: "Side-view tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(SIDE).length} tiles for platformers: ground, platforms, ladders.`, make: () => tileSheet(Object.keys(SIDE)) },
+  { id: "autotile-box", name: "Box auto-tile (9)", group: "Auto-tiles", kind: "stamps", autotile: "box", about: "A 3 × 3-tile stamp template: drag a rectangle and it stretches (corners, edges, middle). Repaint it as your own box, wall or window.", make: boxTemplate },
+  { id: "autotile-wang", name: "Wang auto-tile (W)", group: "Auto-tiles", kind: "stamps", autotile: "wang", about: "The 47-tile Wang (blob) sheet, 8 × 6 tiles: paint tiles with it and each fits its neighbours. Placeholder walls to repaint as real art.", make: wangTemplate },
   { id: "scene-title", name: "Title screen", group: "Scenes", kind: "backgrounds", make: scenes.title },
   { id: "scene-logo", name: "Logo splash", group: "Scenes", kind: "backgrounds", make: scenes.logo },
   { id: "scene-menu", name: "Menu", group: "Scenes", kind: "backgrounds", make: scenes.menu },

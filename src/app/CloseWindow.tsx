@@ -11,9 +11,9 @@ import "./CloseWindow.css";
 
 export interface ClosingChanges {
   /** Files in the GB Studio project that Save would write: the path in the project, and what changes. */
-  project: { path: string; detail: string; palette?: boolean }[];
-  /** Unsaved pictures that aren't project files (their names). */
-  loose: string[];
+  project: { path: string; detail: string; palette?: boolean; /** The picture as it is now (a data URL). */ thumb?: string }[];
+  /** Unsaved pictures that aren't project files. */
+  loose: { name: string; thumb?: string }[];
 }
 
 interface Props {
@@ -45,12 +45,12 @@ export function CloseWindow({ changes, busy, tab, onSave, onKeep, onDiscard, onC
         {files > 0 && <div className="k-stack k-stack--tight">
           <span className="k-eyebrow">Save to GB Studio project changes {files === 1 ? "this file" : `these ${files} files`}</span>
           <ul className="cw-list">{changes.project.map((item) => (
-            <li key={item.path}>{item.palette ? <PaletteIcon size={14} /> : <FileImage size={14} />}<span className="cw-path k-mono" title={item.path}>{item.path}</span><span className="k-muted k-xs">{item.detail}</span></li>
+            <li key={item.path}>{item.thumb ? <img className="cw-thumb" src={item.thumb} alt="" /> : item.palette ? <PaletteIcon size={14} /> : <FileImage size={14} />}<span className="cw-path k-mono" title={item.path}>{item.path}</span><span className="k-muted k-xs">{item.detail}</span></li>
           ))}</ul>
         </div>}
         {changes.loose.length > 0 && <div className="k-stack k-stack--tight">
           <span className="k-eyebrow">{tab ? "Not a project file" : "Not in this project (kept in GB Cartographer unless discarded)"}</span>
-          <ul className="cw-list">{changes.loose.map((name) => <li key={name}><FileImage size={14} /><span className="cw-path k-mono">{name}</span></li>)}</ul>
+          <ul className="cw-list">{changes.loose.map((item) => <li key={item.name}>{item.thumb ? <img className="cw-thumb" src={item.thumb} alt="" /> : <FileImage size={14} />}<span className="cw-path k-mono">{item.name}</span></li>)}</ul>
         </div>}
       </div>
     </Dialog>

@@ -60,7 +60,7 @@ export type PickerWindow = Window & {
 export const PNG_TYPES = [{ description: "PNG image", accept: { "image/png": [".png"] } }];
 
 /** One PNG under the GB Studio project's assets folder. */
-export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[] }
+export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: "box" | "wang" }
 /** A project palette also carries its file's modification time, sent back with a rewrite (changed-on-disk check). */
 export interface Project { name: string; path: string; assets: Asset[]; palettes: (Palette & { mtime?: number })[] }
 /** A sprite sheet's frames: 8 × 16 slices placed at frame-local x, y (see server/assets.ts). */
@@ -112,6 +112,10 @@ export type Drag =
   | { kind: "stroke" | "spray" | "cells"; last: Point }
   | { kind: "priority"; last: Point; on: boolean }
   | { kind: "stamp"; origin: Point; last: Point }
+  /** A box auto-tile stamp stretched over a dragged rectangle (redrawn over `base` as the pointer moves). */
+  | { kind: "box"; origin: Point; base: Uint8Array; baseCells: Uint8Array }
+  /** A Wang auto-tile stamp painted (or, with Alt, cleared) tile by tile. */
+  | { kind: "wang"; last: Point; erase: boolean }
   | { kind: "shape"; start: Point; base: Uint8Array }
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }

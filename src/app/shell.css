@@ -50,8 +50,19 @@
 .app-card b.dirty::after { content: " *"; }
 .app-card small { color: var(--k-ink-3); font-size: 10px; font-variant-numeric: tabular-nums; }
 .app-card.open { background: var(--k-ctl-2); }
-/* A saved stamp's card: the card stamps with it, the pencil (on hover) opens it to edit. */
-.app-card-slot { display: flex; min-width: 0; } .app-card-slot > .app-card { flex: 1; } .app-card-slot > .app-stamp-edit { top: 6px; right: 6px; width: 22px; height: 22px; }
+/* Each card's hover buttons, top right: hide (archive) on every card; on a saved stamp also edit (pencil). */
+.app-card-slot { position: relative; display: flex; min-width: 0; } .app-card-slot > .app-card { flex: 1; }
+.app-card-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+.app-card-actions .app-stamp-edit { position: static; width: 22px; height: 22px; }
+/* 9 (box) and W (Wang) auto-tile toggles: a letter, lit when set. */
+.app-stamp-auto { font: 700 11px/1 var(--k-font); }
+.app-stamp-auto[aria-pressed="true"] { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); }
+.app-card-slot:hover .app-card-actions .app-stamp-auto:disabled { cursor: not-allowed; opacity: .35; }
+.app-stamp-badge { position: absolute; top: 2px; left: 2px; padding: 1px 4px; color: var(--k-on-acc); background: var(--k-acc); border-radius: 4px; font: 700 9px/1.2 var(--k-font); font-style: normal; }
+.app-card-slot:hover .app-stamp-edit, .app-card-actions .app-stamp-edit:focus-visible, .app-card-actions .app-stamp-edit[aria-pressed="true"] { opacity: 1; }
+/* A hidden card: grey, no picture, at the bottom. */
+.app-card.is-hidden { opacity: .55; } .app-card.is-hidden b, .app-card.is-hidden small { color: var(--k-ink-3); }
+.app-card.is-hidden .app-card-blank { background: var(--k-ctl-2); }
 
 /* Tool column: two columns of icon buttons, the view toggles, the brush size. */
 .app-tools { flex: none; width: 76px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; justify-items: center; gap: 2px; padding: 6px; overflow-y: auto; }

@@ -13,6 +13,8 @@ interface Props {
   slotsVersion: number;
   onUse: (stamp: Asset) => void;
   onOpen: (stamp: Asset) => void;
+  /** A stamp's auto-tile (9 box, W Wang) is set on its card in the project panel; here it shows as a badge. */
+  onAutotile?: (stamp: Asset, autotile: "box" | "wang" | null) => void;
 }
 
 export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
@@ -32,6 +34,7 @@ export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
             <button className="app-frame named" title={`${stamp.name} · ${stamp.width} × ${stamp.height}${stamp.tags?.length ? ` · ${stamp.tags.join(", ")}` : ""} · click to use`} onClick={() => onUse(stamp)}>
               <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
               <small>{stamp.name}</small>
+              {stamp.autotile && <i className="app-stamp-badge" title={stamp.autotile === "box" ? "Box auto-tile (9)" : "Wang auto-tile (W)"}>{stamp.autotile === "box" ? "9" : "W"}</i>}
             </button>
             <button type="button" className="app-stamp-edit" title={`Edit ${stamp.name}`} aria-label={`Edit ${stamp.name}`} onClick={(event) => { event.stopPropagation(); onOpen(stamp); }}><Pencil size={11} /></button>
           </span>
