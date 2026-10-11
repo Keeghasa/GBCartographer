@@ -44,9 +44,9 @@ palettes straight back into the project.
   import palettes from Lospec `.hex` or GIMP `.gpl` files and export your own as JSON.
 - **Graphics.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
-  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 56 placeholder graphics (CC0) to
+  and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 63 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
-  window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, and box and Wang auto-tile templates.
+  window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, and a template for every auto-tile.
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
@@ -61,8 +61,8 @@ palettes straight back into the project.
   even into another picture.
 - **Tile tools.** Linked tiles (paint one tile and every identical copy follows), a seamless view that repeats the
   tile under the pointer 3 × 3, a priority brush for tiles drawn over sprites, saved stamps with their palettes,
-  auto-tile stamps (**9**: a box stretched over a dragged rectangle; **W**: the 47-tile Wang set, each tile fitting
-  its neighbours), and a text tool that types with the project's own font sheets (their GB Studio 4.3 character maps
+  auto-tile stamps (**9** box, **↔** / **↕** 3-slice, **P** path, **W** 47-tile Wang, **E** Wang edges, **C** corner
+  Wang for two terrains, **F** wall faces, **▶** animated tiles, each with a template to draw over), and a text tool that types with the project's own font sheets (their GB Studio 4.3 character maps
   too).
 - **New pictures and resizing.** Make a new background, sprite sheet or tileset in the project, or resize one in
   whole tiles.
