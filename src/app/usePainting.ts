@@ -392,12 +392,7 @@ export function usePainting(app: Painting) {
   function pointerMove(event: PointerEvent) {
     if (!doc) return;
     const point = pointAt(event);
-    if (app.readoutRef.current) {
-      // Where the pointer is, and the palette its tile wears (tiles without one show the greens).
-      const wear = inside(doc, point) ? doc.cells[(point.y >> 3) * cellsWide(doc.width) + (point.x >> 3)] : 0;
-      const palette = wear ? doc.palettes[wear - 1]?.name : null;
-      app.readoutRef.current.textContent = inside(doc, point) ? `${point.x}, ${point.y} · tile ${point.x >> 3}, ${point.y >> 3}${palette ? ` · ${palette}` : ""}` : "";
-    }
+    if (app.readoutRef.current) app.readoutRef.current.textContent = inside(doc, point) ? `${point.x}, ${point.y} · tile ${point.x >> 3}, ${point.y >> 3}` : "";
     hover.current = { clientX: event.clientX, clientY: event.clientY };
     drawOutline(point);
     if (app.seamless && inside(doc, point) && (app.hoverCell?.x !== point.x >> 3 || app.hoverCell?.y !== point.y >> 3)) app.setHoverCell({ x: point.x >> 3, y: point.y >> 3 });

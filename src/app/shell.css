@@ -46,8 +46,9 @@
 .app-card .gbp-asset-thumb, .app-card-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; image-rendering: pixelated; background: repeating-conic-gradient(#20232a 0 25%, #17191e 0 50%) 0 0 / 12px 12px; border-radius: 6px; }
 /* Names sit at the foot of the card, so a row's names line up whatever its thumbnails' shapes. */
 .app-card b { margin-top: auto; }
-/* Names get two lines (credited names run long), then an ellipsis. */
-.app-card b { font-size: var(--k-text-sm); font-weight: 500; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+/* Names: the first line at its size, the rest (a credit, a long name's end) much smaller on a second line. */
+.app-card b { display: block; max-height: 31px; overflow: hidden; font-size: 10px; font-weight: 500; line-height: 13px; overflow-wrap: anywhere; color: var(--k-ink-2); }
+.app-card b::first-line { font-size: var(--k-text-sm); line-height: 18px; color: var(--k-ink); }
 .app-card b.dirty::after { content: " *"; }
 .app-card small { color: var(--k-ink-3); font-size: 10px; font-variant-numeric: tabular-nums; }
 .app-card.open { background: var(--k-ctl-2); }
@@ -126,8 +127,11 @@
 .app-facts { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .app-facts b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-facts span { padding-left: 10px; color: var(--k-ink-3); font-size: var(--k-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The file path wraps (credited names run long) instead of cutting off. */
-.app-facts span.k-mono { white-space: normal; overflow-wrap: anywhere; }
+/* A line that doesn't fit slides along on hover to show its end (ScrollText). */
+.app-scroll-text { display: block; overflow: hidden; white-space: nowrap; }
+.app-scroll-text > span { display: inline-block; transition: transform .2s ease-out; }
+.app-scroll-text:hover > span { transform: translateX(var(--shift)); transition: transform var(--time, 1s) linear .3s; }
+.app-facts .app-scroll-text > span { padding: 0; }
 
 /* Status bar. */
 .app-status { display: flex; align-items: center; gap: var(--k-4); padding: 4px var(--k-4) 8px; color: var(--k-ink-2); font-size: var(--k-text-sm); white-space: nowrap; overflow: hidden; }
@@ -160,3 +164,4 @@
 .app-toast { cursor: pointer; }
 /* Something unsaved: an orange dot on the Save button (the orange of unsaved names). */
 .app-unsaved { position: relative; } .app-unsaved::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: var(--k-warn); border-radius: 50%; box-shadow: 0 0 0 2px var(--k-ctl); }
+.app-card b.dirty::first-line { color: var(--k-warn); }

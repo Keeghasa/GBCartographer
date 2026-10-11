@@ -1,0 +1,8 @@
+/* Messages (src/app/Messages.tsx): toasts sliding in at the bottom left (just right of the rail, whose foot holds the Messages button), and the Messages window's list. */
+.msg-toasts { position: fixed; left: 72px; bottom: 44px; z-index: 70; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: min(520px, calc(100vw - 32px)); pointer-events: none; }
+.msg-toasts .msg-toast { position: static; left: auto; bottom: auto; transform: none; max-width: 100%; text-align: left; pointer-events: auto; animation: msg-in .28s cubic-bezier(.2, .8, .2, 1); border-radius: var(--k-r-group); }
+@keyframes msg-in { from { transform: translateX(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg-toast { animation: none; } }
+.msg-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; margin: 0; padding: 4px; overflow-y: auto; list-style: none; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-card); }
+.msg-list li { display: flex; gap: var(--k-3); padding: 6px 8px; font-size: var(--k-text-sm); }
+.msg-list time { flex: none; color: var(--k-ink-3); }

@@ -9,6 +9,7 @@ import { BUDGETS, BUILT_IN_TINTS, type Doc } from "./model";
 import { Pause, Play } from "lucide-react";
 import { Button, IconButton, Meter, Segmented, Select } from "../ui/kit";
 import { TIMES, type TimeKey } from "./useTimeOfDay";
+import { ScrollText } from "./ScrollText";
 
 interface Props {
   doc: Doc | null;
@@ -37,7 +38,7 @@ export function PicturePane({ time, onTime, playing, onPlaying, timesAvailable, 
           <div className="app-facts">
             <b title={doc.name}>{doc.name}</b>
             <span>{doc.width} × {doc.height} px · {Math.ceil(doc.width / CELL)} × {Math.ceil(doc.height / CELL)} tiles</span>
-            {doc.asset && <span className="k-mono" title={`${folder}/${doc.asset.file}`}>{folder}/{doc.asset.file}</span>}
+            {doc.asset && <ScrollText className="k-mono" text={`${folder}/${doc.asset.file}`} />}
           </div>
           <section className="app-section">
             <span className="k-eyebrow">Tiles</span>

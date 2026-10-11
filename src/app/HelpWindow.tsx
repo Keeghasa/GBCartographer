@@ -62,7 +62,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Undo, redo" keys={["Ctrl+Z", "Ctrl+Shift+Z"]}>Undo also brings back palette colors changed in the sidebar.</Row>
           <Row name="Zoom" keys={["Ctrl+=", "Ctrl+-"]}>Zoom in and out.</Row>
           <Row name="Fit" keys={["Ctrl+0"]}>The biggest zoom that shows the whole picture (or click the zoom % in the header).</Row>
-          <Row name="Hide the panels" keys={["\\"]}>Hides both side panels for room to paint, and brings them back. The empty part of the left rail and the gap beside the right panel hide one each.</Row>
+          <Row name="Hide the panels" keys={["`", "~"]}>Hides both side panels for room to paint, and brings them back. The empty part of the left rail and the gap beside the right panel hide one each.</Row>
         </Section>
         <Section title="Tabs">
           <Row name="Next, previous" keys={["Ctrl+Tab", "Ctrl+PgDn", "Ctrl+PgUp"]}>The next and previous picture (Shift+Ctrl+Tab goes back).</Row>

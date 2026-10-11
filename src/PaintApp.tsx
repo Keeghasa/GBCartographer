@@ -58,6 +58,7 @@ import { SaveStampDialog, type StampSave } from "./app/SaveStampDialog";
 import { CloseWindow, type ClosingChanges } from "./app/CloseWindow";
 import type { CaveTiles } from "./app/generators";
 import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
+import { MessagesWindow, Toasts, useMessages } from "./app/Messages";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
 import { autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
@@ -179,7 +180,9 @@ export default function PaintApp() {
   const [font, setFont] = useState<FontChoice>(() => loadFont());
   const [showProject, setShowProject] = useState<boolean>(() => readStored(PROJECT_PANEL_KEY, true));
   const [projectKind, setProjectKind] = useState<AssetKind>(() => readStored(PROJECT_KIND_KEY, "backgrounds"));
-  const [toast, setToast] = useState("");
+  // Messages: toasts at the bottom left, and every message of the session for the Messages window.
+  const messages = useMessages();
+  const [showMessages, setShowMessages] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -218,10 +221,9 @@ export default function PaintApp() {
     onPlaceText: (point) => void placeText(point),
   });
 
-  /** A message at the foot of the picture: longer ones stay longer (4 to 10 seconds); a click puts it away. */
+  /** A message: it slides in at the bottom left (Messages.tsx) and is kept for the Messages window. */
   function say(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast((current) => current === message ? "" : current), Math.min(10000, 4000 + message.length * 40));
+    messages.say(message);
   }
 
   function setTool(next: ToolId) {
@@ -1662,11 +1664,11 @@ export default function PaintApp() {
     if (found) return setTool(found[0]);
     if (event.shiftKey && key === "m") return setMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length]);
     if (key === "d" && !event.shiftKey) return cyclePattern();
-    if (key === "\\") {
+    if (key === "`" || key === "~") {
       // Focus: both side panels hide (or come back) at once.
       const show = !(showProject || showSide);
       setShowProject(show); setShowSide(show); store("gbc-side", show);
-      return say(show ? "Panels back" : "Panels hidden: \\ brings them back");
+      return say(show ? "Panels back" : "Panels hidden: ` brings them back");
     }
     if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
     if (key === "f" || (key === "t" && doc?.sel)) return transformSelection(key === "t" ? "turn" : event.shiftKey ? "y" : "x");
@@ -2089,7 +2091,7 @@ export default function PaintApp() {
     return (
       <div className="gbp-shell gbp-splash" onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event)}>
         <StartScreen recent={recent} onChooseProject={() => void chooseProject()} onDemo={hasDemo ? () => void chooseProject(true) : null} onOpenFiles={() => void pickFiles()} onOpenRecent={(path) => void openProjectPath(path)} onAbout={() => setShowAbout(true)} />
-        {toast && <div className="gbp-toast" role="status">{toast}</div>}
+        <Toasts showing={messages.showing} onDismiss={messages.dismiss} />
         {showAbout && <AboutWindow onClose={() => setShowAbout(false)} />}
       </div>
     );
@@ -2233,6 +2235,7 @@ export default function PaintApp() {
             open={showProject}
             onKind={(kind) => { if (kind === projectKind) setShowProject(!showProject); else { setProjectKind(kind); setShowProject(true); } }}
             onToggle={() => setShowProject(!showProject)}
+            unreadMessages={messages.unread} onMessages={() => { messages.markRead(); setShowMessages(true); }}
             slotsVersion={slotsVersion}
             stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file && !foreignProject(item)); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
@@ -2330,7 +2333,8 @@ export default function PaintApp() {
           </Tooltip>
         )}
       </footer>
-      {toast && <div className="app-toast" role="status" title="Click to put it away" onClick={() => setToast("")}>{toast}</div>}
+      <Toasts showing={messages.showing} onDismiss={messages.dismiss} />
+      {showMessages && <MessagesWindow messages={messages.messages} onClose={() => setShowMessages(false)} onClear={messages.clear} />}
       {slotMenu && slotItems.length > 0 && <MenuAt x={slotMenu.x} y={slotMenu.y} items={slotItems} label="Put in slot" onClose={() => setSlotMenu(null)} />}
       {selectionMenu && selectionItems.length > 0 && <MenuAt x={selectionMenu.x} y={selectionMenu.y} items={selectionItems} label="Selection" onClose={() => setSelectionMenu(null)} />}
       {assetMenu && <MenuAt x={assetMenu.x} y={assetMenu.y} items={assetItems} label={assetMenu.asset.name} onClose={() => setAssetMenu(null)} />}
