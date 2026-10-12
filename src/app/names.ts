@@ -1,35 +1,51 @@
 /**
- * Random default names (the author, 2026-10-12): a new thing gets a "Kind-Name" suggestion, like a city builder names
- * a town (Cave-HowlingWinds, Dungeon-WhisperingWoods), editable, with a dice button for another. One word list per
- * kind, all here. No game names. A name already in the project is never suggested again (the file would be a new PNG
- * anyway, never replacing one).
+ * Names for new things (the author, 2026-10-12). By default a new thing is named after its kind and the moment it is
+ * made, like "Dungeon-20261012249": the date, then the hour (12-hour, no leading zero) and minute, as the author
+ * wrote it. The dice button makes a name from three words after the kind instead, "Dungeon-Cold-Ruins-North",
+ * "Cave-Desert-Dunes-Cove": a first word, a place word and a last word, with lists per kind, all here. No game
+ * names. A name already in the project is never given again (the file would be a new PNG anyway, never replacing one).
  */
 export type NameKind = "Cave" | "Dungeon" | "Background" | "Overworld" | "Stamp" | "Map" | "Palette";
 
-export const NAME_WORDS: Record<NameKind, readonly string[]> = {
-  Cave: ["HowlingWinds", "Wintercove", "Mossmouth", "EchoingHollow", "GlimmerDeep", "DrippingDark", "BatwingGrotto", "FrostbiteCavern", "AmberDepths", "SilentSink", "CobwebCrawl", "MurkyMarrow", "CrystalWhisper", "SnailshellDen"],
-  Dungeon: ["WhisperingWoods", "DastardlyCaverns", "GloomkeepVaults", "RustyRatsNest", "SunkenCrypt", "MoldyMazes", "ShadowfallKeep", "ClatteringHalls", "BrimstoneBasement", "TwistedTomb", "ForgottenForge", "HauntedHatchery", "GrimGarrison", "CursedCellar"],
-  Background: ["SleepyHarbor", "DustyCrossroads", "MarigoldMeadow", "LanternAlley", "CopperHills", "QuietQuay", "FoggyFerry", "PebbleBeach", "MapleHollow", "TinRoofRow", "SaltflatSunrise", "MidnightMarket"],
-  Overworld: ["Sunderland", "Emberreach", "Thistlemoor", "GreenwaterIsles", "AshfallVale", "Pinecrest", "DriftwoodCoast", "Bramblewild", "Highmeadow", "StarlitStraits"],
-  Stamp: ["LittleOak", "MossyRock", "WobblyFence", "TinyHut", "CrackedWell", "FlowerPatch", "BrokenCart", "StoneArch", "CampfireRing", "ReedBunch"],
-  Map: ["HomeValley", "TheLongWalk", "NorthernPass", "MarketTown", "WestwoodTrail", "LakesideLoop", "TheNarrows", "CrossroadsCountry"],
-  Palette: ["PeachFizz", "SeaGlass", "MossAndMilk", "CandleSmoke", "BerrySoda", "DesertDusk", "MintChoc", "PlumNight", "ButterToast", "SlateRain"],
+/** Three word lists per kind: the first word, the place, the last word. */
+export const NAME_WORDS: Record<NameKind, readonly [readonly string[], readonly string[], readonly string[]]> = {
+  Cave: [["Cold", "Damp", "Deep", "Dark", "Echo", "Crystal", "Frost", "Amber", "Mossy", "Silent", "Desert", "Bat"], ["Dunes", "Hollow", "Grotto", "Cavern", "Sink", "Marrow", "Den", "Chasm", "Burrow", "Shelf"], ["Cove", "North", "South", "East", "West", "Mouth", "Pass", "Reach", "Bend", "Drop"]],
+  Dungeon: [["Cold", "Cursed", "Grim", "Haunted", "Moldy", "Rusty", "Sunken", "Twisted", "Forgotten", "Shadow", "Brimstone", "Clattering"], ["Ruins", "Crypt", "Keep", "Halls", "Vaults", "Cellar", "Tomb", "Forge", "Garrison", "Maze"], ["North", "South", "East", "West", "Below", "Depths", "Gate", "Heart", "Edge", "End"]],
+  Background: [["Sleepy", "Dusty", "Marigold", "Lantern", "Copper", "Quiet", "Foggy", "Pebble", "Maple", "Tin", "Saltflat", "Midnight"], ["Harbor", "Crossroads", "Meadow", "Alley", "Hills", "Quay", "Ferry", "Beach", "Hollow", "Market"], ["Dawn", "Noon", "Dusk", "Rain", "Snow", "Mist", "Wind", "Calm", "Glow", "Fair"]],
+  Overworld: [["Sunder", "Ember", "Thistle", "Greenwater", "Ashfall", "Pine", "Driftwood", "Bramble", "High", "Starlit", "Wide", "Lost"], ["Land", "Reach", "Moor", "Isles", "Vale", "Crest", "Coast", "Wild", "Meadow", "Straits"], ["North", "South", "East", "West", "Realm", "Shore", "March", "Ridge", "Crossing", "Expanse"]],
+  Stamp: [["Little", "Mossy", "Wobbly", "Tiny", "Cracked", "Flower", "Broken", "Stone", "Campfire", "Reed", "Old", "Round"], ["Oak", "Rock", "Fence", "Hut", "Well", "Patch", "Cart", "Arch", "Ring", "Bunch"], ["One", "Two", "Pair", "Set", "Bit", "Piece", "Prop", "Mark", "Spot", "Thing"]],
+  Map: [["Home", "Long", "Northern", "Market", "Westwood", "Lakeside", "Narrow", "Crossroads", "Upper", "Lower", "Green", "Grey"], ["Valley", "Walk", "Pass", "Town", "Trail", "Loop", "Way", "Country", "Fields", "Shore"], ["North", "South", "East", "West", "Route", "Round", "Reach", "Span", "Run", "Stretch"]],
+  Palette: [["Peach", "Sea", "Moss", "Candle", "Berry", "Desert", "Mint", "Plum", "Butter", "Slate", "Rose", "Ash"], ["Fizz", "Glass", "Milk", "Smoke", "Soda", "Dusk", "Choc", "Night", "Toast", "Rain"], ["Day", "Dawn", "Dusk", "Night", "Soft", "Deep", "Pale", "Warm", "Cool", "Bright"]],
 };
 
-/**
- * A "Kind-Name" not in `taken` (compared without case), picked by `random` (0 ≤ r < 1). When every word is taken,
- * the words come round again with a number: Cave-Mossmouth 2.
- */
-export function randomName(kind: NameKind, taken: Iterable<string> = [], random: () => number = Math.random, not?: string): string {
+/** A name that `taken` doesn't have (compared without case): `wanted`, else "wanted-2", "wanted-3"… */
+function untaken(wanted: string, taken: Iterable<string>, not?: string): string {
   const used = new Set([...taken].map((name) => name.toLowerCase()));
   if (not) used.add(not.toLowerCase());
-  const words = NAME_WORDS[kind];
-  for (let round = 1; round < 1000; round += 1) {
-    const free = words.map((word) => `${kind}-${word}${round > 1 ? ` ${round}` : ""}`).filter((name) => !used.has(name.toLowerCase()));
-    if (free.length) return free[Math.floor(random() * free.length) % free.length];
-  }
-  return `${kind}-${Date.now()}`;
+  let name = wanted;
+  for (let n = 2; used.has(name.toLowerCase()); n += 1) name = `${wanted}-${n}`;
+  return name;
 }
 
-/** Whether `name` is one of the suggestions for `kind` (so a kind change may swap it for another kind's). */
-export const isSuggestedName = (kind: NameKind, name: string) => new RegExp(`^${kind}-(${NAME_WORDS[kind].join("|")})( \\d+)?$`).test(name.trim());
+/** The default name: the kind and the moment, "Dungeon-20261012249" (12 October 2026, 2:49). */
+export function defaultName(kind: NameKind, taken: Iterable<string> = [], now: Date = new Date()): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  const hour = now.getHours() % 12 || 12;
+  return untaken(`${kind}-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}${hour}${two(now.getMinutes())}`, taken);
+}
+
+/** A three-word name from the dice: "Cave-Desert-Dunes-Cove", never one in `taken` nor `not` (the name shown now). */
+export function randomName(kind: NameKind, taken: Iterable<string> = [], random: () => number = Math.random, not?: string): string {
+  const [firsts, places, lasts] = NAME_WORDS[kind];
+  const pick = (list: readonly string[]) => list[Math.floor(random() * list.length) % list.length];
+  const used = new Set([...taken].map((name) => name.toLowerCase()));
+  if (not) used.add(not.toLowerCase());
+  for (let tries = 0; tries < 200; tries += 1) {
+    const name = `${kind}-${pick(firsts)}-${pick(places)}-${pick(lasts)}`;
+    if (!used.has(name.toLowerCase())) return name;
+  }
+  return untaken(`${kind}-${pick(firsts)}-${pick(places)}-${pick(lasts)}`, taken, not);
+}
+
+/** Whether `name` is one this file made for `kind` (a default or a dice name), so a kind change may swap it. */
+export const isSuggestedName = (kind: NameKind, name: string) => new RegExp(`^${kind}-(\\d{11,12}|[A-Z][a-z]+-[A-Z][a-z]+-[A-Z][a-z]+)(-\\d+)?$`).test(name.trim());

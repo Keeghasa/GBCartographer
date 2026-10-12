@@ -111,6 +111,12 @@ export interface Doc extends Snapshot {
   fileTime?: number;
   /** Per tile (backgrounds and tilesets): 1 when it draws over sprites (bit 7 of GB Studio's tileColors). */
   priority?: Uint8Array;
+  /**
+   * The draft layer (the author, 2026-10-12): while it is on, the tools paint the picture as usual and this keeps
+   * the picture as it was when the draft began; pixels that differ are the draft, tinted on screen. Commit keeps
+   * them (one undo step back to this), Wipe puts this back.
+   */
+  draft?: { pixels: Uint8Array; cells: Uint8Array };
   /** Resized since it was opened or saved: Save writes the new size (a project asset's size is otherwise fixed). */
   resized?: boolean;
   /** A font sheet: see-through pixels are magenta in the file (a variable-width glyph's unused columns). */

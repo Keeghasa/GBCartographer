@@ -5,7 +5,7 @@ import { Button, Chip, Dialog, Field, Segmented, Slider } from "../ui/kit";
 import { loadFontFile, renderFontSheet, type LoadedFont } from "./fontSheet";
 import { ASSET_KINDS, type AssetKind } from "./model";
 import { KIND_ICONS } from "./tools";
-import { isSuggestedName, randomName, type NameKind } from "./names";
+import { defaultName, isSuggestedName, type NameKind } from "./names";
 import { NameInput } from "./NameInput";
 import "./NewPictureWindow.css";
 
@@ -88,7 +88,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
   const [where, setWhere] = useState<AssetKind | "file">(projectName ? initialKind : "file");
   const presets = PRESETS[where];
   const [size, setSize] = useState<[number, number]>([presets[0][0], presets[0][1]]);
-  const suggest = (kind: AssetKind | "file") => { const named = NAME_KIND[kind]; return named ? randomName(named, kind === "file" ? [] : takenNames(kind)) : ""; };
+  const suggest = (kind: AssetKind | "file") => { const named = NAME_KIND[kind]; return named ? defaultName(named, kind === "file" ? [] : takenNames(kind)) : ""; };
   const [name, setName] = useState(() => suggest(projectName ? initialKind : "file"));
   const [busy, setBusy] = useState(false);
   // A font sheet can start with glyphs drawn from a font file.

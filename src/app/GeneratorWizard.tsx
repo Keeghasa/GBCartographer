@@ -11,7 +11,7 @@ import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
-import { isSuggestedName, randomName, type NameKind } from "./names";
+import { defaultName, isSuggestedName, type NameKind } from "./names";
 import { NameInput } from "./NameInput";
 import "./GeneratorWizard.css";
 
@@ -52,8 +52,8 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   const [world, setWorld] = useState<WorldSettings>(() => ({ ...WORLD_DEFAULTS, seed: newSeed() }));
   // A random "Kind-Name" (the author, 2026-10-12): Cave- or Dungeon- follows the style while it's still a suggestion.
   const nameKind = (style = cave.style): NameKind => mode === "world" ? "Overworld" : style === "dungeon" ? "Dungeon" : "Cave";
-  const [name, setName] = useState(() => randomName(nameKind(), takenNames));
-  const rollName = (kind = nameKind()) => setName((old) => randomName(kind, takenNames, Math.random, old));
+  const [name, setName] = useState(() => defaultName(nameKind(), takenNames));
+  const rollName = (kind = nameKind()) => setName(() => defaultName(kind, takenNames));
   const [busy, setBusy] = useState(false);
   const setC = (change: Partial<CaveSettings>) => setCave((old) => ({ ...old, ...change }));
   const setW = (change: Partial<WorldSettings>) => setWorld((old) => ({ ...old, ...change }));

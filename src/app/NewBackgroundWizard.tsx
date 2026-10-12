@@ -7,7 +7,7 @@ import { FileImage } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Chip, Dialog, Field, Segmented, Select } from "../ui/kit";
 import library from "../palettes/library.json";
-import { randomName } from "./names";
+import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 
 const SIZES: [number, number, string][] = [[1, 1, "1 screen"], [2, 1, "2 wide"], [1, 2, "2 tall"], [2, 2, "2 × 2"], [3, 1, "3 wide"], [4, 1, "4 wide"]];
@@ -36,7 +36,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate, 
       setDefaults(slots.filter(Boolean));
     }).catch(() => setDefaults([]));
   }, [palettes]);
-  const [name, setName] = useState(() => randomName("Background", takenNames));
+  const [name, setName] = useState(() => defaultName("Background", takenNames));
   const [size, setSize] = useState("1x1");
   const [source, setSource] = useState<"defaults" | "library" | "greens">("defaults");
   const collections = (library as { collections: { name: string; palettes: { name: string; colors: string[] }[] }[] }).collections.filter((group) => group.palettes.length >= 2);

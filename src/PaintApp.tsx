@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil, Layers, Eraser } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -104,6 +104,7 @@ export default function PaintApp() {
   const collisionCanvas = useRef<HTMLCanvasElement>(null);
   /** Atlas water in hand: its frames played over every painted cell (the author, 2026-10-12; Save writes frame 1). */
   const atlasAnimCanvas = useRef<HTMLCanvasElement>(null);
+  const draftCanvas = useRef<HTMLCanvasElement>(null);
   const [atlasPlaying, setAtlasPlaying] = useState(false);
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [activePalette, setActivePalette] = useState(0);
@@ -297,6 +298,53 @@ export default function PaintApp() {
     target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}) });
     while (target.undo.length > UNDO_LIMIT || (target.undo.length > 1 && target.undo.length * target.pixels.length > UNDO_BYTES)) target.undo.shift();
     target.redo = [];
+  }
+
+  // ---- the draft layer (the author, 2026-10-12) --------------------------------------------------------------------
+  /** The draft, when the picture still matches it in size (a resize drops it). */
+  const draftOf = (target: Doc) => target.draft && target.draft.pixels.length === target.pixels.length ? target.draft : undefined;
+  /** How many pixels (or tiles' palettes) differ from the picture the draft began on. */
+  function draftChanges(target: Doc): number {
+    const base = draftOf(target);
+    if (!base) return 0;
+    let count = 0;
+    for (let at = 0; at < target.pixels.length; at += 1) if (target.pixels[at] !== base.pixels[at]) count += 1;
+    for (let at = 0; at < target.cells.length; at += 1) if (target.cells[at] !== base.cells[at]) count += 1;
+    return count;
+  }
+  function startDraft(target: Doc) {
+    dropFloat(target);
+    target.draft = { pixels: target.pixels.slice(), cells: target.cells.slice() };
+    bump();
+    say("Draft layer on: paint freely; Commit keeps it, Wipe takes it back.");
+  }
+  /** Commit: the draft becomes the picture; one undo goes back to before the draft. */
+  function commitDraft(target: Doc) {
+    const base = draftOf(target);
+    if (!base) { delete target.draft; bump(); return; }
+    dropFloat(target);
+    const changed = draftChanges(target);
+    if (changed) {
+      target.undo.push({ pixels: base.pixels, cells: base.cells, palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}) });
+      while (target.undo.length > UNDO_LIMIT || (target.undo.length > 1 && target.undo.length * target.pixels.length > UNDO_BYTES)) target.undo.shift();
+      target.redo = [];
+    }
+    delete target.draft;
+    touch(target);
+    say(changed ? `Draft committed: ${changed} pixel${changed === 1 ? "" : "s"} kept (undo takes them back).` : "Draft layer off: nothing had changed.");
+  }
+  /** Wipe: the picture goes back to how it was when the draft began; the draft stays on for another go. */
+  function wipeDraft(target: Doc) {
+    const base = draftOf(target);
+    if (!base) { delete target.draft; bump(); return; }
+    dropFloat(target);
+    if (draftChanges(target)) {
+      pushUndo(target);
+      target.pixels.set(base.pixels);
+      target.cells.set(base.cells);
+      touch(target);
+    }
+    say("Draft wiped: the picture is as it was when the draft began.");
   }
 
   /** Flattens the floating piece into the picture where it sits. */
@@ -1772,6 +1820,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       event.preventDefault();
       return switchTab(key === "PageUp" || (key === "Tab" && event.shiftKey) ? -1 : 1);
     }
+    if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && event.code === "KeyD" && doc) {
+      event.preventDefault();
+      if (draftOf(doc)) { if (draftChanges(doc)) say("Commit or wipe the draft first (the strip above the picture)."); else { delete doc.draft; bump(); } } else startDraft(doc);
+      return;
+    }
     if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === "KeyW") {
       event.preventDefault();
       if (doc) closeDoc(doc);
@@ -2090,6 +2143,22 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const timer = window.setInterval(draw, 250);
     return () => { window.clearInterval(timer); context.clearRect(0, 0, canvas.width, canvas.height); };
   }, [atlasPlaying, atlasHeld, doc]);
+
+  // The draft layer's overlay: every pixel that differs from the picture the draft began on is tinted (orange),
+  // and a tile whose palette changed gets an orange outline.
+  useLayoutEffect(() => {
+    const canvas = draftCanvas.current, base = doc ? draftOf(doc) : undefined;
+    if (!canvas || !doc || !base) return;
+    Object.assign(canvas, { width: doc.width, height: doc.height });
+    const context = canvas.getContext("2d")!;
+    context.clearRect(0, 0, doc.width, doc.height);
+    const image = context.createImageData(doc.width, doc.height);
+    for (let at = 0; at < doc.pixels.length; at += 1) if (doc.pixels[at] !== base.pixels[at]) image.data.set([255, 150, 40, 110], at * 4);
+    context.putImageData(image, 0, 0);
+    const cw = cellsWide(doc.width);
+    context.strokeStyle = "rgba(255, 150, 40, .9)";
+    for (let cell = 0; cell < doc.cells.length; cell += 1) if (doc.cells[cell] !== base.cells[cell]) context.strokeRect((cell % cw) * CELL + 0.5, Math.floor(cell / cw) * CELL + 0.5, CELL - 1, CELL - 1);
+  });
 
   // The priority brush's overlay: tiles that draw over sprites, tinted blue with stripes the other way from the
   // budget view's and an outline, so they can't be taken for blue art (water, glass).
@@ -2489,8 +2558,17 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
-        <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
+        <ToolColumn tool={tool} onTool={setTool} draft={Boolean(doc && draftOf(doc))} onDraft={() => { if (!doc) return say("Open a picture first."); if (draftOf(doc)) { if (draftChanges(doc)) say("Commit or wipe the draft first (the strip above the picture)."); else { delete doc.draft; bump(); } } else startDraft(doc); }} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
+          {doc && draftOf(doc) && (() => { const changed = draftChanges(doc); return (
+            <div className="k-card app-strip app-draft" role="group" aria-label="Draft layer">
+              <span className="app-strip-label"><Layers size={14} /> Draft layer · {changed ? `${changed} pixel${changed === 1 ? "" : "s"} changed` : "nothing changed yet"}</span>
+              <Button size="sm" variant="primary" icon={<Check />} disabled={!changed} title="Keep the draft as part of the picture (one undo takes it back)" onClick={() => commitDraft(doc)}>Commit</Button>
+              <Button size="sm" icon={<Eraser />} disabled={!changed} title="Put the picture back as it was when the draft began; the draft layer stays on" onClick={() => wipeDraft(doc)}>Wipe</Button>
+              <Button size="sm" variant="ghost" icon={<X />} disabled={changed > 0} title={changed ? "Commit or wipe the draft first" : "Turn the draft layer off"} onClick={() => { delete doc.draft; bump(); }}>Off</Button>
+              <span className="k-muted k-xs">Save writes the picture with the draft on it.</span>
+            </div>
+          ); })()}
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
           {doc && tool === "collision" && <CollisionStrip collision={doc.collision} isBackground={doc.asset?.kind === "backgrounds"} defs={collisionDefs(doc)} picked={collisionPick} onPick={setCollisionPick} onScene={(index) => { if (doc.collision) { doc.collision.scene = index; setCollisionPick(["solid"]); bump(); } }} />}
           {doc && tool === "stamp" && project && project.assets.some((asset) => asset.kind === "stamps") && <StampsStrip stamps={project.assets.filter((asset) => asset.kind === "stamps")} slotsVersion={slotsVersion} onUse={(asset) => void useSavedStamp(asset)} onOpen={(asset) => { setProjectKind("stamps"); void openAsset(asset); }} onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)} />}
@@ -2523,6 +2601,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
                 {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
                 {(showCollisions || tool === "collision") && doc.collision?.scenes.length ? <canvas ref={collisionCanvas} className="gbp-usage gbp-collisions" /> : null}
                 {atlasPlaying && <canvas ref={atlasAnimCanvas} className="gbp-usage" />}
+                {draftOf(doc) && <canvas ref={draftCanvas} className="gbp-usage gbp-draft" />}
                 {screens && <div className="gbp-screens" style={{ backgroundSize: `${160 * doc.zoom}px ${144 * doc.zoom}px` }} />}
                 {current && current.tiles.map((tile, index) => <div key={index} className="gbp-frame-slice" style={{ left: tile.sliceX * doc.zoom, top: tile.sliceY * doc.zoom, width: 8 * doc.zoom, height: 16 * doc.zoom }} />)}
                 {doc.sel && <div className={`gbp-selection ${doc.float ? "floating" : ""}`} style={{ left: doc.sel.x * doc.zoom, top: doc.sel.y * doc.zoom, width: doc.sel.w * doc.zoom, height: doc.sel.h * doc.zoom }} />}

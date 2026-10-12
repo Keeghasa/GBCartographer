@@ -11,7 +11,7 @@ import { toRgba } from "../paint";
 import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
 import { Dialog } from "../ui/kit";
 import { SCREEN_SIZES, fitPicture, type FitOptions, type FitResult } from "./pictureFit";
-import { randomName } from "./names";
+import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import "./PictureWizard.css";
 
@@ -72,7 +72,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [dither, setDither] = useState(false);
   const [max, setMax] = useState<7 | 8>(8);
   const [budget, setBudget] = useState(true);
-  const [name, setName] = useState(() => randomName("Background", takenNames));
+  const [name, setName] = useState(() => defaultName("Background", takenNames));
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);

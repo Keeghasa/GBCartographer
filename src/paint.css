@@ -17,6 +17,7 @@
 /* The tile budget view and the priority brush: one canvas pixel per tile, stretched over the picture. */
 .gbp-usage { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
 .gbp-priority { mix-blend-mode: normal; }
+.gbp-draft { mix-blend-mode: normal; }
 /* The current sprite frame's slices on the sheet. */
 .gbp-frame-slice { position: absolute; box-sizing: border-box; outline: 2px solid var(--acc-hi, #9bd07e); outline-offset: -1px; pointer-events: none; }
 

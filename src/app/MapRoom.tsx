@@ -15,7 +15,7 @@ import { PxSnake } from "../ui/setIcons";
 import { copyEdge, edgeMatch, OFFSET, OPPOSITE, SIDES, type Picture, type Side } from "./mapEdges";
 import { MapWizard, type MapPlan } from "./MapWizard";
 import type { Asset, Project } from "./model";
-import { randomName } from "./names";
+import { defaultName } from "./names";
 import "./MapRoom.css";
 
 interface MapCell { x: number; y: number; file: string }
@@ -343,7 +343,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
         </aside>
       </div>
       {/* Rendered inside the Map Room's dialog so it stacks over it (a nested Radix dialog: Esc closes only it). */}
-      {making && <MapWizard suggestedName={randomName("Map", maps.map((item) => item.name))} takenMaps={maps.map((item) => item.name)} backgrounds={backgrounds} onCancel={() => setMaking(false)} onCreate={newMap} />}
+      {making && <MapWizard suggestedName={defaultName("Map", maps.map((item) => item.name))} takenMaps={maps.map((item) => item.name)} backgrounds={backgrounds} onCancel={() => setMaking(false)} onCreate={newMap} />}
       {confirmDialog}
     </Dialog>
   );

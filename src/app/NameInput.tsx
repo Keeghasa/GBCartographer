@@ -12,7 +12,7 @@ export function NameInput({ kind, value, onChange, taken = [], autoFocus, placeh
   return (
     <span className="k-row app-name-input">
       <input className="k-input" aria-label={label} autoFocus={autoFocus} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} />
-      <IconButton label="Another name" onClick={() => onChange(randomName(kind, taken, Math.random, value))}><Dices /></IconButton>
+      <IconButton label="A three-word name from the dice" onClick={() => onChange(randomName(kind, taken, Math.random, value))}><Dices /></IconButton>
     </span>
   );
 }

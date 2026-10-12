@@ -6,7 +6,7 @@
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { Button, Chip, Dialog, Field } from "../ui/kit";
-import { randomName } from "./names";
+import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import "./SaveStampDialog.css";
 
@@ -15,7 +15,7 @@ export const QUICK_TAGS = ["Foliage", "Ground", "Props", "Walls"];
 export interface StampSave { name: string; tags: string[] }
 
 export function SaveStampDialog({ hint, known, taken, onClose, onSave }: { hint: string; /** Tags already used in this project (shown after the quick ones). */ known: string[]; /** The project's stamp names. */ taken: string[]; onClose: () => void; onSave: (save: StampSave) => void }) {
-  const [name, setName] = useState(() => randomName("Stamp", taken));
+  const [name, setName] = useState(() => defaultName("Stamp", taken));
   const [tags, setTags] = useState<string[]>([]);
   const [own, setOwn] = useState("");
   const text = name.trim();
