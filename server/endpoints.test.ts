@@ -279,6 +279,27 @@ describe("tile palettes", () => {
     expect(stale.status).toBe(409);
     expect((await json<{ current: string }>(stale)).current).toBe("pal-town");
   });
+
+  it("copies eight palettes into a background's scene slots, and only a scene's", async () => {
+    const sceneFile = join(project, "project/scenes/town/scene.gbsres");
+    const before = readFileSync(sceneFile, "utf8");
+    const shown = (await json<{ slots: string[] }>(await fetch(`${base}/gbstudio-asset-info?kind=backgrounds&file=town.png`))).slots;
+    const copy = (file: string, body: object) => fetch(`${base}/gbstudio-palette-slots?file=${encodeURIComponent(file)}`, { method: "POST", body: JSON.stringify(body) });
+    const ids = ["pal-town", "pal-town", "pal-default", "pal-default", "pal-town", "pal-default", "pal-town", "pal-ui"];
+    expect((await copy("town.png", { ids, expected: ids })).status).toBe(409);
+    expect((await copy("town.png", { ids: ids.slice(0, 7) })).status).toBe(400);
+    expect((await copy("town.png", { ids: [...ids.slice(0, 7), "nope"] })).status).toBe(404);
+    const done = await json<{ slots: string[]; scene: string }>(await copy("town.png", { ids, expected: shown }));
+    expect(done).toMatchObject({ scene: "Town", slots: ids });
+    const written = JSON.parse(readFileSync(sceneFile, "utf8")) as Record<string, unknown>;
+    expect({ ...written, paletteIds: undefined }).toEqual({ ...JSON.parse(before), paletteIds: undefined });
+    expect(written.paletteIds).toEqual(ids);
+    expect(latestBackup("project/scenes/town/scene.gbsres")).toBe(before);
+    // A background no scene shows uses the project's defaults: not a copy target.
+    writeFileSync(join(project, "assets/backgrounds/loose2.png"), encodePng(new Uint8ClampedArray(8 * 8 * 4).fill(255), 8, 8, deflateSync));
+    expect((await copy("loose2.png", { ids })).status).toBe(400);
+    writeFileSync(sceneFile, before);
+  });
 });
 
 describe("scene collisions", () => {

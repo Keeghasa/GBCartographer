@@ -4,7 +4,7 @@
  */
 import { Check, ChevronDown, X } from "lucide-react";
 import { Checkbox as RCheckbox, ContextMenu as RContextMenu, Dialog as RDialog, DropdownMenu as RMenu, Popover as RPopover, Select as RSelect, Slider as RSlider, Switch as RSwitch, Tabs as RTabs, ToggleGroup, Tooltip as RTooltip } from "radix-ui";
-import { forwardRef, useCallback, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import "./kit.css";
 
 export { installTicker } from "./ticker";
@@ -134,12 +134,20 @@ export function Menu({ trigger, items, open, onOpenChange, align = "start" }: { 
   );
 }
 
-/** A menu opened at a point (a right-click on a palette, a card or a selection); closing it calls onClose. */
-export function MenuAt({ x, y, items, onClose, label }: { x: number; y: number; items: MenuEntry[]; onClose: () => void; label?: string }) {
+/**
+ * A menu opened at a point (a right-click on a palette, a card or a selection); closing it calls onClose. With
+ * `onSearch`, a filter box sits on top (focused; the caller filters `items`); Arrow down moves into the items.
+ */
+export function MenuAt({ x, y, items, onClose, label, search, onSearch, searchLabel = "Filter" }: { x: number; y: number; items: MenuEntry[]; onClose: () => void; label?: string; search?: string; onSearch?: (value: string) => void; searchLabel?: string }) {
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!onSearch) return; const frame = requestAnimationFrame(() => box.current?.focus()); return () => cancelAnimationFrame(frame); }, [onSearch !== undefined]);
   return (
     <RMenu.Root open onOpenChange={(open) => { if (!open) onClose(); }} modal={false}>
       <RMenu.Trigger asChild><span aria-hidden="true" style={{ position: "fixed", left: x, top: y, width: 1, height: 1, pointerEvents: "none" }} /></RMenu.Trigger>
-      <RMenu.Portal><RMenu.Content className="k-menu k" align="start" sideOffset={2} collisionPadding={8} aria-label={label}>{entries(RMenu, items)}</RMenu.Content></RMenu.Portal>
+      <RMenu.Portal><RMenu.Content className="k-menu k" align="start" sideOffset={2} collisionPadding={8} aria-label={label}>
+        {onSearch && <input ref={box} type="search" className="k-input k-menu-search" value={search ?? ""} placeholder={searchLabel} aria-label={searchLabel} onChange={(event) => onSearch(event.target.value)} onKeyDown={(event) => { if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "Tab") event.stopPropagation(); }} />}
+        {entries(RMenu, items)}
+      </RMenu.Content></RMenu.Portal>
     </RMenu.Root>
   );
 }

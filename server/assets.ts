@@ -517,6 +517,29 @@ export function writePaletteSlot(project: string, kind: AssetKind, path: string,
   return { slots: resolveScenePaletteIds(after.ids, after.defaults), scene: after.scene };
 }
 
+/**
+ * Copy palettes (the author, 2026-10-12): puts eight palettes in a background's scene's slots at once, the scene's
+ * `paletteIds` and nothing else (backed up first). Only a background a scene shows: a loose one's slots are the
+ * project's defaults, which every scene without its own shares, so that isn't a copy. `expected` is the eight slots
+ * the user saw; if they changed on disk, 409 with what is there now.
+ */
+export function writeScenePaletteIds(project: string, path: string, ids: string[], backup: Backup, expected?: string[]): { slots: string[]; scene: string } {
+  if (!Array.isArray(ids) || ids.length !== 8 || ids.some((id) => typeof id !== "string")) throw new AssetWriteError("Eight palette ids, please.", 400);
+  const source = slotSource(project, "backgrounds", assetId(path));
+  // A project palette, or one of the default ids GB Studio already lists (whose file may be GB Studio's own).
+  const known = new Set([...listPalettes(project).map((palette) => palette.id), ...source.defaults]);
+  if (ids.some((id) => id && !known.has(id))) throw new AssetWriteError("No palette with that id in the project.", 404);
+  if (!source.scene) throw new AssetWriteError("No GB Studio scene shows this background yet: add it to a scene in GB Studio first.", 400);
+  const meta = readJson(source.file);
+  if (!meta) throw new AssetWriteError(`The scene file of ${source.scene} could not be read.`, 400);
+  expectType(meta, "scene", source.file);
+  const shown = resolveScenePaletteIds(source.ids, source.defaults);
+  if (expected !== undefined && expected.join() !== shown.join()) throw new AssetWriteError(`${source.scene}'s palettes changed on disk since they were shown.`, 409, undefined, shown.join());
+  if (ids.join() !== source.ids.join()) writeSidecar(source.file, { ...meta, paletteIds: ids }, backup);
+  const after = slotSource(project, "backgrounds", assetId(path));
+  return { slots: resolveScenePaletteIds(after.ids, after.defaults), scene: after.scene ?? source.scene };
+}
+
 /** A GB Studio palette file name: lowercase, spaces as "_", other odd characters dropped (like GB Studio's own). */
 export function paletteFileName(name: string): string {
   const base = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_-]/g, "");

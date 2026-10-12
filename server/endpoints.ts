@@ -20,6 +20,8 @@
  *   POST /__cartographer/gbstudio-palette     { name, colors } adds a palette file to the project; { id, name, colors } rewrites one
  *   POST /__cartographer/gbstudio-palette-slot { slot, paletteId } puts a palette in an asset's slot (?kind=&file=): the
  *                                             scene's palette list, or the project's default palettes
+ *   POST /__cartographer/gbstudio-palette-slots { ids, expected? } puts eight palettes in a background's scene's slots
+ *                                             (?file=; copy palettes from another background; 400 when no scene shows it)
  *   GET  /__cartographer/gbstudio-running     whether a GB Studio process is running (it may overwrite project JSON when it saves)
  *   POST /__cartographer/reveal               ?kind=&file= shows that asset in Finder / Explorer (no kind: the project folder;
  *                                             ?backups=1: this project's backups folder)
@@ -43,7 +45,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -421,6 +423,22 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         reply(res, 200, { ok: true, ...writeStampMeta(path, body.slots as string[], body.tileColors as number[], backup, expected === null ? null : Number(expected), url.searchParams.get("force") === "1", body.tags as string[] | undefined) });
       } catch (error) {
         if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, mtime: error.mtime });
+        else throw error;
+      }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/gbstudio-palette-slots" && req.method === "POST") {
+      const path = assetPath(project, "backgrounds", url.searchParams.get("file") ?? "");
+      if (!path) {
+        reply(res, 404, { error: "No such background" });
+        return true;
+      }
+      const body = JSON.parse((await readBody(req)).toString("utf8")) as { ids?: unknown; expected?: unknown };
+      try {
+        const expected = Array.isArray(body.expected) ? body.expected.map(String) : undefined;
+        reply(res, 200, { ok: true, ...writeScenePaletteIds(project, path, body.ids as string[], backup, expected) });
+      } catch (error) {
+        if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, current: error.current });
         else throw error;
       }
       return true;

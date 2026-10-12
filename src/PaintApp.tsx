@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall } from "lucide-react";
+import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -12,7 +12,7 @@ import { applyFont, loadFont, type FontChoice } from "./ui/theme";
 import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
-import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, namedSlot, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
+import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, namedSlot, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
 import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
@@ -38,7 +38,7 @@ import type { FitResult } from "./app/pictureFit";
 /** A finished picture from a wizard: shades, each tile's palette (1-based, 0 none) and those palettes. */
 type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[] };
 import { NewPictureWindow, ResizeWindow, type NewPicture } from "./app/NewPictureWindow";
-import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, useConfirm, type MenuEntry } from "./ui/kit";
+import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
 import "./app/shell.css";
 import { StartScreen } from "./app/StartScreen";
 import { ProjectPanel } from "./app/ProjectPanel";
@@ -120,6 +120,7 @@ export default function PaintApp() {
   const [showForeign, setShowForeign] = useState(false);
   /** Yes / no questions in a kit dialog (in place of the browser's confirm box). */
   const [confirmDialog, confirmBox] = useConfirm();
+  const [promptDialog, askText] = usePrompt();
   /** The right-hand panel (swatches, Palettes and Picture tabs): the thin handle beside it hides and shows it. */
   const [showSide, setShowSide] = useState(() => readStored("gbc-side", true));
   /** Delete… on a picture: what goes and what mentions it, while the confirm is up. */
@@ -128,7 +129,7 @@ export default function PaintApp() {
   const [showPictureWizard, setShowPictureWizard] = useState(false);
   /** The wizard open (W2…W8 from the Wizards menu), if any. */
   /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
-  const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing one tab, not the window. */ tab?: Doc } | null>(null);
+  const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing these tabs, not the window. */ tabs?: Doc[] } | null>(null);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "newBackground" | "budget" | "checkup" | GeneratorMode | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
@@ -151,6 +152,7 @@ export default function PaintApp() {
   const [hasDemo, setHasDemo] = useState(false);
   /** The right-click menu on a picture card: where it opened and for which asset. */
   const [assetMenu, setAssetMenu] = useState<{ x: number; y: number; asset: Asset } | null>(null);
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; doc: Doc } | null>(null);
   /** The project menu (open another, the demo, recent, close), anchored under the button that opened it. */
   const [projectMenu, setProjectMenu] = useState<{ x: number; y: number } | null>(null);
   /** The "Put in slot" menu for a palette of the open picture (its index in the picture's palettes, from 1). */
@@ -158,7 +160,11 @@ export default function PaintApp() {
   const [backups, setBackups] = useState<{ file?: string } | null>(null);
   /** The Export menu: a copy of the file, or an image to share (as shown or in greens, scaled). */
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  const [slotMenu, setSlotMenu] = useState<{ x: number; y: number; palette: number } | null>(null);
+  /** The palette right-click popup: `palette` is a palette number; with `slot`, it fills that slot instead (2026-10-12). */
+  const [slotMenu, setSlotMenu] = useState<{ x: number; y: number; palette: number; slot?: number } | null>(null);
+  const [slotQuery, setSlotQuery] = useState("");
+  /** Copy palettes (2026-10-12): the background picker for the open background's eight slots. */
+  const [copyMenu, setCopyMenu] = useState<{ x: number; y: number } | null>(null);
   /** The text tool: font, words and look, and the floating text it made (while it floats). */
   const [textSettings, setTextSettings] = useState<TextSettings>({ font: "", text: "Hello!", ink: 3, invert: false, box: false });
   const textFloat = useRef<Floating | null>(null);
@@ -610,6 +616,70 @@ export default function PaintApp() {
       say(`Could not write the palette: ${(error as Error).message}`);
       return null;
     }
+  }
+
+  /**
+   * Renames a project palette in its file (by id: GB Studio's scenes and palette events refer to palettes by id,
+   * checked in GB Studio 4.3.2, so nothing else changes). Its colors stay as they are in the project.
+   */
+  async function renameProjectPalette(palette: Palette) {
+    const stored = projectRef.current?.palettes.find((item) => item.id === palette.id);
+    if (!palette.id || !stored) return say(`${palette.name} is not in the project.`);
+    const variants = (projectRef.current?.palettes ?? []).filter((item) => timeVariant(item.name)?.base === stored.name).map((item) => item.name);
+    const name = await askText({ title: `Rename ${stored.name}`, label: "Name", initial: stored.name, confirm: "Rename",
+      hint: variants.length ? `Its time-of-day versions (${variants.join(", ")}) keep their names: they pair with this palette by name, so rename them to match.` : "Scenes and events keep using it: GB Studio finds palettes by id." });
+    if (!name || name === stored.name) return;
+    if (!await okToWriteProjectJson()) return;
+    const id = await writeProjectPalette({ id: palette.id, name, colors: [...stored.colors] });
+    if (!id) return;
+    for (const item of docs.current) for (const own of item.palettes) if (own.id === id) own.name = name;
+    scheduleSession();
+    bump();
+    say(`Renamed ${stored.name} to ${name}.`);
+  }
+
+  /**
+   * Copy palettes (the author, 2026-10-12): the open background's eight slots go into another background's scene,
+   * as slot assignments (the same palettes; the scene's paletteIds, backed up). Asks first, says which scene.
+   */
+  async function copySlotsTo(target: Asset) {
+    const source = doc?.asset;
+    if (!source?.slots?.length) return;
+    const ids = [...source.slots];
+    const info = await fetch(`./__cartographer/gbstudio-asset-info?${assetQuery(target)}`, { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ slots: string[]; slotScene: string | null }> : null).catch(() => null);
+    if (!info) return say(`Could not read ${target.name}.`);
+    if (!info.slotScene) return say(`No GB Studio scene shows ${target.name} yet, so it uses the project's default palettes. Add it to a scene in GB Studio first.`);
+    if (info.slots.join() === ids.join()) return say(`${info.slotScene} already has the same eight palettes.`);
+    const names = ids.map((id, slot) => `${slot + 1} ${palettesRef.current.find((item) => item.id === id)?.name ?? "—"}`).join(", ");
+    if (!await confirmBox(`Put ${source.name}'s eight palettes in ${info.slotScene}'s slots?
+
+${names}. ${target.name}'s tiles keep their slot numbers, so they show these palettes. The scene file is backed up first.`, { yes: "Copy palettes" })) return;
+    if (!await okToWriteProjectJson()) return;
+    const post = (expected: string[]) => fetch(`./__cartographer/gbstudio-palette-slots?file=${encodeURIComponent(target.file)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, expected }) });
+    let response = await post(info.slots);
+    if (response.status === 409) {
+      const { current } = await response.json() as { current?: string };
+      if (!await confirmBox(`${info.slotScene}'s palettes changed on disk since they were read (GB Studio or another app saved it). Replace them anyway?`, { yes: "Replace" })) return;
+      response = await post(current?.split(",") ?? info.slots);
+    }
+    const result = await response.json().catch(() => ({})) as { ok?: boolean; error?: string; scene?: string };
+    if (!response.ok || !result.ok) return say(`Could not copy the palettes: ${result.error ?? response.statusText}`);
+    await rereadSlots();
+    setSlotsVersion((version) => version + 1);
+    scheduleSession();
+    bump();
+    say(`${result.scene ?? info.slotScene} now has ${source.name}'s eight palettes.`);
+  }
+
+  /** A new project palette with a palette's colors (as they are in the project) and a "copy" name. */
+  async function duplicateProjectPalette(palette: Palette) {
+    const stored = projectRef.current?.palettes.find((item) => item.id === palette.id);
+    if (!palette.id || !stored) return say(`${palette.name} is not in the project.`);
+    const taken = new Set((projectRef.current?.palettes ?? []).map((item) => item.name.toLowerCase()));
+    let name = `${stored.name} copy`;
+    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${stored.name} copy ${n}`;
+    if (!await okToWriteProjectJson()) return;
+    if (await writeProjectPalette({ name, colors: [...stored.colors] })) say(`Added ${name} to the project.`);
   }
 
   /** Opens a project asset as a picture (or shows it, when it is already open). */
@@ -1621,14 +1691,24 @@ export default function PaintApp() {
 
   /** Closes a tab; one with unsaved changes asks first (Unsaved changes: save, discard or cancel). */
   function closeDoc(target: Doc) {
-    if (target.dirty) { setClosing({ changes: closingChanges([target]), busy: false, tab: target }); return; }
+    if (target.dirty) { setClosing({ changes: closingChanges([target]), busy: false, tabs: [target] }); return; }
     dropDoc(target);
   }
 
-  function dropDoc(target: Doc) {
-    const index = docs.current.indexOf(target);
-    docs.current.splice(index, 1);
-    if (target.id === activeId) setActiveId(docs.current[Math.min(index, docs.current.length - 1)]?.id ?? 0);
+  /** Closes several tabs (Close all, Close others): saved ones close now, unsaved ones are asked about together. */
+  function closeDocs(targets: Doc[]) {
+    const dirty = targets.filter((item) => item.dirty);
+    dropDocs(targets.filter((item) => !item.dirty));
+    if (dirty.length) setClosing({ changes: closingChanges(dirty), busy: false, tabs: dirty });
+  }
+
+  const dropDoc = (target: Doc) => dropDocs([target]);
+
+  function dropDocs(targets: Doc[]) {
+    if (!targets.length) return;
+    const index = docs.current.findIndex((item) => item.id === activeId);
+    docs.current = docs.current.filter((item) => !targets.includes(item));
+    if (!docs.current.some((item) => item.id === activeId)) setActiveId(docs.current[Math.min(Math.max(index, 0), docs.current.length - 1)]?.id ?? 0);
     scheduleSession();
     bump();
   }
@@ -1788,13 +1868,24 @@ export default function PaintApp() {
 
   /** Save to GB Studio project: every unsaved project picture and edited palette, then close (stays open if any failed). */
   async function saveAndClose() {
-    const tab = closing?.tab;
+    const tabs = closing?.tabs;
+    const tab = tabs?.length === 1 ? tabs[0] : undefined;
     setClosing((now) => now && { ...now, busy: true });
+    if (tabs && !tab) {
+      // Several tabs: project pictures save into the project and close; others (and any that failed) stay open.
+      const here = projectRef.current?.path;
+      for (const item of tabs.filter((entry) => entry.asset && (!entry.asset.project || entry.asset.project === here))) await saveDoc(item, false, false);
+      const left = tabs.filter((item) => item.dirty);
+      setClosing(null);
+      dropDocs(tabs.filter((item) => !item.dirty));
+      if (left.length) say(`${left.length === 1 ? `${left[0].name} stays` : `${left.length} pictures stay`} open: not saved into the project (pictures from outside it save with Save as…).`);
+      return;
+    }
     if (tab) {
       // One tab: a project picture saves into the project; any other picture asks where (or downloads).
       const here = projectRef.current?.path;
       await saveDoc(tab, false, !(tab.asset && (!tab.asset.project || tab.asset.project === here)));
-      if (tab.dirty) { setClosing({ changes: closingChanges([tab]), busy: false, tab }); return; }
+      if (tab.dirty) { setClosing({ changes: closingChanges([tab]), busy: false, tabs: [tab] }); return; }
       setClosing(null);
       dropDoc(tab);
       return;
@@ -1811,8 +1902,8 @@ export default function PaintApp() {
 
   /** Discard changes: unsaved pictures close without saving (project files stay as they are on disk). */
   async function discardAndClose() {
-    const tab = closing?.tab;
-    if (tab) { setClosing(null); dropDoc(tab); return; }
+    const tabs = closing?.tabs;
+    if (tabs) { setClosing(null); dropDocs(tabs); return; }
     docs.current = docs.current.filter((item) => !item.dirty);
     if (!docs.current.some((item) => item.id === activeId)) setActiveId(docs.current[0]?.id ?? 0);
     await finishClose();
@@ -2214,14 +2305,42 @@ export default function PaintApp() {
     ...EXPORT_SCALES.map(([scale, name]) => ({ label: <>{name}<span className="k-muted k-xs" style={{ marginLeft: "auto" }}>{doc.width * scale} × {doc.height * scale}</span></>, indent: true, onSelect: () => void exportImage(scale, false) })),
   ] : [];
   const slotTarget = slotMenu && doc ? docPalettes[slotMenu.palette - 1] : undefined;
-  const slotItems: MenuEntry[] = slotMenu && doc && slotTarget ? [
-    { heading: `Put ${slotTarget.name} in slot` },
-    ...slotPalettes.map((index, slot) => {
-      const holder = index >= 0 ? docPalettes[index] : null, here = index === slotMenu.palette - 1;
-      return { disabled: here || !slotTarget.id, onSelect: () => void putInSlot(slotMenu.palette, slot), label: <><span className="app-slot" style={{ width: 14, color: "var(--k-ink-3)" }}>{slot + 1}</span><span className="app-chips">{(holder?.colors ?? ["#222", "#222", "#222", "#222"]).map((color, at) => <i key={at} style={{ background: color }} />)}</span><span className="app-name">{holder?.name ?? "—"}{here ? " (here)" : ""}</span>{slot === UI_SLOT && doc.asset?.kind !== "sprites" && <Chip title="GB Studio draws dialogue boxes and menus with slot 8">UI</Chip>}</> };
-    }),
+  // The palette popup (right-click a palette or a slot; the author's asks, 2026-10-12): put in a slot with a filter,
+  // or, from a slot, pick any project palette for it; Rename… and Duplicate for a project palette.
+  const slotFilter = slotQuery.trim().toLowerCase();
+  const slotRow = (slot: number, palette: Palette | null, here: boolean) => <><span className="app-slot" style={{ width: 14, color: "var(--k-ink-3)" }}>{slot + 1}</span><span className="app-chips">{(palette?.colors ?? ["#222", "#222", "#222", "#222"]).map((color, at) => <i key={at} style={{ background: color }} />)}</span><span className="app-name">{palette?.name ?? "—"}{here ? " (here)" : ""}</span>{slot === UI_SLOT && doc?.asset?.kind !== "sprites" && <Chip title="GB Studio draws dialogue boxes and menus with slot 8">UI</Chip>}</>;
+  const fillSlot = slotMenu?.slot;
+  const slotItems: MenuEntry[] = !slotMenu || !doc || !slotTarget ? []
+    : fillSlot !== undefined ? [
+      { heading: `Put a palette in slot ${fillSlot + 1}` },
+      ...docPalettes.flatMap((palette, index): MenuEntry[] => !palette.id || (slotFilter && !palette.name.toLowerCase().includes(slotFilter)) ? [] : [{ disabled: sceneSlots[fillSlot] === palette.id, onSelect: () => void putInSlot(index + 1, fillSlot), label: <><span className="app-chips">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span><span className="app-name">{palette.name}{sceneSlots[fillSlot] === palette.id ? " (here)" : ""}</span></> }]),
+      ...(slotFilter && !docPalettes.some((palette) => palette.id && palette.name.toLowerCase().includes(slotFilter)) ? [{ note: `No project palette matches "${slotQuery.trim()}".` }] : []),
+      { separator: true },
+      { note: `Writes ${slotWhere} in GB Studio right away. Tiles that used slot ${fillSlot + 1} show the new palette.` },
+    ] : [
+      ...(sceneSlots.length ? [
+        { heading: `Put ${slotTarget.name} in slot` },
+        ...slotPalettes.flatMap((index, slot): MenuEntry[] => {
+          const holder = index >= 0 ? docPalettes[index] : null, here = index === slotMenu.palette - 1;
+          if (slotFilter && !`${slot + 1} ${holder?.name ?? ""}`.toLowerCase().includes(slotFilter)) return [];
+          return [{ disabled: here || !slotTarget.id, onSelect: () => void putInSlot(slotMenu.palette, slot), label: slotRow(slot, holder, here) }];
+        }),
+        { separator: true },
+      ] as MenuEntry[] : []),
+      ...(slotTarget.id ? [
+        { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
+        { label: "Duplicate", icon: <CopyPlus />, title: "A new project palette with the same colors", onSelect: () => void duplicateProjectPalette(slotTarget) },
+      ] as MenuEntry[] : []),
+      { note: !slotTarget.id ? "Add this palette to the project first (palette manager)." : sceneSlots.length ? `Put in slot writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Open a project background or sprite sheet to put it in a slot." },
+    ];
+  const copyFrom = doc?.asset?.kind === "backgrounds" ? doc.asset : undefined;
+  const copyTargets = copyMenu && copyFrom ? (project?.assets ?? []).filter((asset) => asset.kind === "backgrounds" && asset.file !== copyFrom.file && (!slotFilter || asset.name.toLowerCase().includes(slotFilter))) : [];
+  const copyItems: MenuEntry[] = copyMenu && copyFrom ? [
+    { heading: `Put ${copyFrom.name}'s eight palettes on` },
+    ...copyTargets.map((asset): MenuEntry => ({ label: asset.name, icon: <FileImage />, onSelect: () => void copySlotsTo(asset) })),
+    ...(copyTargets.length ? [] : [{ note: slotFilter ? `No background matches "${slotQuery.trim()}".` : "No other backgrounds in the project." }]),
     { separator: true },
-    { note: slotTarget.id ? `Writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Add this palette to the project first (palette manager)." },
+    { note: "Writes that background's scene palettes in GB Studio (the same palettes, no copies made). A background no scene shows uses the project's defaults: add it to a scene first." },
   ] : [];
   const selectionItems: MenuEntry[] = selectionMenu && doc?.sel ? [
     { heading: `Selection · ${doc.sel.w} × ${doc.sel.h}` },
@@ -2299,7 +2418,7 @@ export default function PaintApp() {
       <div className="app-tabs">
         <div className="app-tabs-scroll" ref={tabsRef} role="tablist" aria-label="Open pictures" onScroll={tabFades} onWheel={(event) => { if (event.deltaY && !event.deltaX && tabsRef.current) tabsRef.current.scrollLeft += event.deltaY; }}>
           {docs.current.map((item) => { const from = foreignProject(item); return (
-            <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""} · middle-click closes`} onClick={() => setActiveId(item.id)} onMouseDown={(event) => { if (event.button === 1) event.preventDefault(); }} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeDoc(item); } }}>
+            <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""} · middle-click closes, right-click for more`} onClick={() => setActiveId(item.id)} onMouseDown={(event) => { if (event.button === 1) event.preventDefault(); }} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeDoc(item); } }} onContextMenu={(event) => { event.preventDefault(); setTabMenu({ x: event.clientX, y: event.clientY, doc: item }); }}>
               <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
               {from && <button type="button" className="app-tab-foreign" aria-label={`${item.name} is from another project`} title={`From another project (${from}): Save won't write it into this one. Click for Pictures from other projects.`} onClick={(event) => { event.stopPropagation(); setShowForeign(true); }}><Plane /></button>}
               <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
@@ -2307,7 +2426,7 @@ export default function PaintApp() {
           ); })}
           <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
         </div>
-        {docs.current.length > 1 && <Menu align="end" items={docs.current.map((item) => ({ label: <span className={item.dirty ? "dirty" : undefined}>{item.name}{item.dirty && " *"}</span>, icon: foreignProject(item) ? <Plane /> : item.id === activeId ? <Check /> : <FileImage />, onSelect: () => setActiveId(item.id) }))}
+        {docs.current.length > 1 && <Menu align="end" items={[...docs.current.map((item): MenuEntry => ({ label: <span className={item.dirty ? "dirty" : undefined}>{item.name}{item.dirty && " *"}</span>, icon: foreignProject(item) ? <Plane /> : item.id === activeId ? <Check /> : <FileImage />, onSelect: () => setActiveId(item.id) })), { separator: true }, { label: "Close all", icon: <SquareX />, title: "Close every open picture (unsaved ones ask first)", onSelect: () => closeDocs([...docs.current]) }]}
           trigger={<IconButton label={`All open pictures (${docs.current.length})`} size="sm" variant="ghost"><ChevronDown /></IconButton>} />}
       </div>
       <div className="app-body">
@@ -2389,7 +2508,7 @@ export default function PaintApp() {
             <TabList label="Inspector" tabs={[{ value: "palettes", label: "Palettes" }, { value: "picture", label: "Picture" }]} />
             <Tabs.Content value="palettes" className="app-side-body">
               <PalettesPane doc={doc} palettes={docPalettes} sceneSlots={sceneSlots} slotPalettes={slotPalettes} slotWhere={slotWhere} activePalette={activePalette} onPick={pickPalette}
-                namedSlots={namedSlots} onNamedSlots={(on) => { setNamedSlots(on); store(NAMED_SLOTS_KEY, on); }} filter={paletteFilter} onFilter={setPaletteFilter} onSlotMenu={(x, y, palette) => setSlotMenu({ x, y, palette })}
+                namedSlots={namedSlots} onNamedSlots={(on) => { setNamedSlots(on); store(NAMED_SLOTS_KEY, on); }} filter={paletteFilter} onFilter={setPaletteFilter} onSlotMenu={(x, y, palette, slot) => { setSlotQuery(""); setSlotMenu({ x, y, palette, slot }); }} onCopySlots={doc?.asset?.kind === "backgrounds" && project && (!doc.asset.project || doc.asset.project === project.path) ? (x, y) => { setSlotQuery(""); setCopyMenu({ x, y }); } : undefined}
                 libraryColors={libraryColors} onSaveToProject={project && picked?.id ? () => void (async () => { if (await okToWriteProjectJson() && await writeProjectPalette({ id: picked.id!, name: picked.name, colors: [...picked.colors] })) say(`${picked.name} written to the project`); })() : undefined}
                 onRecolor={recolorPalette} say={say} copiedColors={copiedColors} onCopy={(colors) => { setCopiedColors(colors); say(`Copied the colors of ${picked?.name}`); }} />
             </Tabs.Content>
@@ -2420,7 +2539,8 @@ export default function PaintApp() {
       </footer>
       <Toasts showing={messages.showing} onDismiss={messages.dismiss} />
       {showMessages && <MessagesWindow messages={messages.messages} onClose={() => setShowMessages(false)} onClear={messages.clear} />}
-      {slotMenu && slotItems.length > 0 && <MenuAt x={slotMenu.x} y={slotMenu.y} items={slotItems} label="Put in slot" onClose={() => setSlotMenu(null)} />}
+      {copyMenu && <MenuAt x={copyMenu.x} y={copyMenu.y} items={copyItems} label="Copy palettes to" onClose={() => setCopyMenu(null)} search={slotQuery} onSearch={setSlotQuery} searchLabel="Filter backgrounds" />}
+      {slotMenu && slotItems.length > 0 && <MenuAt x={slotMenu.x} y={slotMenu.y} items={slotItems} label={slotMenu.slot !== undefined ? `Slot ${slotMenu.slot + 1}` : "Palette"} onClose={() => setSlotMenu(null)} search={slotQuery} onSearch={slotMenu.slot !== undefined || sceneSlots.length ? setSlotQuery : undefined} searchLabel={slotMenu.slot !== undefined ? "Filter palettes" : "Filter slots"} />}
       {selectionMenu && selectionItems.length > 0 && <MenuAt x={selectionMenu.x} y={selectionMenu.y} items={selectionItems} label="Selection" onClose={() => setSelectionMenu(null)} />}
       {assetMenu && <MenuAt x={assetMenu.x} y={assetMenu.y} items={assetItems} label={assetMenu.asset.name} onClose={() => setAssetMenu(null)} />}
       {showHelp && <HelpWindow onClose={() => setShowHelp(false)} onAbout={() => { setShowHelp(false); setShowAbout(true); }} />}
@@ -2434,11 +2554,17 @@ export default function PaintApp() {
         onOpenHere={(id) => { const item = docs.current.find((entry) => entry.id === id); const here = item?.asset && projectRef.current?.assets.find((asset) => asset.kind === item.asset!.kind && asset.file === item.asset!.file); if (here) { setShowForeign(false); void openAsset(here); } }}
         onCopyHere={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) { setShowForeign(false); void copyIntoProject(item); } }}
         onCloseTab={(id) => { const item = docs.current.find((entry) => entry.id === id); if (item) closeDoc(item); }}
-        onCloseAll={() => { const listed = docs.current.filter((item) => foreignProject(item)); for (const item of listed.filter((entry) => !entry.dirty)) dropDoc(item); const dirty = listed.find((item) => item.dirty); if (dirty) closeDoc(dirty); }}
+        onCloseAll={() => closeDocs(docs.current.filter((item) => foreignProject(item)))}
         onClose={() => setShowForeign(false)} />}
       {confirmDialog}
+      {promptDialog}
       {deleting && <DeleteAssetDialog name={deleting.asset.name} files={deleting.files} uses={deleting.uses} busy={deleting.busy} onDelete={() => void confirmDelete()} onCancel={() => setDeleting(null)} />}
-      {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tab={closing.tab?.name} onSave={() => void saveAndClose()} onKeep={closing.tab ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tab = closing.tab; setClosing(null); if (!tab) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
+      {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tabs={closing.tabs?.map((item) => item.name)} onSave={() => void saveAndClose()} onKeep={closing.tabs ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tabs = closing.tabs; setClosing(null); if (!tabs) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
+      {tabMenu && <MenuAt x={tabMenu.x} y={tabMenu.y} label={tabMenu.doc.name} onClose={() => setTabMenu(null)} items={[
+        { label: "Close", icon: <X />, keys: "Alt+W", onSelect: () => closeDoc(tabMenu.doc) },
+        { label: "Close others", icon: <CopyX />, disabled: docs.current.length < 2, onSelect: () => closeDocs(docs.current.filter((item) => item !== tabMenu.doc)) },
+        { label: "Close all", icon: <SquareX />, onSelect: () => closeDocs([...docs.current]) },
+      ]} />}
       {wizard === "dns" && doc && project && (
         <DnsWizard slots={slotPalettes.map((index) => { const palette = index >= 0 ? docPalettes[index] : null; return palette?.id ? { id: palette.id, name: palette.name, colors: [...palette.colors] } : null; })} where={slotWhere} existing={project.palettes.map((palette) => palette.name)}
           picture={{ pixels: doc.pixels, cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }} onClose={() => setWizard(null)} onCreate={addPalettes} />
@@ -2501,7 +2627,7 @@ export default function PaintApp() {
           onWriteProject={writeProjectPalette}
           onPick={(id) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) { setActivePalette(index + 1); setTool("palette"); } }}
           onRemoveProject={removeProjectPalette}
-          onSlotMenu={doc?.asset?.slots?.length ? (id, x, y) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) setSlotMenu({ x, y, palette: index + 1 }); else say("Open a picture of this project to put its palettes in slots."); } : undefined}
+          onSlotMenu={doc?.asset?.slots?.length ? (id, x, y) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) { setSlotQuery(""); setSlotMenu({ x, y, palette: index + 1 }); } else say("Open a picture of this project to put its palettes in slots."); } : undefined}
         />
       )}
     </div>

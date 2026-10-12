@@ -136,6 +136,7 @@
 .k-menu-label { padding: 6px var(--k-2) 2px; color: var(--k-ink-3); font: 600 var(--k-text-xs) var(--k-font); letter-spacing: .08em; text-transform: uppercase; }
 .k-menu-note { max-width: 280px; margin: 4px var(--k-2) 6px; color: var(--k-ink-3); font-size: var(--k-text-xs); line-height: 1.45; }
 .k-menu-sep { height: 1px; margin: 4px 2px; background: var(--k-edge-2); }
+.k-menu-search { height: 30px; margin: 0 0 4px; font-size: var(--k-text-sm); }
 .k-tooltip { padding: 6px 10px; max-width: 280px; color: var(--k-ink); background: #1a1d22; border: 1px solid var(--k-edge-2); border-radius: var(--k-r-ctl); box-shadow: var(--k-float); font: var(--k-text-sm) var(--k-font); line-height: 1.4; z-index: 60; }
 .k-tooltip .k-kbd { margin-left: 6px; }
 .k-popover { padding: var(--k-3); background: var(--k-ctl); border: 1px solid var(--k-edge-2); border-radius: var(--k-r-card); box-shadow: var(--k-float); z-index: 50; }

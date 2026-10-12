@@ -153,13 +153,14 @@ GB Cartographer is careful with your game files. It only ever writes:
 - a new PNG when you make one with **New**, a wizard, the Map Room or the Graphics window, or save a picture from another project into this one (it never replaces a file; GB Studio adds its own settings for it);
 - the `tileColors` field of a background's or tileset's `.png.gbsres` sidecar;
 - the `paletteIndex` of the slices in a sprite sheet's `.png.gbsres` sidecar;
-- palette files in `project/palettes/`: a new one when you add a palette from the manager, the name and
-  colors of one you edit there, or taking out one that nothing in the project uses (it goes to the backups);
+- palette files in `project/palettes/`: a new one when you add or duplicate a palette, the name and
+  colors of one you edit or rename, or taking out one that nothing in the project uses (it goes to the backups);
 - a scene's `collisions` field in its `scene.gbsres`, when you paint collisions with the collision brush (only that
   field; the scene is backed up first, and one GB Studio changed since asks before it's replaced);
 - when you put a palette in a slot: that one entry of a scene's palette list (`paletteIds` or `spritePaletteIds`
   in its `scene.gbsres`), or of the project's default palettes (`defaultBackgroundPaletteIds` or
-  `defaultSpritePaletteIds` in `project/settings.gbsres`);
+  `defaultSpritePaletteIds` in `project/settings.gbsres`); and when you copy a background's palettes onto another
+  background (**Copy** beside the scene slots), that scene's whole `paletteIds` list (the same palettes, no copies);
 - its own folder, `Cartographer/`, beside `assets/` and `project/`: saved stamps in `Cartographer/stamps/` (a PNG
   each, its tile palettes, tags and auto-tile in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`, and a
   `README.txt` saying what the folder is. GB Studio

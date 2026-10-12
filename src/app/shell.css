@@ -111,6 +111,9 @@
 .app-side-body { display: flex; flex-direction: column; gap: var(--k-3); min-height: 0; flex: 1; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
 .app-section { display: flex; flex-direction: column; gap: var(--k-2); }
 .app-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-2); }
+.app-section-head > .k-eyebrow { white-space: nowrap; }
+.app-section-tools { display: flex; align-items: center; gap: var(--k-1); min-width: 0; }
+.app-section-tools > .k-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-list { display: flex; flex-direction: column; gap: 2px; }
 .app-row { flex: none; display: flex; align-items: center; gap: var(--k-2); height: 28px; padding: 0 var(--k-2); color: var(--k-ink); background: transparent; border: 0; border-radius: var(--k-r-ctl); font: var(--k-text-md) var(--k-font); text-align: left; cursor: pointer; }
 .app-row:hover:not(:disabled) { background: var(--k-hover); color: var(--k-hover-ink); }

@@ -3,9 +3,10 @@
  * paints the picked one onto tiles), and the picked palette's colors in this picture.
  */
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { CopyPlus } from "lucide-react";
 import { GB_SHADES, closeShades, namedSlot, type Palette } from "../paint";
 import { HelpTip } from "./HelpTip";
-import { Button, Chip, Switch } from "../ui/kit";
+import { Button, Chip, IconButton, Switch } from "../ui/kit";
 import type { Doc } from "./model";
 
 interface Props {
@@ -20,7 +21,10 @@ interface Props {
   activePalette: number; onPick: (palette: number) => void;
   namedSlots: boolean; onNamedSlots: (on: boolean) => void;
   filter: string; onFilter: (filter: string) => void;
-  onSlotMenu: (x: number, y: number, palette: number) => void;
+  /** Right-click: a palette row (`palette`: its number) or, with `slot`, a scene slot to put another palette in. */
+  onSlotMenu: (x: number, y: number, palette: number, slot?: number) => void;
+  /** Copy these eight slots onto another background's scene (a project background only). */
+  onCopySlots?: (x: number, y: number) => void;
   /** The picked palette's colors in the project (or library), to revert to. */
   libraryColors: string[] | undefined;
   /** Rewrites the picked palette in the project; absent outside one. */
@@ -41,7 +45,7 @@ function helpFor(doc: Doc | null, slots: boolean) {
   return "Each 8 × 8 tile wears one palette, or none. Palettes are only for looking here: saving always writes the GB greens.";
 }
 
-export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWhere, activePalette, onPick, namedSlots, onNamedSlots, filter, onFilter, onSlotMenu, libraryColors, onSaveToProject, onRecolor, copiedColors, onCopy, say }: Props) {
+export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWhere, activePalette, onPick, namedSlots, onNamedSlots, filter, onFilter, onSlotMenu, onCopySlots, libraryColors, onSaveToProject, onRecolor, copiedColors, onCopy, say }: Props) {
   const picked = activePalette ? palettes[activePalette - 1] : undefined;
   // A project background or sprite sheet carries its eight palette slots: shown as a strip, and first in the list.
   const slotOf = (palette: Palette) => palette.id ? sceneSlots.indexOf(palette.id) : -1;
@@ -55,7 +59,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     })
     .filter(({ palette, index }) => index === activePalette || matches(palette.name, filter))
     .sort((a, b) => (a.index === 0 ? -1 : b.index === 0 ? 1 : a.slot >= 0 && b.slot >= 0 ? a.slot - b.slot : a.slot >= 0 ? -1 : b.slot >= 0 ? 1 : a.index - b.index));
-  const openSlotMenu = (event: ReactMouseEvent, palette: number) => { if (!sceneSlots.length || !palette) return; event.preventDefault(); onSlotMenu(event.clientX, event.clientY, palette); };
+  const openSlotMenu = (event: ReactMouseEvent, palette: number, slot?: number) => { if (!palette || (slot === undefined && !sceneSlots.length && !palettes[palette - 1]?.id)) return; event.preventDefault(); onSlotMenu(event.clientX, event.clientY, palette, slot); };
   const unchanged = !libraryColors || (picked && libraryColors.join() === picked.colors.join());
   const sprite = Boolean(doc?.keyGreen);
   const close = picked ? closeShades(picked.colors, sprite) : [];
@@ -72,12 +76,12 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     <>
       {sceneSlots.length > 0 && (
         <section className="app-section" aria-label={doc?.asset?.kind === "sprites" ? "Sprite palette slots" : "The scene's palette slots"}>
-          <div className="app-section-head"><span className="k-eyebrow">{doc?.asset?.kind === "sprites" ? "Sprite slots" : "Scene slots"}</span><Chip title={`Slots come from ${slotWhere}`}>{doc?.asset?.slotScene ?? "defaults"}</Chip></div>
+          <div className="app-section-head"><span className="k-eyebrow">{doc?.asset?.kind === "sprites" ? "Sprite slots" : "Scene slots"}</span><span className="app-section-tools"><Chip title={`Slots come from ${slotWhere}`}>{doc?.asset?.slotScene ?? "defaults"}</Chip>{onCopySlots && <IconButton size="sm" variant="ghost" label="Copy these palettes to another background (its scene's slots; the same palettes, no copies made)" onClick={(event) => { const r = event.currentTarget.getBoundingClientRect(); onCopySlots(r.left, r.bottom + 4); }}><CopyPlus /></IconButton>}</span></div>
           <div className="app-list gbp-slots">
             {slotPalettes.map((paletteIndex, slot) => {
               const palette = paletteIndex >= 0 ? palettes[paletteIndex] : null;
               return (
-                <button key={slot} className="app-row gbp-slot-button" aria-pressed={Boolean(palette) && activePalette === paletteIndex + 1} disabled={!palette} title={palette ? `Slot ${slot + 1} · ${palette.name} · right-click: put another palette here` : `Slot ${slot + 1}: no palette`} onClick={() => palette && onPick(paletteIndex + 1)} onContextMenu={(event) => openSlotMenu(event, paletteIndex + 1)}>
+                <button key={slot} className="app-row gbp-slot-button" aria-pressed={Boolean(palette) && activePalette === paletteIndex + 1} disabled={!palette} title={palette ? `Slot ${slot + 1} · ${palette.name} · right-click: put another palette here` : `Slot ${slot + 1}: no palette`} onClick={() => palette && onPick(paletteIndex + 1)} onContextMenu={(event) => openSlotMenu(event, paletteIndex + 1, slot)}>
                   <span className="app-slot">{slot + 1}</span><Chips colors={palette?.colors ?? ["#222", "#222", "#222", "#222"]} /><span className="app-name">{palette?.name ?? "—"}</span>
                 </button>
               );
@@ -93,7 +97,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
         <input type="search" className="k-input" placeholder="Filter palettes" aria-label="Filter palettes by name" value={filter} onChange={(event) => onFilter(event.target.value)} />
         <div className="app-list gbp-palettes" role="listbox" aria-label="Palettes">
           {shown.map(({ palette, index, slot, slots, named }) => (
-            <button key={`${index}-${palette.name}`} role="option" aria-selected={activePalette === index} className="app-row" title={index && sceneSlots.length ? "Right-click: put in a slot" : undefined} onClick={() => onPick(index)} onContextMenu={(event) => openSlotMenu(event, index)}>
+            <button key={`${index}-${palette.name}`} role="option" aria-selected={activePalette === index} className="app-row" title={index && sceneSlots.length ? "Right-click: put in a slot, rename, duplicate" : index && palette.id ? "Right-click: rename, duplicate" : undefined} onClick={() => onPick(index)} onContextMenu={(event) => openSlotMenu(event, index)}>
               <Chips colors={palette.colors} /><span className="app-name">{palette.name}</span>
               {slot >= 0 && <Chip title={`${doc?.asset?.kind === "sprites" ? "Sprite palette slot" : "Palette slot"}${slots.length > 1 ? "s" : ""} ${slots.join(" and ")}${doc?.asset?.kind === "sprites" ? "" : " of this background's scene"}`}>{slots.join(" · ")}</Chip>}
               {named >= 0 && <Chip title={`Saves as slot ${named + 1} (time-of-day palettes)`}>→ {named + 1}</Chip>}

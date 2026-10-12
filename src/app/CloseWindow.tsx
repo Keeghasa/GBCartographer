@@ -3,7 +3,8 @@
  * offers to save them into the GB Studio project, to keep the changes in GB Cartographer only (they open again
  * next time, as closing always did), or to discard them. Pictures that aren't project files are listed apart:
  * Save to GB Studio project leaves them in GB Cartographer. Closing one tab with unsaved changes asks here too, without
- * the keep option (a closed tab's edits go; the author, 2026-10-10).
+ * the keep option (a closed tab's edits go; the author, 2026-10-10), and so do Close all / Close others (2026-10-12):
+ * Save writes the project pictures and closes them; pictures from outside the project stay open.
  */
 import { FileImage, Palette as PaletteIcon, Save, Trash2 } from "lucide-react";
 import { Button, Dialog } from "../ui/kit";
@@ -19,8 +20,8 @@ export interface ClosingChanges {
 interface Props {
   changes: ClosingChanges;
   busy: boolean;
-  /** Closing this one picture's tab, not the window. */
-  tab?: string;
+  /** Closing these pictures' tabs (their names), not the window. */
+  tabs?: string[];
   onSave: () => void;
   /** Close and keep the changes in GB Cartographer (the window only). */
   onKeep?: () => void;
@@ -28,8 +29,9 @@ interface Props {
   onCancel: () => void;
 }
 
-export function CloseWindow({ changes, busy, tab, onSave, onKeep, onDiscard, onCancel }: Props) {
+export function CloseWindow({ changes, busy, tabs, onSave, onKeep, onDiscard, onCancel }: Props) {
   const files = changes.project.length;
+  const tab = tabs?.length === 1 ? tabs[0] : undefined;
   const loose = tab !== undefined && files === 0;
   const footer = <>
     <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button>
@@ -37,10 +39,10 @@ export function CloseWindow({ changes, busy, tab, onSave, onKeep, onDiscard, onC
     <Button variant="danger" icon={<Trash2 />} disabled={busy} title="Close without saving: the unsaved changes are gone (the project's files stay as they are)" onClick={onDiscard}>Discard changes</Button>
     {onKeep && <Button disabled={busy} title="Close without writing into the project: the pictures open again, unsaved, next time" onClick={onKeep}>Save to GB Cartographer only</Button>}
     {loose && <Button variant="primary" icon={<Save />} disabled={busy} title="Save this picture as a PNG file, then close the tab" onClick={onSave}>{busy ? "Saving…" : "Save as…"}</Button>}
-    {files > 0 && <Button variant="primary" icon={<Save />} disabled={busy} title="Write these files into the GB Studio project (old versions go to Backups), then close" onClick={onSave}>{busy ? "Saving…" : "Save to GB Studio project"}</Button>}
+    {files > 0 && <Button variant="primary" icon={<Save />} disabled={busy} title={`Write ${files === 1 ? "this file" : "these files"} into the GB Studio project (old versions go to Backups), then close`} onClick={onSave}>{busy ? "Saving…" : "Save to GB Studio project"}</Button>}
   </>;
   return (
-    <Dialog open wide onOpenChange={(open) => { if (!open && !busy) onCancel(); }} title={tab ? `Close ${tab}?` : "Unsaved changes"} sub={tab ? "It has unsaved changes" : "Before GB Cartographer closes"} icon={<Save size={18} />} footer={footer}>
+    <Dialog open wide onOpenChange={(open) => { if (!open && !busy) onCancel(); }} title={tab ? `Close ${tab}?` : tabs ? `Close ${tabs.length} pictures?` : "Unsaved changes"} sub={tab ? "It has unsaved changes" : tabs ? "They have unsaved changes" : "Before GB Cartographer closes"} icon={<Save size={18} />} footer={footer}>
       <div className="k-stack">
         {files > 0 && <div className="k-stack k-stack--tight">
           <span className="k-eyebrow">Save to GB Studio project changes {files === 1 ? "this file" : `these ${files} files`}</span>
@@ -49,7 +51,7 @@ export function CloseWindow({ changes, busy, tab, onSave, onKeep, onDiscard, onC
           ))}</ul>
         </div>}
         {changes.loose.length > 0 && <div className="k-stack k-stack--tight">
-          <span className="k-eyebrow">{tab ? "Not a project file" : "Not in this project (kept in GB Cartographer unless discarded)"}</span>
+          <span className="k-eyebrow">{tab ? "Not a project file" : tabs ? "Not project files (Save leaves them open; Discard closes them)" : "Not in this project (kept in GB Cartographer unless discarded)"}</span>
           <ul className="cw-list">{changes.loose.map((item) => <li key={item.name}>{item.thumb ? <img className="cw-thumb" src={item.thumb} alt="" /> : <FileImage size={14} />}<span className="cw-path k-mono">{item.name}</span></li>)}</ul>
         </div>}
       </div>

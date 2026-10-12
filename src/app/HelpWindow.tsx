@@ -67,6 +67,12 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
         <Section title="Tabs">
           <Row name="Next, previous" keys={["Ctrl+Tab", "Ctrl+PgDn", "Ctrl+PgUp"]}>The next and previous picture (Shift+Ctrl+Tab goes back).</Row>
           <Row name="Close" keys={["Alt+W", "Middle-click"]}>Closes the picture (Ctrl+W too, in the desktop app); middle-click a tab to close it. The mouse wheel scrolls the tab strip.</Row>
+          <Row name="Close others, close all" keys={["Right-click"]}>Right-click a tab (or use the list at the end of the tab strip). Saved pictures close; unsaved ones are asked about in one window.</Row>
+        </Section>
+        <Section title="Palettes">
+          <Row name="Put in slot, rename, duplicate" keys={["Right-click"]}>Right-click a palette in the list: put it in one of the scene's slots (type to filter), rename it, or duplicate it into the project.</Row>
+          <Row name="Fill a slot" keys={["Right-click"]}>Right-click a scene slot to pick any project palette for it (type to filter).</Row>
+          <Row name="Copy palettes">The button beside the scene slots puts this background's eight palettes in another background's scene (the same palettes, no copies).</Row>
         </Section>
         <section className="hp-section" hidden={Boolean(filter.trim())}>
           <h3 className="k-eyebrow">What Save writes</h3>
@@ -76,7 +82,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
               <li>the PNG (same size, or the new size after Resize), and new PNGs from New, the wizards, the Map Room, Graphics or Duplicate (never replacing a file)</li>
               <li>a background's tile palettes (<code>tileColors</code>) and a sprite sheet's slice palettes (<code>paletteIndex</code>)</li>
               <li>palette files from the palette manager</li>
-              <li>when you put a palette in a slot: the scene's palette list or the project's default palettes</li>
+              <li>when you put a palette in a slot: the scene's palette list or the project's default palettes; when you copy a background's palettes: the other scene's palette list</li>
               <li>a scene's collisions (<code>collisions</code> in its scene.gbsres), painted with the collision brush</li>
               <li>its own folder, <code>Cartographer/</code>: saved stamps and Map Room maps</li>
               <li>Delete (asked every time) moves a picture's files into the backups</li>
