@@ -63,8 +63,10 @@
 .app-stamp-badge { position: absolute; top: 2px; left: 2px; padding: 1px 4px; color: var(--k-on-acc); background: var(--k-acc); border-radius: 4px; font: 700 9px/1.2 var(--k-font); font-style: normal; }
 .app-card-slot:hover .app-stamp-edit, .app-card-actions .app-stamp-edit:focus-visible, .app-card-actions .app-stamp-edit[aria-pressed="true"] { opacity: 1; }
 /* A hidden card: grey, no picture, at the bottom. */
-.app-card.is-hidden { opacity: .55; } .app-card.is-hidden b, .app-card.is-hidden small { color: var(--k-ink-3); }
-.app-card.is-hidden .app-card-blank { background: var(--k-ctl-2); }
+.app-folder-thumb { position: relative; display: block; }
+.app-card--folder .gbp-asset-thumb { opacity: .5; transition: opacity .15s; }
+.app-card--folder:hover .gbp-asset-thumb, .app-card--folder:focus-visible .gbp-asset-thumb { opacity: 1; }
+.app-folder-badge { position: absolute; right: 4px; bottom: 4px; padding: 3px; box-sizing: content-box; border-radius: 6px; background: var(--k-raised); color: var(--k-ink); }
 
 /* Tool column: two columns of icon buttons, the view toggles, the brush size. */
 .app-tools { flex: none; width: 76px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; justify-items: center; gap: 2px; padding: 6px; overflow-y: auto; }

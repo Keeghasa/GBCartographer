@@ -80,8 +80,9 @@ palettes straight back into the project.
   its own glyphs.
 - **Export to share.** Any picture as shown, in its palettes, or in the greens, scaled up 2× to 8× with crisp pixels,
   and a sprite's animation as a looping GIF.
-- **Tidy the project panel.** Hide pictures you don't need (they wait, greyed, at the bottom), duplicate one to make
-  a variant, or delete one (asked every time; its files go to the backups).
+- **Tidy the project panel.** Pin the pictures you use most to the top, hide the ones you don't (they wait in a
+  Hidden folder at the top that brings them back), duplicate one to make a variant, or delete one (asked every time;
+  its files go to the backups).
 - **Careful with your files.** The last 10 versions of every file it overwrites, restorable from **Backups…**; a
   warning when a file changed on disk (pictures GB Studio changes reload by themselves) or GB Studio is open; and a
   short, fixed list of what it ever writes (below).

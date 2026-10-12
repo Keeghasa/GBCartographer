@@ -3,15 +3,18 @@
  * Clicking the folder on show again hides the cards (the rail stays), like an editor's side bar.
  * The thumbnails come from one preview sheet per folder (server/assets.ts previewSheet); while it loads the cards
  * show empty boxes, and if it can't be made they fetch their own previews.
- * Hidden pictures (the archive button on a card, the author 2026-10-10) sink to the bottom as grey cards without a
- * picture; the button again brings one back. Which are hidden is kept per project in this browser, not in the project.
+ * Hidden pictures (the archive button on a card, the author 2026-10-10) go into one "Hidden" folder card at the top
+ * of the grid (2026-10-12): hovering it cycles through what's inside, clicking it opens a window that brings them
+ * back. Pinned pictures (the pin button) come right after it, before the rest. Which are hidden and pinned is kept
+ * per project in this browser, not in the project.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, type Project } from "./model";
 import type { AutotileKind } from "./autotile";
 import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
-import { Archive, ArchiveRestore, MessageSquareText, Pencil } from "lucide-react";
+import { Archive, FolderClosed, MessageSquareText, Pencil, Pin } from "lucide-react";
+import { HiddenWindow } from "./HiddenWindow";
 import { readStored, store } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
 import { AnimThumb } from "./AnimThumb";
@@ -56,6 +59,28 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
     setHidden(next);
     store(hiddenKey, [...next]);
   };
+  const showAgain = (assets: Asset[]) => {
+    const next = new Set(hidden);
+    for (const asset of assets) next.delete(hideKey(asset));
+    setHidden(next);
+    store(hiddenKey, [...next]);
+  };
+  const pinnedKey = `gbc-pinned:${project.path}`;
+  const [pinned, setPinned] = useState<Set<string>>(() => new Set(readStored<string[]>(pinnedKey, [])));
+  useEffect(() => setPinned(new Set(readStored<string[]>(pinnedKey, []))), [pinnedKey]);
+  const togglePinned = (asset: Asset) => {
+    const next = new Set(pinned);
+    if (next.has(hideKey(asset))) next.delete(hideKey(asset)); else next.add(hideKey(asset));
+    setPinned(next);
+    store(pinnedKey, [...next]);
+  };
+  const [hiddenOpen, setHiddenOpen] = useState(false);
+  // Hovering the Hidden folder cycles through its pictures.
+  const [cycle, setCycle] = useState(0);
+  const cycling = useRef<number | undefined>(undefined);
+  const startCycle = () => { window.clearInterval(cycling.current); cycling.current = window.setInterval(() => setCycle((at) => at + 1), 650); };
+  const stopCycle = () => { window.clearInterval(cycling.current); cycling.current = undefined; setCycle(0); };
+  useEffect(() => () => window.clearInterval(cycling.current), []);
 
   // The sheet of the folder on show: fetched again when its pictures, palettes or slots change.
   const sheetKey = `${project.path}|${kind}|${project.assets.filter((asset) => asset.kind === kind).map((asset) => `${asset.file}:${Math.round(asset.mtime)}`).join(",")}|${slotsVersion}`;
@@ -77,8 +102,18 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   const label = ASSET_KINDS.find(([id]) => id === kind)?.[1] ?? "";
   const wanted = filter.trim().toLowerCase();
   const matching = project.assets.filter((asset) => asset.kind === kind && (!wanted || asset.name.toLowerCase().includes(wanted)));
-  // Hidden ones last, in their own order.
-  const shown = [...matching.filter((asset) => !hidden.has(hideKey(asset))), ...matching.filter((asset) => hidden.has(hideKey(asset)))];
+  // Hidden ones go into the Hidden folder; pinned ones first, then the rest.
+  const hiddenHere = matching.filter((asset) => hidden.has(hideKey(asset)));
+  const visible = matching.filter((asset) => !hidden.has(hideKey(asset)));
+  const shown = [...visible.filter((asset) => pinned.has(hideKey(asset))), ...visible.filter((asset) => !pinned.has(hideKey(asset)))];
+  /** A picture's thumbnail: cut from the folder's preview sheet, or its own preview while the sheet can't be had. */
+  const thumbOf = (asset: Asset, fit: CSSProperties) => asset.kind === "stamps" && asset.autotile === "anim" ? <AnimThumb className="gbp-asset-thumb" style={{ ...fit, aspectRatio: "1" }} src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
+    : sheet?.kind === asset.kind && sheet.cells.has(asset.file)
+    ? <SheetThumb sheet={sheet.image} cell={sheet.cells.get(asset.file)!} style={fit} />
+    : !sheetFailed && sheet?.kind !== asset.kind ? <span className="gbp-asset-thumb" aria-hidden="true" style={fit} />
+    : <img className="gbp-asset-thumb" style={fit} loading="lazy" decoding="async" alt="" src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />;
+  const square = { aspectRatio: "1" };
+  const folderShows = hiddenHere.length ? hiddenHere[cycle % hiddenHere.length] : undefined;
   return (
     <>
       <nav className="k-panel app-rail" aria-label="Asset folders">
@@ -92,20 +127,24 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span><Chip>{label}</Chip></div>
         <input type="search" className="k-input" placeholder={`Filter ${label.toLowerCase()}`} aria-label={`Filter ${label.toLowerCase()} by name`} value={filter} onChange={(event) => setFilter(event.target.value)} />
         <div className="app-cards gbp-assets" role="list">
+          {folderShows && (
+            <span role="listitem" className="app-card-slot">
+              <button type="button" className="k-card k-card--button app-card app-card--folder" title={`${hiddenHere.length} hidden ${hiddenHere.length === 1 ? "picture" : "pictures"} (only here; the files stay). Click to see them or bring them back.`} onClick={() => setHiddenOpen(true)} onMouseEnter={startCycle} onMouseLeave={stopCycle} onFocus={startCycle} onBlur={stopCycle}>
+                <span className="app-folder-thumb">{thumbOf(folderShows, square)}<FolderClosed className="app-folder-badge" size={16} /></span>
+                <b>Hidden</b>
+                <small>{hiddenHere.length} {hiddenHere.length === 1 ? "picture" : "pictures"}</small>
+              </button>
+            </span>
+          )}
           {shown.map((asset) => {
             const state = stateOf(asset);
             // The thumbnail box takes the picture's own shape (kept between 4:5 and 2:1), so the picture fills it.
             const fit = { aspectRatio: String(Math.min(2, Math.max(0.8, asset.width / Math.max(1, asset.height)))) };
             const stamp = asset.kind === "stamps";
-            const isHidden = hidden.has(hideKey(asset));
+            const isPinned = pinned.has(hideKey(asset));
             const card = (
-              <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}${isHidden ? " is-hidden" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : onOpen(asset)}>
-                {isHidden ? <span className="gbp-asset-thumb app-card-blank" aria-hidden="true" style={fit} />
-                  : stamp && asset.autotile === "anim" ? <AnimThumb className="gbp-asset-thumb" style={{ ...fit, aspectRatio: "1" }} src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
-                  : sheet?.kind === asset.kind && sheet.cells.has(asset.file)
-                  ? <SheetThumb sheet={sheet.image} cell={sheet.cells.get(asset.file)!} style={fit} />
-                  : !sheetFailed && sheet?.kind !== asset.kind ? <span className="gbp-asset-thumb" aria-hidden="true" style={fit} />
-                  : <img className="gbp-asset-thumb" style={fit} loading="lazy" decoding="async" alt="" src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />}
+              <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : onOpen(asset)}>
+                {thumbOf(asset, fit)}
                 <b className={state.dirty ? "dirty" : ""}>{asset.name}</b>
                 <small>{asset.width} × {asset.height}</small>
               </button>
@@ -113,16 +152,18 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
             return (
               <span key={asset.file} role="listitem" className="app-card-slot">{card}
                 <span className="app-card-actions">
-                  {stamp && !isHidden && <AutotileToggles stamp={asset} onAutotile={onAutotile} />}
-                  {stamp && !isHidden && <button type="button" className="app-stamp-edit" title={`Edit ${asset.name}`} aria-label={`Edit ${asset.name}`} onClick={() => onOpen(asset)}><Pencil size={11} /></button>}
-                  <button type="button" className="app-stamp-edit" aria-pressed={isHidden} title={isHidden ? `Bring ${asset.name} back` : `Hide ${asset.name}: it moves to the bottom, greyed out (only here; the file stays)`} aria-label={isHidden ? `Show ${asset.name}` : `Hide ${asset.name}`} onClick={() => toggleHidden(asset)}>{isHidden ? <ArchiveRestore size={11} /> : <Archive size={11} />}</button>
+                  {stamp && <AutotileToggles stamp={asset} onAutotile={onAutotile} />}
+                  {stamp && <button type="button" className="app-stamp-edit" title={`Edit ${asset.name}`} aria-label={`Edit ${asset.name}`} onClick={() => onOpen(asset)}><Pencil size={11} /></button>}
+                  <button type="button" className="app-stamp-edit" aria-pressed={isPinned} title={isPinned ? `Unpin ${asset.name}` : `Pin ${asset.name}: it stays at the top of the grid`} aria-label={isPinned ? `Unpin ${asset.name}` : `Pin ${asset.name}`} onClick={() => togglePinned(asset)}><Pin size={11} /></button>
+                  <button type="button" className="app-stamp-edit" title={`Hide ${asset.name}: it goes into the Hidden folder at the top (only here; the file stays)`} aria-label={`Hide ${asset.name}`} onClick={() => toggleHidden(asset)}><Archive size={11} /></button>
                 </span>
               </span>
             );
           })}
-          {shown.length === 0 && <p className="k-muted k-small" style={{ gridColumn: "1 / -1" }}>No {label.toLowerCase()} {wanted ? "match" : "in this project"}.</p>}
+          {shown.length === 0 && !folderShows && <p className="k-muted k-small" style={{ gridColumn: "1 / -1" }}>No {label.toLowerCase()} {wanted ? "match" : "in this project"}.</p>}
         </div>
       </aside>}
+      {hiddenOpen && <HiddenWindow label={label} assets={project.assets.filter((asset) => asset.kind === kind && hidden.has(hideKey(asset)))} thumb={(asset) => thumbOf(asset, square)} onShow={(assets) => { showAgain(assets); if (project.assets.every((asset) => asset.kind !== kind || !hidden.has(hideKey(asset)) || assets.includes(asset))) setHiddenOpen(false); }} onClose={() => setHiddenOpen(false)} />}
     </>
   );
 }

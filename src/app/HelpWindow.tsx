@@ -62,6 +62,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Undo, redo" keys={["Ctrl+Z", "Ctrl+Shift+Z"]}>Undo also brings back palette colors changed in the sidebar.</Row>
           <Row name="Zoom" keys={["Ctrl+=", "Ctrl+-"]}>Zoom in and out.</Row>
           <Row name="Fit" keys={["Ctrl+0"]}>The biggest zoom that shows the whole picture (or click the zoom % in the header).</Row>
+          <Row name="Pin, hide">The buttons on a card (on hover): pin keeps it at the top of the grid; hide puts it in the Hidden folder at the top, which shows what's inside on hover and brings them back on click. Only in this panel: the files stay.</Row>
           <Row name="Hide the panels" keys={["`", "~"]}>Hides both side panels for room to paint, and brings them back. The empty part of the left rail and the gap beside the right panel hide one each.</Row>
         </Section>
         <Section title="Tabs">
