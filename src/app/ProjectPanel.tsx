@@ -107,7 +107,7 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   const visible = matching.filter((asset) => !hidden.has(hideKey(asset)));
   const shown = [...visible.filter((asset) => pinned.has(hideKey(asset))), ...visible.filter((asset) => !pinned.has(hideKey(asset)))];
   /** A picture's thumbnail: cut from the folder's preview sheet, or its own preview while the sheet can't be had. */
-  const thumbOf = (asset: Asset, fit: CSSProperties) => asset.kind === "stamps" && asset.autotile === "anim" ? <AnimThumb className="gbp-asset-thumb" style={{ ...fit, aspectRatio: "1" }} src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
+  const thumbOf = (asset: Asset, fit: CSSProperties) => asset.kind === "stamps" && (asset.autotile === "anim" || asset.autotile === "atlasAnim") ? <AnimThumb frames={asset.autotile === "atlasAnim" ? 3 : undefined} className="gbp-asset-thumb" style={{ ...fit, aspectRatio: asset.autotile === "atlasAnim" ? "2 / 3" : "1" }} src={`${ASSET_URL}-preview?${assetQuery(asset)}&v=${Math.round(asset.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />
     : sheet?.kind === asset.kind && sheet.cells.has(asset.file)
     ? <SheetThumb sheet={sheet.image} cell={sheet.cells.get(asset.file)!} style={fit} />
     : !sheetFailed && sheet?.kind !== asset.kind ? <span className="gbp-asset-thumb" aria-hidden="true" style={fit} />

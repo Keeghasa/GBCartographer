@@ -34,7 +34,7 @@ export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
         {shown.map((stamp) => (
           <span key={stamp.file} className="app-stamp">
             <button className="app-frame named" title={`${stamp.name} · ${stamp.width} × ${stamp.height}${stamp.tags?.length ? ` · ${stamp.tags.join(", ")}` : ""} · click to use`} onClick={() => onUse(stamp)}>
-              {stamp.autotile === "anim" ? <AnimThumb src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />}
+              {stamp.autotile === "anim" || stamp.autotile === "atlasAnim" ? <AnimThumb frames={stamp.autotile === "atlasAnim" ? 3 : undefined} src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />}
               <small>{stamp.name}</small>
               {autotileOf(stamp.autotile) && <i className="app-stamp-badge" title={autotileOf(stamp.autotile)!.name}>{autotileOf(stamp.autotile)!.glyph}</i>}
             </button>

@@ -46,7 +46,7 @@ export function maskAt(filled: (tx: number, ty: number) => boolean, tx: number, 
  * corner-Wang. The wall-face sheet is 4 × 3 tiles: floor, nothing; the upper wall row and the lower wall row, each
  * as middle, left end, right end, both ends.
  */
-export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim";
+export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall";
 const whole = (w: number, h: number) => w % 8 === 0 && h % 8 === 0;
 export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: string; size: string; fits: (w: number, h: number) => boolean }[] = [
   { id: "box", glyph: "9", name: "Box", about: "drag a rectangle: corners, edges and middle stretch over it", size: "whole tiles, at least 3 × 3", fits: (w, h) => whole(w, h) && w >= 24 && h >= 24 },
@@ -58,7 +58,54 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
   { id: "corner", glyph: "C", name: "Corner Wang (2 terrains)", about: "paint at the grid's corners: two ground types blend (grass into sand, water into shore)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
   { id: "wallface", glyph: "F", name: "Wall face", about: "paint floor: walls grow two tiles tall above it, nothing (black) everywhere else", size: "a 4 × 3-tile sheet", fits: (w, h) => w === 32 && h === 24 },
   { id: "anim", glyph: "▶", name: "Animated tile", about: "frames side by side: stamps the first frame, the card plays them all", size: "square frames side by side, at least 2", fits: (w, h) => h % 8 === 0 && h > 0 && w % h === 0 && w / h >= 2 },
+  { id: "atlas", glyph: "A", name: "Atlas ground (2 × 3)", about: "paint 16 px cells: an RPG Maker-style 2 × 3 block of 16 × 16 tiles fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
+  { id: "atlasAnim", glyph: "A▶", name: "Atlas water (animated)", about: "an Atlas block in three frames side by side: paints frame 1, the picture plays the frames while it's in hand", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
+  { id: "atlasWall", glyph: "A▣", name: "Atlas wall (roof + face)", about: "paint an area: its roof fits like Atlas ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
 ];
+
+/**
+ * Atlas auto-tiles (the author, 2026-10-12): RPG Maker's autotile layout, kept as it is so sheets in that format
+ * can be painted over. A map cell is 16 px (2 × 2 GB tiles). A 2 × 3 block of 16 px tiles (32 × 48, 4 × 6 minitiles
+ * of 8 px) holds: row 0 left, the four inner-corner minitiles; row 0 right, the plain sample tile; rows 1–2, a
+ * 2 × 2-tile region drawn with its outer edges. Any of the 47 neighbour shapes is put together from four
+ * minitiles, one per quarter of the cell: for the quarter at a corner, its two side neighbours and that corner
+ * neighbour say which minitile: both sides filled → the fill (or, corner empty, the inner corner); one side filled →
+ * that edge; neither → the outer corner.
+ * Water (atlasAnim) is three such blocks side by side, one per animation frame. A wall (atlasWall) is a roof block
+ * over a 2 × 2-tile wall region (4 × 4 minitiles, 32 × 32: edges and corners only, no inner corners).
+ */
+export const ATLAS_W = 32, ATLAS_H = 48, ATLAS_FRAMES = 3, ATLAS_WALL_H = 32;
+
+/** The minitile (column, row in 8 px units) of a 2 × 3 block for one quarter of a cell. `quarter`: 0 TL, 1 TR, 2 BL, 3 BR. */
+export function atlasMinitile(quarter: number, sideA: boolean, sideB: boolean, diagonal: boolean): [number, number] {
+  // sideA: the neighbour across the quarter's vertical side (W for TL / BL, E for TR / BR); sideB: across the horizontal side (N or S).
+  const right = quarter === 1 || quarter === 3, bottom = quarter >= 2;
+  if (sideA && sideB) return diagonal ? [right ? 2 : 1, bottom ? 4 : 3] : [right ? 1 : 0, bottom ? 1 : 0];
+  if (sideA) return [right ? 2 : 1, bottom ? 5 : 2];
+  if (sideB) return [right ? 3 : 0, bottom ? 4 : 3];
+  return [right ? 3 : 0, bottom ? 5 : 2];
+}
+
+/** The four minitiles (TL, TR, BL, BR) of a cell with the 8-bit neighbour `mask` (N 1 … NW 128, as maskAt gives). */
+export function atlasCell(mask: number): [number, number][] {
+  const has = (bit: number) => Boolean(mask & bit);
+  return [
+    atlasMinitile(0, has(W), has(N), has(NW)),
+    atlasMinitile(1, has(E), has(N), has(NE)),
+    atlasMinitile(2, has(W), has(S), has(SW)),
+    atlasMinitile(3, has(E), has(S), has(SE)),
+  ];
+}
+
+/**
+ * A wall face's four minitiles from a 2 × 2-tile region (4 × 4 minitiles at `top`): only the left and right ends
+ * and the top and bottom rows matter (`left` / `right`: a face continues that way; `above` / `below`: more face).
+ */
+export function atlasWallCell(left: boolean, right: boolean, above: boolean, below: boolean, top: number): [number, number][] {
+  const column = (isRight: boolean) => isRight ? (right ? 2 : 3) : (left ? 1 : 0);
+  const row = (isBottom: boolean) => top + (isBottom ? (below ? 4 : 5) : (above ? 3 : 2)) - 2;
+  return [[column(false), row(false)], [column(true), row(false)], [column(false), row(true)], [column(true), row(true)]];
+}
 export const autotileOf = (id: string | undefined) => AUTOTILES.find((item) => item.id === id);
 
 /** The 4-bit masks of the 16-tile sheets: which of a tile's four sides (or corners) are set. */

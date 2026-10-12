@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot } from "./autotile";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "../graphics/autotiles";
+import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasCell, atlasWallCell, SE, SW } from "./autotile";
+import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate , atlasGrassTemplate, atlasFloorTemplate, atlasLedgeTemplate, atlasForestTemplate, atlasWaterTemplate, atlasWallTemplate } from "../graphics/autotiles";
 import { AUTOTILES } from "./autotile";
 
 describe("auto-tiles", () => {
@@ -32,7 +32,7 @@ describe("auto-tiles", () => {
   });
 
   it("draws a template for every auto-tile that fits it, its painted tiles all different", () => {
-    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate() };
+    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate(), atlas: atlasGrassTemplate(), atlasAnim: atlasWaterTemplate(), atlasWall: atlasWallTemplate() };
     for (const kind of AUTOTILES) expect(kind.fits(made[kind.id].width, made[kind.id].height), kind.id).toBe(true);
     const distinct = (sheet: { width: number; pixels: Uint8Array }, count: number, columns: number) => new Set(Array.from({ length: count }, (_, index) => { const x = (index % columns) * 8, y = Math.floor(index / columns) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]).join(""); })).size;
     expect(distinct(made.path, 16, 4)).toBe(16);
@@ -41,5 +41,25 @@ describe("auto-tiles", () => {
     expect(distinct(made.wallface, 12, 4)).toBe(11);
     expect(distinct(shoreTemplate(), 16, 4)).toBe(16);
     expect(distinct(roadTemplate(), 16, 4)).toBe(16);
+    // Atlas blocks: no minitile is a plain single shade (painting tells a block's cells by their minitiles), and the
+    // edges, corners and inner corners are told apart.
+    for (const sheet of [made.atlas, atlasFloorTemplate(), atlasLedgeTemplate(), atlasForestTemplate(), made.atlasAnim, made.atlasWall]) {
+      const tiles = Array.from({ length: 24 }, (_, index) => { const x = (index % 4) * 8, y = Math.floor(index / 4) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]); });
+      expect(tiles.some((tile) => new Set(tile).size === 1), "a plain minitile").toBe(false);
+      expect(distinct(sheet, 24, 4)).toBeGreaterThanOrEqual(13);
+    }
+  });
+
+  it("puts an Atlas cell together from a 2 × 3 block the RPG Maker way", () => {
+    // Alone: four outer corners. Surrounded: the fill. N and W filled but not NW: the inner corner at top left.
+    expect(atlasCell(0)).toEqual([[0, 2], [3, 2], [0, 5], [3, 5]]);
+    expect(atlasCell(255)).toEqual([[1, 3], [2, 3], [1, 4], [2, 4]]);
+    expect(atlasCell(N | W | E | S | NE | SE | SW)[0]).toEqual([0, 0]);
+    // Only N filled: the left and right edges top and bottom... the top quarters are side edges, the bottom ones corners.
+    expect(atlasCell(N)).toEqual([[0, 3], [3, 3], [0, 5], [3, 5]]);
+    expect(atlasCell(E | W)).toEqual([[1, 2], [2, 2], [1, 5], [2, 5]]);
+    // A wall face: a lone cell is all ends; one with faces either side and above uses the middle of the region.
+    expect(atlasWallCell(false, false, false, false, 6)).toEqual([[0, 6], [3, 6], [0, 9], [3, 9]]);
+    expect(atlasWallCell(true, true, true, false, 6)).toEqual([[1, 7], [2, 7], [1, 9], [2, 9]]);
   });
 });

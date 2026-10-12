@@ -173,3 +173,85 @@ export function roadTemplate(): Canvas {
     if (!mask) t.box(2, 2, 4, 4, 2);
   }, 0);
 }
+
+// ---- Atlas (RPG Maker-style) templates, the author's ask 2026-10-12: our own wireframes in that layout ---------------
+
+/**
+ * A 2 × 3 Atlas block (autotile.ts): `fill` paints the ground over any box; `side` draws one edge (0 top, 1 right,
+ * 2 bottom, 3 left) along a box's side. Rows 1–2: a 32 × 32 region with all four edges; row 0 left: the inner-corner
+ * tile (each minitile with the two edges that meet at its outer corner); row 0 right: the plain sample.
+ */
+function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number) => void, mark = 3) {
+  fill(p.at(16, 0, 16));
+  const region = p.at(0, 16, 32);
+  fill(region);
+  for (let s = 0; s < 4; s += 1) side(region, s);
+  const inner = p.at(0, 0, 16);
+  fill(inner);
+  side(inner.at(0, 0, 8), 0); side(inner.at(0, 0, 8), 3);
+  side(inner.at(8, 0, 8), 0); side(inner.at(8, 0, 8), 1);
+  side(inner.at(0, 8, 8), 2); side(inner.at(0, 8, 8), 3);
+  side(inner.at(8, 8, 8), 2); side(inner.at(8, 8, 8), 1);
+  // A dot just inside each inner corner tells it from the outer corner (the same two edges meet there).
+  inner.dot(2, 2, mark); inner.dot(13, 2, mark); inner.dot(2, 13, mark); inner.dot(13, 13, mark);
+}
+
+const dots = (t: Pen, shade: number, step = 5) => { for (let y = 1; y < t.h; y += step) for (let x = (y / step) % 2 ? 3 : 1; x < t.w; x += step) t.dot(x, y, shade); };
+const thinSide = (shade: number) => (t: Pen, s: number) => t.side(s, shade);
+
+/** Atlas grass: light ground with dots, a dark edge. */
+export function atlasGrassTemplate(): Canvas {
+  const out = canvas(32, 48, 0), p = new Pen(out);
+  atlasBlock(p, (t) => { t.fill(0); dots(t, 1); }, thinSide(3));
+  return out;
+}
+
+/** Atlas floor: paving (a 4 px grid of lines) with a dark edge, for interiors. */
+export function atlasFloorTemplate(): Canvas {
+  const out = canvas(32, 48, 1), p = new Pen(out);
+  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) t.rect(0, y + 7, t.w, 1, 2); for (let x = 0; x < t.w; x += 8) t.rect(x + 7, 0, 1, t.h, 2); }, thinSide(3));
+  return out;
+}
+
+/** Atlas mountain ledge: grass on top, a cliff face three pixels tall below its bottom edge, thin edges elsewhere. */
+export function atlasLedgeTemplate(): Canvas {
+  const out = canvas(32, 48, 0), p = new Pen(out);
+  atlasBlock(p, (t) => { t.fill(0); dots(t, 1); }, (t, s) => {
+    if (s !== 2) { t.side(s, 3); return; }
+    t.rect(0, t.h - 3, t.w, 3, 2);
+    t.rect(0, t.h - 1, t.w, 1, 3);
+    for (let x = 1; x < t.w; x += 4) t.dot(x, t.h - 2, 3);
+  });
+  return out;
+}
+
+/** Atlas forest edge: canopy (round dark blobs) inside, a two-pixel dark border where it meets open ground. */
+export function atlasForestTemplate(): Canvas {
+  const out = canvas(32, 48, 1), p = new Pen(out);
+  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) for (let x = (y / 8) % 2 ? 4 : 0; x < t.w; x += 8) { t.round(x + 1, y + 1, 6, 6, 2, 2); t.dot(x + 2, y + 2, 0); } }, (t, s) => { t.side(s, 3); t.side(s, 3, 1); });
+  return out;
+}
+
+/** Atlas water: three blocks side by side, the waves (dark dashes and a light glint) moving a step each frame; a dark shoreline. */
+export function atlasWaterTemplate(): Canvas {
+  const out = canvas(32 * 3, 48, 1), p = new Pen(out);
+  for (let frame = 0; frame < 3; frame += 1) {
+    atlasBlock(p.at(frame * 32, 0, 32, 48), (t) => {
+      t.fill(1);
+      for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 2; x < t.w + 8; x += 8) { t.rect(x - 8, y, 3, 1, 2); t.rect(x, y, 3, 1, 2); t.dot(x + 1, y - 1, 0); t.dot(x - 7, y - 1, 0); }
+    }, thinSide(3));
+  }
+  return out;
+}
+
+/** Atlas wall: a roof block (shingles) over a 2 × 2-tile wall region (bricks) with its edges, 32 × 80. */
+export function atlasWallTemplate(): Canvas {
+  const out = canvas(32, 80, 2), p = new Pen(out);
+  atlasBlock(p.at(0, 0, 32, 48), (t) => { t.fill(2); for (let y = 3; y < t.h; y += 4) t.rect(0, y, t.w, 1, 3); for (let y = 0; y < t.h; y += 4) for (let x = (y / 4) % 2 ? 4 : 0; x < t.w; x += 8) t.dot(x, y + 1, 0); }, thinSide(0), 0);
+  const face = p.at(0, 48, 32);
+  face.fill(1);
+  for (let y = 0; y < 32; y += 4) { face.rect(0, y + 3, 32, 1, 2); for (let x = (y / 4) % 2 ? 4 : 0; x < 32; x += 8) face.rect(x + 3, y, 1, 3, 2); }
+  for (let s = 0; s < 4; s += 1) face.side(s, 3);
+  face.rect(0, 0, 32, 1, 0);
+  return out;
+}

@@ -7,7 +7,7 @@ import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
 import { paintCollision } from "../gb/collisions";
-import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
+import { ATLAS_H, ATLAS_W, atlasCell, atlasWallCell, CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
 
 interface Painting {
   doc: Doc | null;
@@ -219,6 +219,42 @@ export function usePainting(app: Painting) {
     }
   }
 
+  /**
+   * Atlas auto-tiles (autotile.ts, RPG Maker's layout; 16 px cells of 2 × 2 tiles): cell (cx, cy) joins (or, `erase`,
+   * leaves) the area, then it and the cells around it are put together from the block's minitiles, each by its
+   * neighbours. A cell belongs when its top-left tile is one of the block's minitiles (frame 1's, for water). Off the
+   * picture counts as more of the area. A wall's roof is the area; the two cells below its bottom edge grow a face.
+   */
+  function paintAtlas(target: Doc, cx: number, cy: number, erase: boolean) {
+    const auto = stamp.current?.auto;
+    const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
+    if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
+    const wall = auto === "atlasWall";
+    const columns = cellsWide(stamp.current!.w), roofTiles = (ATLAS_W / CELL) * (ATLAS_H / CELL);
+    const keys = sheetKeys(columns, wall ? roofTiles + 16 : roofTiles);
+    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
+    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
+    const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
+    const roof = (x: number, y: number) => !inside(x, y) ? true : marked.get(`${x},${y}`) ?? (() => { const index = keys.get(keyAt(x, y)); return index !== undefined && index < roofTiles; })();
+    const face = (x: number, y: number) => inside(x, y) && !roof(x, y) && (roof(x, y - 1) || (roof(x, y - 2) && !roof(x, y - 1)));
+    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + (quarter % 2), y * 2 + Math.floor(quarter / 2), column, row));
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, app.blank(target));
+    for (let dy = wall ? -1 : -1; dy <= (wall ? 3 : 1); dy += 1) for (let dx = wall ? -2 : -1; dx <= (wall ? 2 : 1); dx += 1) {
+      const x = cx + dx, y = cy + dy;
+      if (!inside(x, y)) continue;
+      if (roof(x, y)) { if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) put(x, y, atlasCell(maskAt(roof, x, y))); continue; }
+      if (!wall) continue;
+      if (face(x, y)) {
+        const first = roof(x, y - 1);
+        put(x, y, atlasWallCell(face(x - 1, y) && roof(x - 1, y - 1) === first, face(x + 1, y) && roof(x + 1, y - 1) === first, !first, first && face(x, y + 1), ATLAS_H / CELL));
+        continue;
+      }
+      // Not roof or face any more: the sheet's own tiles become nothing (other art stays).
+      const index = keys.get(keyAt(x, y));
+      if (index !== undefined) fillRect(target.pixels, target.width, target.height, { x: x * 2 * CELL, y: y * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, app.blank(target));
+    }
+  }
+
   /** Corner Wang: sets (or clears) the second terrain at grid corner (vx, vy); the four tiles meeting there redraw. */
   function paintCorner(target: Doc, vx: number, vy: number, erase: boolean) {
     const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL);
@@ -367,6 +403,10 @@ export function usePainting(app: Painting) {
         const erase = event.altKey;
         paintAuto(doc, point.x >> 3, point.y >> 3, erase);
         drag.current = { kind: "auto", last: point, erase };
+      } else if (auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall") {
+        const erase = event.altKey;
+        paintAtlas(doc, point.x >> 4, point.y >> 4, erase);
+        drag.current = { kind: "atlas", last: point, erase };
       } else if (auto === "corner") {
         const erase = event.altKey, vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
         paintCorner(doc, vertex.x, vertex.y, erase);
@@ -458,6 +498,9 @@ export function usePainting(app: Painting) {
     } else if (state.kind === "auto") {
       for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintAuto(doc, x, y, state.erase);
       state.last = point;
+    } else if (state.kind === "atlas") {
+      for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintAtlas(doc, x, y, state.erase);
+      state.last = point;
     } else if (state.kind === "corner") {
       const vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
       for (const [x, y] of linePoints(state.last.x, state.last.y, vertex.x, vertex.y)) paintCorner(doc, x, y, state.erase);
@@ -482,7 +525,7 @@ export function usePainting(app: Painting) {
       const step = (distance: number) => snap ? Math.round(distance / CELL) * CELL : distance;
       app.moveFloat(doc, state.ox + step(point.x - state.start.x), state.oy + step(point.y - state.start.y));
     }
-    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "auto" || state.kind === "corner") followLinks(doc);
+    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "auto" || state.kind === "atlas" || state.kind === "corner") followLinks(doc);
     app.bump();
   }
 
@@ -501,5 +544,7 @@ export function usePainting(app: Painting) {
     stamp.current = value;
   }
 
-  return { takeStamp, setStamp, pointerDown, pointerMove, pointerUp };
+  /** The stamp in hand (an animated Atlas block plays over the picture while it is held). */
+  const heldStamp = () => stamp.current;
+  return { takeStamp, setStamp, heldStamp, pointerDown, pointerMove, pointerUp };
 }

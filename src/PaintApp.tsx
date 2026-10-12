@@ -61,7 +61,7 @@ import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
 import { MessagesWindow, Toasts, useMessages } from "./app/Messages";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
-import { autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
+import { ATLAS_FRAMES, ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
@@ -102,6 +102,9 @@ export default function PaintApp() {
   const usageCanvas = useRef<HTMLCanvasElement>(null);
   const priorityCanvas = useRef<HTMLCanvasElement>(null);
   const collisionCanvas = useRef<HTMLCanvasElement>(null);
+  /** Atlas water in hand: its frames played over every painted cell (the author, 2026-10-12; Save writes frame 1). */
+  const atlasAnimCanvas = useRef<HTMLCanvasElement>(null);
+  const [atlasPlaying, setAtlasPlaying] = useState(false);
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [activePalette, setActivePalette] = useState(0);
   const [tint, setTint] = useState(() => readStored(TINT_KEY, "GB greens"));
@@ -231,7 +234,7 @@ export default function PaintApp() {
     if (!scene) return [];
     return (target!.collision!.types[scene.type] ?? SCENE_TYPE_COLLISIONS[scene.type] ?? DEFAULT_COLLISIONS);
   };
-  const { takeStamp, setStamp, pointerDown, pointerMove, pointerUp } = usePainting({
+  const { takeStamp, setStamp, heldStamp: stampInHand, pointerDown, pointerMove, pointerUp } = usePainting({
     doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, seamless, activePalette, hoverCell,
     wrapRef, scrollerRef, readoutRef, brushRef, spaceDown, paintTool,
     setShade, setActivePalette, setHoverCell, setToolState, say, pushUndo, touch, bump, floatSelection, dropFloat, moveFloat, clonePalettes, blank,
@@ -1242,7 +1245,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const kind = autotileKind(asset.autotile);
     if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
     if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
-    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface"].includes(kind.id) ? " Alt clears." : ""}` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
@@ -2055,6 +2058,39 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     });
   });
 
+  // Atlas water (atlasAnim) in hand: every tile of the picture that is one of frame 1's minitiles shows frames 2 and
+  // 3 in turn over it, 4 steps a second; frame 1 shows the picture itself. Nothing is written: Save keeps frame 1.
+  const held = tool === "stamp" ? stampInHand() : null;
+  const atlasHeld = held?.auto === "atlasAnim" ? held : null;
+  useEffect(() => { setAtlasPlaying(Boolean(atlasHeld && doc)); }, [atlasHeld, doc]);
+  useEffect(() => {
+    const canvas = atlasAnimCanvas.current;
+    if (!atlasPlaying || !atlasHeld || !doc || !canvas) return;
+    const source = atlasHeld, frameColumns = ATLAS_W / CELL;
+    // The block in the picture's colors, once.
+    const sheet = document.createElement("canvas");
+    Object.assign(sheet, { width: source.w, height: source.h });
+    sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint8Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, source.palettes), source.w, source.h), 0, 0);
+    const key = (pixels: Uint8Array, width: number, x: number, y: number) => { let out = ""; for (let row = 0; row < CELL; row += 1) out += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";"; return out; };
+    const minitiles = new Map<string, [number, number]>();
+    for (let row = 0; row < source.h / CELL; row += 1) for (let column = 0; column < frameColumns; column += 1) { const k = key(source.pixels, source.w, column * CELL, row * CELL); if (!minitiles.has(k)) minitiles.set(k, [column, row]); }
+    const cw = cellsWide(doc.width), ch = Math.ceil(doc.height / CELL);
+    Object.assign(canvas, { width: cw * CELL, height: ch * CELL });
+    const context = canvas.getContext("2d")!;
+    let frame = 0;
+    const draw = () => {
+      frame = (frame + 1) % ATLAS_FRAMES;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      if (!frame) return;
+      for (let ty = 0; ty < ch; ty += 1) for (let tx = 0; tx < cw; tx += 1) {
+        const at = minitiles.get(key(doc.pixels, doc.width, tx * CELL, ty * CELL));
+        if (at) context.drawImage(sheet, (at[0] + frame * frameColumns) * CELL, at[1] * CELL, CELL, CELL, tx * CELL, ty * CELL, CELL, CELL);
+      }
+    };
+    const timer = window.setInterval(draw, 250);
+    return () => { window.clearInterval(timer); context.clearRect(0, 0, canvas.width, canvas.height); };
+  }, [atlasPlaying, atlasHeld, doc]);
+
   // The priority brush's overlay: tiles that draw over sprites, tinted blue with stripes the other way from the
   // budget view's and an outline, so they can't be taken for blue art (water, glass).
   useLayoutEffect(() => {
@@ -2486,6 +2522,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
                 {budgetView && <canvas ref={usageCanvas} className="gbp-usage" />}
                 {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
                 {(showCollisions || tool === "collision") && doc.collision?.scenes.length ? <canvas ref={collisionCanvas} className="gbp-usage gbp-collisions" /> : null}
+                {atlasPlaying && <canvas ref={atlasAnimCanvas} className="gbp-usage" />}
                 {screens && <div className="gbp-screens" style={{ backgroundSize: `${160 * doc.zoom}px ${144 * doc.zoom}px` }} />}
                 {current && current.tiles.map((tile, index) => <div key={index} className="gbp-frame-slice" style={{ left: tile.sliceX * doc.zoom, top: tile.sliceY * doc.zoom, width: 8 * doc.zoom, height: 16 * doc.zoom }} />)}
                 {doc.sel && <div className={`gbp-selection ${doc.float ? "floating" : ""}`} style={{ left: doc.sel.x * doc.zoom, top: doc.sel.y * doc.zoom, width: doc.sel.w * doc.zoom, height: doc.sel.h * doc.zoom }} />}

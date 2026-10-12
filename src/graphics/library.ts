@@ -9,7 +9,7 @@ import type { WireAsset } from "./types";
 import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
+import { acrossTemplate, animTemplate, atlasFloorTemplate, atlasForestTemplate, atlasGrassTemplate, atlasLedgeTemplate, atlasWallTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
 
 export type { WireAsset };
 
@@ -52,6 +52,12 @@ export const GRAPHICS: WireAsset[] = [
   { id: "autotile-shore", name: "Overworld shore (C)", group: "Auto-tiles", kind: "stamps", autotile: "corner", about: "16 tiles, 4 × 4, in the overworld's look: grass and water by corner with a dark shoreline. The overworld generator's Shores draws its water with it; paint shores by hand at the grid's corners.", make: shoreTemplate },
   { id: "autotile-road", name: "Overworld road (P)", group: "Auto-tiles", kind: "stamps", autotile: "path", about: "16 tiles, 4 × 4, in the overworld's look: a dirt road joining up, down, left and right. The overworld generator's Roads draws its roads with it.", make: roadTemplate },
   { id: "autotile-wallface", name: "Wall face (F)", group: "Auto-tiles", kind: "stamps", autotile: "wallface", about: "4 × 3 tiles: floor and nothing, then the upper and lower wall rows (middle, left end, right end, both ends). Paint floor and the walls grow above it.", make: wallFaceTemplate },
+  { id: "atlas-grass", name: "Atlas grass", group: "Atlas", kind: "stamps", autotile: "atlas", about: "An RPG Maker-style 2 × 3 block (32 × 48): the inner-corner tile and the sample on top, a 2 × 2 region with its edges below. Paint 16 px cells and every edge and corner fits. Repaint as grass, sand, snow.", make: atlasGrassTemplate },
+  { id: "atlas-floor", name: "Atlas floor", group: "Atlas", kind: "stamps", autotile: "atlas", about: "The same 2 × 3 block as paving with a dark edge, for interiors. Repaint as boards, carpet, stone.", make: atlasFloorTemplate },
+  { id: "atlas-ledge", name: "Atlas mountain ledge", group: "Atlas", kind: "stamps", autotile: "atlas", about: "A 2 × 3 block whose bottom edge is a cliff face: paint a plateau and the ledge draws itself. Repaint as rock, snow or dunes.", make: atlasLedgeTemplate },
+  { id: "atlas-forest", name: "Atlas forest edge", group: "Atlas", kind: "stamps", autotile: "atlas", about: "A 2 × 3 block of canopy with a dark border where it meets open ground: paint a forest and its edge fits. Repaint as your own trees.", make: atlasForestTemplate },
+  { id: "atlas-water", name: "Atlas water", group: "Atlas", kind: "stamps", autotile: "atlasAnim", about: "Three 2 × 3 blocks side by side (96 × 48), one per animation frame, the waves moving. Paints frame 1 and fits its shores; the picture plays the frames while the stamp is in hand. Repaint as sea, lava, a waterfall pool.", make: atlasWaterTemplate },
+  { id: "atlas-wall", name: "Atlas wall", group: "Atlas", kind: "stamps", autotile: "atlasWall", about: "A roof block (2 × 3) over a wall region (2 × 2 tiles with edges), 32 × 80: paint an area, its roof fits, and a wall face two cells tall grows below its bottom edge. Repaint as houses, castle walls, cliffs.", make: atlasWallTemplate },
   { id: "autotile-anim", name: "Animated tile", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "Water in four 8 × 8 frames side by side: stamps the first frame; the card plays them. Repaint as flowers, torches or lava.", make: animTemplate },
   { id: "scene-title", name: "Title screen", group: "Scenes", kind: "backgrounds", make: scenes.title },
   { id: "scene-logo", name: "Logo splash", group: "Scenes", kind: "backgrounds", make: scenes.logo },
