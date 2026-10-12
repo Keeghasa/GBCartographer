@@ -10,6 +10,7 @@ import library from "./palettes/library.json";
 import { closeShades, colorize, paletteVariant, shadeLut, spriteShades, type Palette } from "./paint";
 import { Button, Checkbox, Chip, Dialog, IconButton, Segmented, useConfirm, usePrompt } from "./ui/kit";
 import "./PaletteManager.css";
+import { randomName } from "./app/names";
 
 type Collection = "project" | "mine" | string;
 /** What the title bar's switch shows: the project, the whole bundled library (one group a collection), or Mine. */
@@ -240,7 +241,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
   }
 
   function newPalette() {
-    const palette: Palette = { name: `Palette ${mine.length + 1}`, colors: ["#E0F8CF", "#86C06C", "#306850", "#071821"] };
+    const palette: Palette = { name: randomName("Palette", [...mine, ...projectPalettes].map((item) => item.name)), colors: ["#E0F8CF", "#86C06C", "#306850", "#071821"] };
     const list = [...mine, palette];
     saveMine(list);
     choose("mine", list.length - 1);

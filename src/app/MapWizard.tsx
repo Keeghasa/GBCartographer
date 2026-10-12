@@ -8,6 +8,7 @@ import { ImagePlus, Map as MapIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { countUniqueTiles, fitTileBudget, toRgba } from "../paint";
 import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, Slider, Switch } from "../ui/kit";
+import { NameInput } from "./NameInput";
 import type { Picture } from "./mapEdges";
 import type { Asset } from "./model";
 import { fitPicture, type FitResult } from "./pictureFit";
@@ -67,8 +68,8 @@ function ScreenCanvas({ rgba }: { rgba: Uint8ClampedArray }) {
   return <canvas ref={canvas} width={W} height={H} />;
 }
 
-export function MapWizard({ suggestedName, backgrounds, onCancel, onCreate }: {
-  suggestedName: string; backgrounds: Asset[]; onCancel: () => void;
+export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onCreate }: {
+  suggestedName: string; /** The project's map names. */ takenMaps: string[]; backgrounds: Asset[]; onCancel: () => void;
   /** Writes the plan (new PNGs, then the layout); `progress` counts the new PNGs as they are made. */
   onCreate: (plan: MapPlan, progress: (done: number, of: number) => void) => Promise<void>;
 }) {
@@ -223,7 +224,7 @@ export function MapWizard({ suggestedName, backgrounds, onCancel, onCreate }: {
         </div>
 
         <div className="mw-controls">
-          <Field label="Map name"><input className="k-input" autoFocus value={name} placeholder="e.g. Overworld" onChange={(event) => setName(event.target.value)} /></Field>
+          <Field label="Map name"><NameInput kind="Map" label="Map name" autoFocus value={name} onChange={setName} taken={takenMaps} placeholder="e.g. Overworld" /></Field>
           <div className="k-row mw-grid-row">
             <Field label="Columns"><input className="k-input k-input--num" type="number" min={1} max={MAX} value={cols} onChange={(event) => { if (!Number.isNaN(event.target.valueAsNumber)) setCols(clamp(event.target.valueAsNumber)); }} /></Field>
             <Field label="Rows"><input className="k-input k-input--num" type="number" min={1} max={MAX} value={rows} onChange={(event) => { if (!Number.isNaN(event.target.valueAsNumber)) setRows(clamp(event.target.valueAsNumber)); }} /></Field>

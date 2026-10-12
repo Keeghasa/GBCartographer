@@ -14,4 +14,4 @@
 .pw-palettes span { display: grid; grid-template-columns: repeat(4, 1fr); height: 18px; border-radius: 5px; overflow: hidden; box-shadow: 0 0 0 1px var(--k-edge-2); }
 .pw-palettes i { display: block; }
 .pw-report { margin: 0; color: var(--k-ink-2); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; }
-.pw-name { width: 180px; }
+.pw-name { display: flex; width: 220px; }

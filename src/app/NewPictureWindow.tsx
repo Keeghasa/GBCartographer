@@ -5,6 +5,8 @@ import { Button, Chip, Dialog, Field, Segmented, Slider } from "../ui/kit";
 import { loadFontFile, renderFontSheet, type LoadedFont } from "./fontSheet";
 import { ASSET_KINDS, type AssetKind } from "./model";
 import { KIND_ICONS } from "./tools";
+import { isSuggestedName, randomName, type NameKind } from "./names";
+import { NameInput } from "./NameInput";
 import "./NewPictureWindow.css";
 
 /** Sizes that suit each kind (all in whole 8 × 8 tiles); the first is the default. */
@@ -79,11 +81,15 @@ export interface NewPicture { kind: AssetKind | null; name: string; width: numbe
  * New picture: in the open project (a kind's folder) or just in GB Cartographer, a name and a size in whole tiles.
  * The parent writes it (a new PNG in the project) or opens it as an untitled picture.
  */
-export function NewPictureWindow({ projectName, initialKind, onClose, onCreate }: { projectName: string | null; initialKind: AssetKind; onClose: () => void; onCreate: (picture: NewPicture) => Promise<boolean> }) {
+/** The kinds that get a random "Kind-Name" (names.ts); others start empty. */
+const NAME_KIND: Partial<Record<AssetKind | "file", NameKind>> = { backgrounds: "Background", stamps: "Stamp" };
+
+export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, takenNames = () => [] }: { projectName: string | null; initialKind: AssetKind; onClose: () => void; onCreate: (picture: NewPicture) => Promise<boolean>; /** A folder's names (a suggestion is never one of them). */ takenNames?: (kind: AssetKind) => string[] }) {
   const [where, setWhere] = useState<AssetKind | "file">(projectName ? initialKind : "file");
   const presets = PRESETS[where];
   const [size, setSize] = useState<[number, number]>([presets[0][0], presets[0][1]]);
-  const [name, setName] = useState("");
+  const suggest = (kind: AssetKind | "file") => { const named = NAME_KIND[kind]; return named ? randomName(named, kind === "file" ? [] : takenNames(kind)) : ""; };
+  const [name, setName] = useState(() => suggest(projectName ? initialKind : "file"));
   const [busy, setBusy] = useState(false);
   // A font sheet can start with glyphs drawn from a font file.
   const [font, setFont] = useState<LoadedFont | null>(null);
@@ -119,7 +125,13 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate }
     input.click();
   }
   const valid = wholeTiles(size) && (where === "file" || /^[\w ()\-.]+$/.test(name.trim()));
-  const pick = (next: AssetKind | "file") => { setWhere(next); setSize([PRESETS[next][0][0], PRESETS[next][0][1]]); };
+  const pick = (next: AssetKind | "file") => {
+    setWhere(next);
+    setSize([PRESETS[next][0][0], PRESETS[next][0][1]]);
+    // A name still as suggested follows the folder.
+    const was = NAME_KIND[where];
+    if (!name.trim() || (was && isSuggestedName(was, name))) setName(suggest(next));
+  };
   async function create() {
     setBusy(true);
     const done = await onCreate({ kind: where === "file" ? null : where, name: name.trim() || "Untitled", width: size[0], height: size[1], ...(fromFont && size[0] === 128 && size[1] === 112 ? { pixels: fromFont.pixels } : {}) });
@@ -146,7 +158,8 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate }
           </div>
         </div>
         <Field label="Name">
-          <input className="k-input" type="text" value={name} placeholder={where === "file" ? "Untitled" : "e.g. Cave Entrance"} onChange={(event) => setName(event.target.value)} autoFocus />
+          {NAME_KIND[where] ? <NameInput kind={NAME_KIND[where]!} autoFocus value={name} onChange={setName} taken={where === "file" ? [] : takenNames(where)} />
+            : <input className="k-input" type="text" value={name} placeholder={where === "file" ? "Untitled" : "e.g. Cave Entrance"} onChange={(event) => setName(event.target.value)} autoFocus />}
         </Field>
         <div className="npw-section">
           <span className="k-label">Size</span>

@@ -7,6 +7,8 @@ import { FileImage } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Chip, Dialog, Field, Segmented, Select } from "../ui/kit";
 import library from "../palettes/library.json";
+import { randomName } from "./names";
+import { NameInput } from "./NameInput";
 
 const SIZES: [number, number, string][] = [[1, 1, "1 screen"], [2, 1, "2 wide"], [1, 2, "2 tall"], [2, 2, "2 × 2"], [3, 1, "3 wide"], [4, 1, "4 wide"]];
 
@@ -18,11 +20,13 @@ interface Props {
   palettes: { id?: string; name: string; colors: string[] }[];
   onClose: () => void;
   onCreate: (background: NewBackground) => Promise<boolean>;
+  /** The project's background names (the suggested name is never one of them). */
+  takenNames: string[];
 }
 
 const Chips = ({ colors }: { colors: readonly string[] }) => <span className="app-chips">{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>;
 
-export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate }: Props) {
+export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate, takenNames }: Props) {
   // The project's default background palettes, in slot order (the palette usage report says which slot each is in).
   const [defaults, setDefaults] = useState<{ name: string; colors: string[] }[]>([]);
   useEffect(() => {
@@ -32,7 +36,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate }
       setDefaults(slots.filter(Boolean));
     }).catch(() => setDefaults([]));
   }, [palettes]);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => randomName("Background", takenNames));
   const [size, setSize] = useState("1x1");
   const [source, setSource] = useState<"defaults" | "library" | "greens">("defaults");
   const collections = (library as { collections: { name: string; palettes: { name: string; colors: string[] }[] }[] }).collections.filter((group) => group.palettes.length >= 2);
@@ -53,7 +57,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate }
     <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} title="New background" sub={`A blank background in ${projectName}, sized in screens`} icon={<FileImage size={18} />}
       footer={<><span className="k-muted k-small">{valid ? "Never replaces a file" : "Name it to create it"}</span><span className="k-spacer" /><Button onClick={onClose} disabled={busy}>Cancel</Button><Button variant="primary" disabled={!valid || busy} title={valid ? undefined : "Give it a name (letters, digits, spaces, - _ ( ) .)"} onClick={() => void create()}>{busy ? "Making…" : "Create and open"}</Button></>}>
       <div className="k-stack--loose k-stack">
-        <Field label="Name"><input className="k-input" autoFocus placeholder="e.g. Market Street" value={name} onChange={(event) => setName(event.target.value)} /></Field>
+        <Field label="Name"><NameInput kind="Background" autoFocus value={name} onChange={setName} taken={takenNames} /></Field>
         <div className="k-stack k-stack--tight">
           <span className="k-label">Size</span>
           <Segmented fill size="sm" label="Size" value={size} onChange={setSize} options={SIZES.map(([c, r, label]) => ({ value: `${c}x${r}`, label, title: `${c * 160} × ${r * 144} px` }))} />

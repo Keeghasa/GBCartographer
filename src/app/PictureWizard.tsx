@@ -11,6 +11,8 @@ import { toRgba } from "../paint";
 import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
 import { Dialog } from "../ui/kit";
 import { SCREEN_SIZES, fitPicture, type FitOptions, type FitResult } from "./pictureFit";
+import { randomName } from "./names";
+import { NameInput } from "./NameInput";
 import "./PictureWizard.css";
 
 interface Props {
@@ -20,6 +22,8 @@ interface Props {
   onOpen: (result: FitResult, name: string) => Promise<void>;
   /** Writes the result into the project as a new background, palettes in the slots; resolves true when done. */
   onSave: (result: FitResult, name: string) => Promise<boolean>;
+  /** The project's background names (the suggested name is never one of them). */
+  takenNames?: string[];
 }
 
 type Source = { image: ImageBitmap; name: string };
@@ -59,7 +63,7 @@ function Picture({ rgba, width, height, label, source, extra }: { rgba: Uint8Cla
   return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className={`pw-frame${source ? " pw-frame--source" : ""}`}><canvas ref={canvas} width={width} height={height} />{extra}</div></figure>;
 }
 
-export function PictureWizard({ projectName, onClose, onOpen, onSave }: Props) {
+export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [] }: Props) {
   const [source, setSource] = useState<Source | null>(null);
   const [size, setSize] = useState<[number, number]>([160, 144]);
   const [framing, setFraming] = useState<Framing>("cover");
@@ -68,7 +72,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave }: Props) {
   const [dither, setDither] = useState(false);
   const [max, setMax] = useState<7 | 8>(8);
   const [budget, setBudget] = useState(true);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => randomName("Background", takenNames));
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);
@@ -114,7 +118,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave }: Props) {
         <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void take(event.target.files?.[0]); event.target.value = ""; }} />
         <Button icon={<Upload />} onClick={() => file.current?.click()}>{source ? "Another picture…" : "Choose a picture…"}</Button>
         <span className="k-spacer" />
-        <input className="k-input pw-name" aria-label="Name" placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
+        <span className="pw-name"><NameInput kind="Background" value={name} onChange={setName} taken={takenNames} /></span>
         <Button disabled={!result || busy || working} title="Opens the result here as an untitled picture" onClick={() => result && void act(() => onOpen(result, name.trim() || "Picture"))}>Open as a picture</Button>
         <Button variant="primary" disabled={!result || busy || working || !projectName || !name.trim()} title={projectName ? `A new background in ${projectName}, its palettes added to the project and put in the default slots` : "Open a project to save into it"} onClick={() => result && void act(async () => { if (await onSave(result, name.trim())) onClose(); })}>Save into {projectName ?? "the project"}</Button>
       </>}>

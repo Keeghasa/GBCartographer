@@ -12,6 +12,7 @@ import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, 
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
 import { isSuggestedName, randomName, type NameKind } from "./names";
+import { NameInput } from "./NameInput";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -120,7 +121,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
         <div className="gw-controls k-stack">
           <div className="k-stack k-stack--tight">
             <span className="k-label">Name</span>
-            <span className="k-row gw-name-row"><input className="k-input" aria-label="Name" value={name} onChange={(event) => setName(event.target.value)} /><IconButton label="Another name" onClick={() => rollName()}><Dices /></IconButton></span>
+            <NameInput kind={nameKind()} value={name} onChange={setName} taken={takenNames} />
           </div>
           <div className="k-stack k-stack--tight" title={theme ? `${theme.palettes.length === 7 ? "7 terrain palettes made from these colors" : `${theme.palettes.length} palette${theme.palettes.length === 1 ? "" : "s"}`}; Make background adds ${theme.palettes.length === 1 ? "it" : "them"} to the project` : undefined}>
             <Select label="Palettes" value={(mode === "cave" ? cave.theme : world.theme) || "greens"} onChange={(id) => mode === "cave" ? setC({ theme: id === "greens" ? "" : id }) : setW({ theme: id === "greens" ? "" : id })}

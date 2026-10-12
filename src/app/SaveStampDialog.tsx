@@ -6,14 +6,16 @@
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { Button, Chip, Dialog, Field } from "../ui/kit";
+import { randomName } from "./names";
+import { NameInput } from "./NameInput";
 import "./SaveStampDialog.css";
 
 export const QUICK_TAGS = ["Foliage", "Ground", "Props", "Walls"];
 
 export interface StampSave { name: string; tags: string[] }
 
-export function SaveStampDialog({ hint, known, onClose, onSave }: { hint: string; /** Tags already used in this project (shown after the quick ones). */ known: string[]; onClose: () => void; onSave: (save: StampSave) => void }) {
-  const [name, setName] = useState("");
+export function SaveStampDialog({ hint, known, taken, onClose, onSave }: { hint: string; /** Tags already used in this project (shown after the quick ones). */ known: string[]; /** The project's stamp names. */ taken: string[]; onClose: () => void; onSave: (save: StampSave) => void }) {
+  const [name, setName] = useState(() => randomName("Stamp", taken));
   const [tags, setTags] = useState<string[]>([]);
   const [own, setOwn] = useState("");
   const text = name.trim();
@@ -24,7 +26,7 @@ export function SaveStampDialog({ hint, known, onClose, onSave }: { hint: string
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} title="Save as stamp"
       footer={<><span className="k-spacer" /><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!text} onClick={() => onSave({ name: text, tags })}>Save stamp</Button></>}>
       <form className="k-stack" onSubmit={(event) => { event.preventDefault(); if (text) onSave({ name: text, tags }); }}>
-        <Field label="Name" hint={hint}><input className="k-input" autoFocus value={name} placeholder="e.g. Cabin bed" onChange={(event) => setName(event.target.value)} /></Field>
+        <Field label="Name" hint={hint}><NameInput kind="Stamp" autoFocus value={name} onChange={setName} taken={taken} placeholder="e.g. Cabin bed" /></Field>
         <Field label="Tags" hint="Pick any that fit, or add your own; the stamps strip filters by them">
           <div className="ssd-tags" role="group" aria-label="Tags">
             {offered.map((tag) => <button key={tag} type="button" className="k-btn k-btn--sm ssd-tag" aria-pressed={tags.includes(tag)} onClick={() => toggle(tag)}>{tag}</button>)}

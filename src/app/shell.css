@@ -116,6 +116,7 @@
 .app-section { display: flex; flex-direction: column; gap: var(--k-2); }
 .app-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-2); }
 .app-section-head > .k-eyebrow { white-space: nowrap; }
+.app-name-input { flex-wrap: nowrap; } .app-name-input .k-input { flex: 1; min-width: 0; }
 .app-section-tools { display: flex; align-items: center; gap: var(--k-1); min-width: 0; }
 .app-section-tools > .k-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-list { display: flex; flex-direction: column; gap: 2px; }
