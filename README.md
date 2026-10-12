@@ -37,7 +37,9 @@ palettes straight back into the project.
   sprite tile) one of its eight palettes, in 1, 2 × 2 or 3 × 3 tile steps, with Shift-click for straight lines and
   I to pick a tile's palette. Save writes them as GB Studio does: `tileColors`, or a sprite slice's `paletteIndex`.
 - **Put a palette in a slot.** Right-click a palette (in the sidebar or the palette manager) to place it in one of
-  the eight slots: the scene's palette list, or the project's default palettes. The optional **Time-of-day palettes**
+  the eight slots: the scene's palette list, or the project's default palettes. Right-click a slot to fill it with
+  any project palette, rename or duplicate a palette from the same menu, or copy one background's eight palettes
+  onto another's scene. The palette brush only paints with palettes that are in the slots. The optional **Time-of-day palettes**
   switch lets dawn / sunset / night versions (`Forest Trees D`, `S`, `N`) save as their base palette's slot.
 - **A palette manager.** The project's palettes, a bundled library (Game Boy classics and the author's own CC0
   sets) and your own, with a live preview of the open picture; add palettes to the project or edit its own, and
