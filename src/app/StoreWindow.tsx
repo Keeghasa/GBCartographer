@@ -48,7 +48,8 @@ const GROUP_INTROS: Record<string, string> = {
   "Tile sheets": "16 × 16 pieces to build backgrounds from, eight to a row.",
   Scenes: "Whole backgrounds to start from: title, menu, town, house, shop, cave, overworld and more.",
   "Map screens": "A village cut into six screens that join at their edges, ready for the Map Room.",
-  Atlas: "RPG Maker-style autotile blocks (16 px cells, our own wireframes in that layout): ground, floor, ledges, forest edges, animated water and walls. Add one, then repaint it as your own art.",
+  Atlas: "RPG Maker-style autotile blocks (16 px cells): ground, floor, animated water and walls. Add one, then repaint it as your own art.",
+  "Outdoor pieces": "The author's hand-drawn ledges and trees: stamps with see-through around them, placed by hand.",
 };
 const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background" };
 /** Sites the store links to, in their own colors (a Source button wears its site's). */

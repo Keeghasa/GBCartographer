@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasCell, atlasWallCell, SE, SW } from "./autotile";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate , atlasGrassTemplate, atlasFloorTemplate, atlasLedgeTemplate, atlasForestTemplate, atlasWaterTemplate, atlasWallTemplate } from "../graphics/autotiles";
+import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate , atlasGrassTemplate, atlasFloorTemplate, atlasWaterTemplate, atlasWallTemplate } from "../graphics/autotiles";
 import { AUTOTILES } from "./autotile";
 
 describe("auto-tiles", () => {
@@ -43,7 +43,7 @@ describe("auto-tiles", () => {
     expect(distinct(roadTemplate(), 16, 4)).toBe(16);
     // Atlas blocks: no minitile is a plain single shade (painting tells a block's cells by their minitiles), and the
     // edges, corners and inner corners are told apart.
-    for (const sheet of [made.atlas, atlasFloorTemplate(), atlasLedgeTemplate(), atlasForestTemplate(), made.atlasAnim, made.atlasWall]) {
+    for (const sheet of [made.atlas, atlasFloorTemplate(), made.atlasAnim, made.atlasWall]) {
       const tiles = Array.from({ length: 24 }, (_, index) => { const x = (index % 4) * 8, y = Math.floor(index / 4) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]); });
       expect(tiles.some((tile) => new Set(tile).size === 1), "a plain minitile").toBe(false);
       expect(distinct(sheet, 24, 4)).toBeGreaterThanOrEqual(13);

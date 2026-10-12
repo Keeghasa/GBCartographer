@@ -22,7 +22,8 @@ describe("graphics library", () => {
     for (const asset of GRAPHICS.filter((item) => item.kind !== "sprites" && item.kind !== "emotes")) {
       const art = asset.make();
       expect([art.width % 8, art.height % 8], asset.id).toEqual([0, 0]);
-      expect(art.pixels.includes(CLEAR), asset.id).toBe(false);
+      // Stamps may have see-through around them (the author's outdoor pieces); project pictures never do.
+      if (asset.kind !== "stamps") expect(art.pixels.includes(CLEAR), asset.id).toBe(false);
       if (asset.kind === "backgrounds") expect(countUniqueTiles(art.pixels, art.width, art.height, false), asset.id).toBeLessThanOrEqual(192);
     }
   });
