@@ -60,6 +60,8 @@ export type PickerWindow = Window & {
   gbc?: { platform: string; chooseProject(): Promise<string | null>; closeWindow?(): void; cancelClose?(): void };
 };
 export const PNG_TYPES = [{ description: "PNG image", accept: { "image/png": [".png"] } }];
+/** What Open takes: PNGs and Aseprite files (read only: they open as new PNGs). */
+export const OPEN_TYPES = [{ description: "PNG or Aseprite", accept: { "image/png": [".png"], "application/octet-stream": [".aseprite", ".ase"] } }];
 
 /** One PNG under the GB Studio project's assets folder. */
 export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: AutotileKind }

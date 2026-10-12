@@ -13,7 +13,7 @@ import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
 import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
-import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
+import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
 import { HelpWindow } from "./app/HelpWindow";
@@ -64,6 +64,7 @@ import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTim
 import { autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
+import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -394,12 +395,15 @@ export default function PaintApp() {
     let last = 0;
     for (const { file, handle, asset, info, replace } of files) {
       try {
-        const bitmap = await createImageBitmap(file, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+        // An Aseprite file (L17): its visible layers drawn, frames side by side; it opens as a new PNG, never saved over.
+        const ase = isAseprite(file.name) ? await readAseprite(new Uint8Array(await file.arrayBuffer()), inflateZlib) : null;
+        const bitmap = ase ?? await createImageBitmap(file, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
         const canvas = document.createElement("canvas");
         canvas.width = bitmap.width;
         canvas.height = bitmap.height;
         const context = canvas.getContext("2d", { willReadFrequently: true })!;
-        context.drawImage(bitmap, 0, 0);
+        if (ase) context.putImageData(new ImageData(ase.rgba, ase.width, ase.height), 0, 0);
+        else context.drawImage(bitmap as ImageBitmap, 0, 0);
         const keyGreen = asset ? isKeyed(asset.kind) : false;
         // Fonts: magenta marks a variable-width glyph's unused columns (GB Studio reads it as see-through); it stays magenta.
         const keyMagenta = asset?.kind === "fonts";
@@ -411,13 +415,15 @@ export default function PaintApp() {
         if (old < 0) last = id;
         // Backgrounds and tilesets: each tile's priority flag (bit 7: draws over sprites).
         const flags = asset && info && (asset.kind === "backgrounds" || asset.kind === "tilesets") ? Array.from({ length: picture.cells.length }, (_, cell) => (info.tileColors[cell] ?? 0) >= 0 && (info.tileColors[cell] ?? 0) & 0x80 ? 1 : 0) : null;
-        const opened: Doc = { id, ...(handle && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? file.name, width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: false, handle, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
+        const own = ase ? undefined : handle;
+        const opened: Doc = { id, ...(own && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? (ase ? file.name.replace(/\.(aseprite|ase)$/i, ".png") : file.name), width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: Boolean(ase), handle: own, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
         if (old >= 0) docs.current[old] = opened;
         else docs.current.push(opened);
         if (asset?.kind === "backgrounds") void loadCollisions(opened);
         if (old >= 0) continue;
         const made = picture.palettes.length - palettesRef.current.length;
-        if (info?.autoColor) say(`${asset?.name ?? file.name} uses GB Studio's Automatic color: GB Studio reads its colors from the PNG itself. Saving here writes the four greens and loses them; Save asks first.`);
+        if (ase) say(`${file.name}: opened from Aseprite as ${opened.name}, ${ase.frameWidth} × ${ase.height}${ase.notes.length ? ` (${ase.notes.join("; ")})` : ""}. Save writes a new PNG; the .aseprite file stays as it is.`);
+        else if (info?.autoColor) say(`${asset?.name ?? file.name} uses GB Studio's Automatic color: GB Studio reads its colors from the PNG itself. Saving here writes the four greens and loses them; Save asks first.`);
         else if (picture.snapped) say(`${file.name}: ${picture.snapped} color${picture.snapped === 1 ? "" : "s"} read as the same shade as another color in their tile (GB Studio reads colors by their green), so they show alike, as in GB Studio.`);
         else if (made) say(`${file.name}: tiles in colors outside the library keep them as ${made} palette${made === 1 ? "" : "s"} of the file.${made > 8 ? " GB Studio allows 8 a scene: Picture tab → Fit to 8 palettes shows what fitting changes." : ""} Save writes the greens GB Studio reads the colors as.`);
         else if (dressed) say(`${asset?.name}: ${dressed} tile${dressed === 1 ? "" : "s"} wear the palettes GB Studio gives them.`);
@@ -435,7 +441,7 @@ export default function PaintApp() {
     const picker = (window as PickerWindow).showOpenFilePicker;
     if (picker) {
       try {
-        const handles = await picker.call(window, { multiple: true, types: PNG_TYPES });
+        const handles = await picker.call(window, { multiple: true, types: OPEN_TYPES });
         await openFiles(await Promise.all(handles.map(async (handle) => ({ file: await handle.getFile(), handle }))));
       } catch {
         // The picker was closed.
@@ -444,7 +450,7 @@ export default function PaintApp() {
     }
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/png";
+    input.accept = "image/png,.aseprite,.ase";
     input.multiple = true;
     input.onchange = () => void openFiles([...input.files ?? []].map((file) => ({ file })));
     input.click();

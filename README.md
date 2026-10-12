@@ -28,7 +28,8 @@ palettes straight back into the project.
 
 - **Open a GB Studio 4 project** (its `.gbsproj` or folder) and see its backgrounds, sprite sheets, tilesets,
   fonts, emotes, avatars and UI pictures as thumbnail cards, drawn in their real palettes. Or open any Game Boy
-  PNG on its own.
+  PNG on its own, or an Aseprite file (`.aseprite` / `.ase`: its visible layers, frames side by side; it opens as a
+  new PNG and the Aseprite file is never written).
 - **One flat picture per file.** No layers, no tileset management: what you see is the PNG, kept in the four
   Game Boy shades, read exactly the way GB Studio reads colors. Sprite sheets and emotes keep their key green
   (`#65FF00`) for see-through pixels.
