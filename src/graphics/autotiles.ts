@@ -199,59 +199,94 @@ function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number)
 const dots = (t: Pen, shade: number, step = 5) => { for (let y = 1; y < t.h; y += step) for (let x = (y / step) % 2 ? 3 : 1; x < t.w; x += step) t.dot(x, y, shade); };
 const thinSide = (shade: number) => (t: Pen, s: number) => t.side(s, shade);
 
-/** Atlas grass: light ground with dots, a dark edge. */
+/** Atlas grass: light ground with tufts, a dark edge with a lighter line inside it (a mown verge). */
 export function atlasGrassTemplate(): Canvas {
   const out = canvas(32, 48, 0), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(0); dots(t, 1); }, thinSide(3));
+  atlasBlock(p, (t) => { t.fill(0); for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 1); x < t.w; x += 8) { t.dot(x, y, 1); t.dot(x + 1, y - 1, 1); t.dot(x + 2, y, 1); } }, (t, s) => { t.side(s, 3); t.side(s, 1, 1); });
   return out;
 }
 
-/** Atlas floor: paving (a 4 px grid of lines) with a dark edge, for interiors. */
+/** Atlas floor: flagstones (8 × 8 slabs with a mortar line and a chipped corner), a dark edge. */
 export function atlasFloorTemplate(): Canvas {
   const out = canvas(32, 48, 1), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) t.rect(0, y + 7, t.w, 1, 2); for (let x = 0; x < t.w; x += 8) t.rect(x + 7, 0, 1, t.h, 2); }, thinSide(3));
+  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) for (let x = 0; x < t.w; x += 8) { t.rect(x, y + 7, 8, 1, 2); t.rect(x + 7, y, 1, 8, 2); t.dot(x + 1, y + 1, 0); t.dot(x + 5, y + 4, 2); } }, (t, s) => { t.side(s, 3); t.side(s, 2, 1); });
   return out;
 }
 
-/** Atlas mountain ledge: grass on top, a cliff face three pixels tall below its bottom edge, thin edges elsewhere. */
+/**
+ * Atlas mountain ledge: a grassy plateau. Its top and sides end in a rim of rock (two pixels, dark with a light
+ * highlight); its bottom edge is the cliff face: a light lip, a mid rock face with cracks, and a dark foot.
+ */
 export function atlasLedgeTemplate(): Canvas {
   const out = canvas(32, 48, 0), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(0); dots(t, 1); }, (t, s) => {
-    if (s !== 2) { t.side(s, 3); return; }
-    t.rect(0, t.h - 3, t.w, 3, 2);
-    t.rect(0, t.h - 1, t.w, 1, 3);
-    for (let x = 1; x < t.w; x += 4) t.dot(x, t.h - 2, 3);
+  atlasBlock(p, (t) => { t.fill(0); for (let y = 3; y < t.h; y += 7) for (let x = ((y / 7) % 2 ? 5 : 1); x < t.w; x += 8) { t.dot(x, y, 1); t.dot(x + 1, y - 1, 1); } }, (t, s) => {
+    if (s === 2) {
+      // The cliff face: a light lip, a row of round boulders (mid, lit on top, dark seams), a dark foot.
+      const top = t.h - 8;
+      t.rect(0, top, t.w, 1, 0); t.rect(0, top + 1, t.w, 6, 2); t.rect(0, t.h - 1, t.w, 1, 3);
+      for (let x = -4; x < t.w; x += 8) { t.round(x, top + 1, 8, 6, 2, 3); t.rect(x + 2, top + 2, 4, 1, 1); t.dot(x + 2, top + 3, 1); }
+      t.rect(0, t.h - 1, t.w, 1, 3);
+      return;
+    }
+    // The rim: dark rock with light chips.
+    t.side(s, 3); t.side(s, 2, 1);
+    if (s === 0) for (let x = 1; x < t.w; x += 3) t.dot(x, 1, 1);
+    else for (let y = 1; y < t.h; y += 3) t.dot(s === 1 ? t.w - 2 : 1, y, 1);
   });
   return out;
 }
 
-/** Atlas forest edge: canopy (round dark blobs) inside, a two-pixel dark border where it meets open ground. */
+/**
+ * Atlas forest edge: a canopy of round trees (16 px each: a light crown, a mid body, a dark underside, a trunk peeping
+ * out) packed in staggered rows; where it meets open ground the edge is scalloped dark with a dark trunk line along
+ * the bottom.
+ */
 export function atlasForestTemplate(): Canvas {
-  const out = canvas(32, 48, 1), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) for (let x = (y / 8) % 2 ? 4 : 0; x < t.w; x += 8) { t.round(x + 1, y + 1, 6, 6, 2, 2); t.dot(x + 2, y + 2, 0); } }, (t, s) => { t.side(s, 3); t.side(s, 3, 1); });
+  const out = canvas(32, 48, 2), p = new Pen(out);
+  // A tree in a 16 × 16 cell: a round crown (mid) with a light top and a dark underside, a trunk on dark ground.
+  const tree = (t: Pen, x: number, y: number) => {
+    t.rect(x, y, 16, 16, 3);
+    // The crown, row by row (width, inset): round, with a dark outline where it meets the shade behind.
+    const rows: [number, number][] = [[6, 5], [10, 3], [12, 2], [14, 1], [14, 1], [14, 1], [14, 1], [12, 2], [10, 3], [6, 5]];
+    rows.forEach(([w, inset], row) => t.rect(x + inset, y + 1 + row, w, 1, row >= 7 ? 2 : 1));
+    rows.forEach(([w, inset], row) => { t.dot(x + inset, y + 1 + row, row >= 7 ? 3 : 2); t.dot(x + inset + w - 1, y + 1 + row, row >= 7 ? 3 : 2); });
+    t.rect(x + 5, y + 1, 6, 1, 2); t.rect(x + 4, y + 10, 8, 1, 3);
+    // Light on the upper left, a few leaf clumps.
+    t.rect(x + 4, y + 3, 4, 2, 0); t.rect(x + 3, y + 5, 2, 1, 0); t.dot(x + 9, y + 2, 0);
+    t.dot(x + 10, y + 6, 2); t.dot(x + 5, y + 8, 2); t.dot(x + 12, y + 8, 2);
+    // The trunk, on dark ground.
+    t.rect(x + 7, y + 11, 2, 4, 2); t.dot(x + 7, y + 11, 1); t.rect(x + 6, y + 15, 4, 1, 2);
+  };
+  atlasBlock(p, (t) => { for (let y = 0; y < t.h; y += 16) for (let x = 0; x < t.w; x += 16) tree(t, x, y); }, (t, s) => {
+    // Where the forest meets open ground: a light rim of grass with a dark line under the crowns.
+    t.side(s, 0); t.side(s, 3, 1);
+  });
   return out;
 }
 
-/** Atlas water: three blocks side by side, the waves (dark dashes and a light glint) moving a step each frame; a dark shoreline. */
+/** Atlas water: three blocks, the wave crests (light arcs over a mid body) drifting a step each frame; a dark shoreline with foam inside. */
 export function atlasWaterTemplate(): Canvas {
   const out = canvas(32 * 3, 48, 1), p = new Pen(out);
   for (let frame = 0; frame < 3; frame += 1) {
     atlasBlock(p.at(frame * 32, 0, 32, 48), (t) => {
       t.fill(1);
-      for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 2; x < t.w + 8; x += 8) { t.rect(x - 8, y, 3, 1, 2); t.rect(x, y, 3, 1, 2); t.dot(x + 1, y - 1, 0); t.dot(x - 7, y - 1, 0); }
-    }, thinSide(3));
+      // Wave crests: a light arc eight pixels long with its trough in mid-dark, rows staggered, drifting right a frame.
+      for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 3 - 8; x < t.w + 8; x += 8) {
+        t.dot(x, y + 1, 0); t.rect(x + 1, y, 4, 1, 0); t.dot(x + 5, y + 1, 0); t.dot(x + 6, y + 2, 2); t.rect(x + 1, y + 1, 4, 1, 2);
+      }
+    }, (t, s) => { t.side(s, 3); t.side(s, 0, 1); });
   }
   return out;
 }
 
-/** Atlas wall: a roof block (shingles) over a 2 × 2-tile wall region (bricks) with its edges, 32 × 80. */
+/** Atlas wall: a tiled roof (rows of shingles with a light ridge on each) over a brick face (offset courses, mortar lines) that ends in a dark foot, 32 × 80. */
 export function atlasWallTemplate(): Canvas {
   const out = canvas(32, 80, 2), p = new Pen(out);
-  atlasBlock(p.at(0, 0, 32, 48), (t) => { t.fill(2); for (let y = 3; y < t.h; y += 4) t.rect(0, y, t.w, 1, 3); for (let y = 0; y < t.h; y += 4) for (let x = (y / 4) % 2 ? 4 : 0; x < t.w; x += 8) t.dot(x, y + 1, 0); }, thinSide(0), 0);
+  atlasBlock(p.at(0, 0, 32, 48), (t) => { t.fill(2); for (let y = 0; y < t.h; y += 4) { t.rect(0, y + 3, t.w, 1, 3); for (let x = ((y / 4) % 2 ? 4 : 0); x < t.w; x += 8) { t.rect(x + 1, y, 6, 1, 1); t.dot(x, y + 1, 3); } } }, (t, s) => { t.side(s, 0); if (s === 2) t.side(2, 3, 1); }, 0);
   const face = p.at(0, 48, 32);
   face.fill(1);
-  for (let y = 0; y < 32; y += 4) { face.rect(0, y + 3, 32, 1, 2); for (let x = (y / 4) % 2 ? 4 : 0; x < 32; x += 8) face.rect(x + 3, y, 1, 3, 2); }
-  for (let s = 0; s < 4; s += 1) face.side(s, 3);
-  face.rect(0, 0, 32, 1, 0);
+  for (let y = 0; y < 32; y += 4) { face.rect(0, y + 3, 32, 1, 2); for (let x = ((y / 4) % 2 ? 4 : 0); x < 32; x += 8) { face.rect(x + 3, y, 1, 3, 2); face.dot(x + 1, y + 1, 0); } }
+  face.rect(0, 0, 32, 1, 3); face.rect(0, 1, 32, 1, 0);
+  face.rect(0, 30, 32, 2, 3); face.rect(0, 0, 1, 32, 3); face.rect(31, 0, 1, 32, 3);
   return out;
 }
