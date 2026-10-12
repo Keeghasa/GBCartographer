@@ -1,6 +1,7 @@
 /** The paint tools: one button per tool, the view and painting toggles, and the brush size for the tool in hand. */
 import { Dna, FlipHorizontal, Grid2x2, Minus, Plus } from "lucide-react";
-import { PATTERNS, type Mirror, type Pattern } from "../paint";
+import { useEffect, useRef } from "react";
+import { PATTERNS, inPattern, type Mirror, type Pattern } from "../paint";
 import { MIRRORS, MIRROR_LABEL, type ToolId } from "./model";
 import { TOOLS } from "./tools";
 import { IconButton } from "../ui/kit";
@@ -14,9 +15,33 @@ interface Props {
   pattern: Pattern; onPattern: () => void;
   cellBrush: number; onCellBrush: (size: number) => void;
   brush: number; onBrush: (size: number) => void;
+  /** The shade in hand (0–3) and the four colors it is shown in (the picked palette, or the look). */
+  shade: number; shades: readonly string[];
 }
 
-export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush }: Props) {
+/**
+ * What a fill pattern makes (the author, 2026-10-12): the pattern tiled across 16 × 16 pixels, pixel for pixel, in the
+ * shade in hand over a contrasting one, in the colors of the palette in use. Click cycles the pattern, like D.
+ */
+function PatternSwatch({ pattern, label, shade, shades, onPattern }: { pattern: Pattern; label: string; shade: number; shades: readonly string[]; onPattern: () => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const ink = shade >= 0 && shade <= 3 ? shade : 3, paper = ink === 0 ? 3 : 0;
+  useEffect(() => {
+    const context = canvas.current?.getContext("2d");
+    if (!context) return;
+    for (let y = 0; y < 16; y += 1) for (let x = 0; x < 16; x += 1) {
+      context.fillStyle = shades[inPattern(pattern, x, y) ? ink : paper] ?? "#000";
+      context.fillRect(x, y, 1, 1);
+    }
+  }, [pattern, ink, paper, shades.join()]);
+  return (
+    <button type="button" className="k-btn app-pattern" title={`${label}: what a fill makes, 16 × 16 px (click for the next pattern, or D)`} aria-label={`Fill pattern preview: ${label}`} onClick={onPattern}>
+      <canvas ref={canvas} width={16} height={16} />
+    </button>
+  );
+}
+
+export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
   const patternLabel = PATTERNS.find((item) => item.id === pattern)?.label;
   return (
     <aside className="k-panel app-tools gbp-tools" role="toolbar" aria-label="Paint tools">
@@ -40,6 +65,7 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
           <IconButton label="Bigger brush" keys="]" variant="ghost" disabled={brush >= 16} onClick={() => onBrush(brush + 1)}><Plus /></IconButton>
         </span>
       )}
+      {(tool === "fill" || tool === "rectFill") && <PatternSwatch pattern={pattern} label={patternLabel ?? pattern} shade={shade} shades={shades} onPattern={onPattern} />}
     </aside>
   );
 }
