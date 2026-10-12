@@ -55,7 +55,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Select all" keys={["Ctrl+A"]}>Selects the whole picture.</Row>
           <Row name="Drop it" keys={["Esc"]}>Drops the selection.</Row>
           <Row name="Flip, turn" keys={["F", "Shift+F", "T"]}>Flip the selection (or the whole picture) left-right or top-bottom; turn the selection clockwise.</Row>
-          <Row name="Atlas stamps">RPG Maker-style autotile blocks (Graphics → Art → Atlas), painted in 16 px cells: ground and ledges fit every edge and inner corner; the wall's roof grows a face below it; water plays its three frames while in hand (Save writes frame 1). Alt clears.</Row>
+          <Row name="Atlas stamps">RPG Maker-style autotile blocks (Asset Catalog → Atlas), painted in 16 px cells: ground and ledges fit every edge and inner corner; the wall's roof grows a face below it; water plays its three frames while in hand (Save writes frame 1). Alt clears.</Row>
           <Row name="Saved stamps" keys={["Right-click"]}>Right-click inside a selection to use it as the stamp, or to save it as a stamp in the project's Cartographer/stamps folder (with its tile palettes, on whole tiles). The Stamp tool shows the saved ones above the picture; the Stamps folder in the project panel opens one to edit.</Row>
         </Section>
         <Section title="Files and undo">
@@ -81,7 +81,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <div className="k-well hp-save">
             <p>Into a GB Studio project, Save writes only:</p>
             <ul>
-              <li>the PNG (same size, or the new size after Resize), and new PNGs from New, the wizards, the Map Room, Graphics or Duplicate (never replacing a file)</li>
+              <li>the PNG (same size, or the new size after Resize), and new PNGs from New, the wizards, the Map Room, the Asset Catalog or Duplicate (never replacing a file)</li>
               <li>a background's tile palettes (<code>tileColors</code>) and a sprite sheet's slice palettes (<code>paletteIndex</code>)</li>
               <li>palette files from the palette manager</li>
               <li>when you put a palette in a slot: the scene's palette list or the project's default palettes; when you copy a background's palettes: the other scene's palette list</li>

@@ -1,14 +1,15 @@
 /**
- * The Graphics window (the store, 2026-10-10; renamed by the author): what GB Cartographer ships, credited, for taking into a project piecemeal. Two aisles:
- * palette sets (shelves of sets: add a whole set or one palette at a time, to the project or to Mine; a palette the
- * project already has shows as added) and the graphics library (placeholder art by kind: add it to the project as a
- * new PNG, or open it as a new picture). Each shelf says who made it, its license (the License button explains it)
- * and where it comes from (Source).
+ * The Asset Catalog (the store, 2026-10-10; "Graphics" until the author merged its two aisles into one list,
+ * 2026-10-12): what GB Cartographer ships, credited, for taking into a project piecemeal. One list of shelves:
+ * palette sets (add a whole set or one palette at a time, to the project or to Mine; a palette the project already
+ * has shows as added) and the art library by group (placeholder art: add it to the project as a new PNG, or open it
+ * as a new picture). A search looks through both. Each shelf says who made it, its license (the License button
+ * explains it) and where it comes from (Source).
  */
 import { Check, ExternalLink, FilePlus2, Plus, Scale, Search, Store } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toRgba } from "../paint";
-import { Button, Chip, Dialog, IconButton, Popover, Segmented } from "../ui/kit";
+import { Button, Chip, Dialog, IconButton, Popover } from "../ui/kit";
 import type { Canvas } from "../graphics/pen";
 import type { WireAsset } from "../graphics/types";
 
@@ -104,9 +105,10 @@ function Preview({ art }: { art: Canvas }) {
 }
 
 export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProject, onAddToMine, onAddArt, onOpenArt }: Props) {
-  const [aisle, setAisle] = useState<"palettes" | "graphics">("palettes");
+  // One shelf is on show: a palette shelf or an art group (a search shows matches from both).
   const [shelfName, setShelfName] = useState(SHELVES.find((shelf) => shelf.name === "Overworld")?.name ?? SHELVES[0]?.name ?? "");
   const [group, setGroup] = useState(GRAPHIC_GROUPS[0] ?? "");
+  const [aisle, setAisle] = useState<"palettes" | "graphics">("palettes");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -116,8 +118,9 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   const needle = query.trim().toLowerCase();
   // A search looks through every shelf: sets whose name, or any palette's name, matches.
   const found = useMemo(() => !needle ? null : SHELVES.map((shelf) => ({ ...shelf, sets: shelf.sets.map((set) => set.name.toLowerCase().includes(needle) ? set : { ...set, palettes: set.palettes.filter((palette) => palette.name.toLowerCase().includes(needle)) }).filter((set) => set.palettes.length) })).filter((shelf) => shelf.sets.length), [needle]);
-  const shelves = found ?? SHELVES.filter((shelf) => shelf.name === shelfName);
-  const arts = useMemo(() => (needle ? GRAPHICS.filter((asset) => `${asset.name} ${asset.group}`.toLowerCase().includes(needle)) : GRAPHICS.filter((asset) => asset.group === group)).map((asset) => ({ asset, art: asset.make() })), [needle, group]);
+  const shelves = found ?? (aisle === "palettes" ? SHELVES.filter((shelf) => shelf.name === shelfName) : []);
+  const arts = useMemo(() => (needle ? GRAPHICS.filter((asset) => `${asset.name} ${asset.group}`.toLowerCase().includes(needle)) : aisle === "graphics" ? GRAPHICS.filter((asset) => asset.group === group) : []).map((asset) => ({ asset, art: asset.make() })), [needle, group, aisle]);
+  const showPalettes = Boolean(needle ? found?.length : aisle === "palettes"), showArt = Boolean(needle ? arts.length : aisle === "graphics");
 
   const has = (palette: StorePalette) => hasPalette(projectPalettes, palette);
   async function add(palettes: StorePalette[]) {
@@ -135,18 +138,20 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
     setBusy(false);
   }
 
-  const nav = aisle === "palettes"
-    ? SHELVES.map((shelf) => ({ key: shelf.name, label: shelf.name, count: shelf.sets.reduce((sum, set) => sum + set.palettes.length, 0), on: !found && shelf.name === shelfName, pick: () => setShelfName(shelf.name) }))
-    : GRAPHIC_GROUPS.map((name) => ({ key: name, label: name, count: GRAPHICS.filter((asset) => asset.group === name).length, on: !needle && name === group, pick: () => setGroup(name) }));
+  const nav = [
+    { heading: "Palettes" },
+    ...SHELVES.map((shelf) => ({ key: `p:${shelf.name}`, label: shelf.name, count: shelf.sets.reduce((sum, set) => sum + set.palettes.length, 0), on: !needle && aisle === "palettes" && shelf.name === shelfName, pick: () => { setAisle("palettes"); setShelfName(shelf.name); } })),
+    ...(GRAPHICS.length ? [{ heading: "Art" }] : []),
+    ...GRAPHIC_GROUPS.map((name) => ({ key: `a:${name}`, label: name, count: GRAPHICS.filter((asset) => asset.group === name).length, on: !needle && aisle === "graphics" && name === group, pick: () => { setAisle("graphics"); setGroup(name); } })),
+  ];
 
   return (
-    <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose(); }} wide tall title="Graphics" icon={<Store size={18} />}
-      sub={projectName ? `Credited ${GRAPHICS.length ? "palettes and graphics" : "palettes"} to take into ${projectName}, piece by piece` : `Credited ${GRAPHICS.length ? "palettes and graphics" : "palettes"}: open a project to add them to it`}
-      headExtra={GRAPHICS.length > 0 && <Segmented size="sm" label="Aisle" value={aisle} onChange={(next) => { setAisle(next); setQuery(""); setOpen(null); }} options={[{ value: "palettes", label: "Palettes" }, { value: "graphics", label: "Art" }]} />}>
+    <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose(); }} wide tall title="Asset Catalog" icon={<Store size={18} />}
+      sub={projectName ? `Credited ${GRAPHICS.length ? "palettes and art" : "palettes"} to take into ${projectName}, piece by piece` : `Credited ${GRAPHICS.length ? "palettes and art" : "palettes"}: open a project to add them to it`}>
       <div className="st">
         <nav className="st-shelves k-stack k-stack--tight" aria-label="Shelves">
-          <label className="st-search"><Search size={14} /><input className="k-input" placeholder={aisle === "palettes" ? "Find a palette" : "Find art"} aria-label="Find" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-          {nav.map((item) => (
+          <label className="st-search"><Search size={14} /><input className="k-input" placeholder="Find a palette or art" aria-label="Find" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          {nav.map((item) => "heading" in item ? <span key={item.heading} className="k-eyebrow st-heading">{item.heading}</span> : (
             <button key={item.key} type="button" className="app-row st-shelf" aria-pressed={item.on} onClick={() => { item.pick(); setQuery(""); setOpen(null); }}>
               <span className="app-name">{item.label}</span><span className="k-muted k-xs">{item.count}</span>
             </button>
@@ -157,7 +162,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
           </div>
         </nav>
         <div className="st-body">
-          {aisle === "palettes" && <>
+          {showPalettes && <>
             {shelves.length === 0 && <p className="k-muted k-small">No palette matches “{query}”.</p>}
             {shelves.map((shelf) => (
               <section key={shelf.name} className="k-stack">
@@ -199,7 +204,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
               </section>
             ))}
           </>}
-          {aisle === "graphics" && (
+          {showArt && (
             <section className="k-stack">
               <header className="st-head"><span className="st-title">{needle ? `Art matching “${query}”` : group}</span><Credit {...GRAPHICS_CREDIT} /></header>
               <p className="k-muted k-small st-about">{needle ? "Placeholder art drawn in plain shapes, ready to paint over your own way." : GROUP_INTROS[group] ?? "Placeholder art drawn in plain shapes, ready to paint over your own way."}</p>

@@ -33,3 +33,6 @@
 .st-set { position: relative; }
 .st-set-source { position: absolute; top: var(--k-2); right: var(--k-2); }
 .st-set-source + .st-set-top .st-set-name { padding-right: 96px; }
+
+.st-heading { margin-top: 6px; padding: 0 var(--k-2); }
+.st-heading:first-of-type { margin-top: 2px; }

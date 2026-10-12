@@ -2438,7 +2438,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           {served && !project && <Button icon={<FolderTree />} title="Open a GB Studio project folder" onClick={() => void chooseProject()}>Open project…</Button>}
           {project && <Button icon={<MapIcon />} title="Map Room: adventure-style grids of screens, each a background" onClick={() => setShowMapRoom(true)}>Maps</Button>}
           <Button icon={<SwatchBook />} title="Palette manager: the project's palettes, a library, and your own" onClick={() => setShowPalettes(true)}>Palettes</Button>
-          <Button icon={<StoreIcon />} title="Graphics: credited palettes and art to take into your project, a piece at a time" onClick={() => setShowStore(true)}>Graphics</Button>
+          <Button icon={<StoreIcon />} title="Asset Catalog: credited palettes and art to take into your project, a piece at a time" onClick={() => setShowStore(true)}>Catalog</Button>
           <Button icon={<PxRobotHappy size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards</Button>
         </span>
         <IconButton label="Undo" keys="Ctrl+Z" disabled={!doc?.undo.length} onClick={() => stepHistory("undo")}><Undo2 /></IconButton>

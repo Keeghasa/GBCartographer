@@ -45,7 +45,7 @@ palettes straight back into the project.
   sets) and your own, with a live preview of the open picture; add palettes to the project or edit its own, and
   see which scenes use each one (unused and duplicate palettes are marked, and an unused one can be taken out);
   import palettes from Lospec `.hex` or GIMP `.gpl` files and export your own as JSON.
-- **Graphics.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
+- **Asset Catalog.** Credited palette sets to take into a project, a whole set or one palette at a time: the author's
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
   and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 65 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
@@ -105,7 +105,7 @@ pick. Make background puts the map and its palettes in your project.
 
 ![A generated overworld open in the painter, in its palettes](docs/media/painter.png)
 
-![The Graphics window: SpicyGame's public-domain palette sets, credited, with buttons to add a set or one palette](docs/media/graphics.png)
+![The Asset Catalog: SpicyGame's public-domain palette sets, credited, with buttons to add a set or one palette](docs/media/graphics.png)
 
 The pictures in these screenshots are GB Cartographer's own placeholders.
 
@@ -154,7 +154,7 @@ clean).
 GB Cartographer is careful with your game files. It only ever writes:
 
 - the PNG you saved, under `assets/backgrounds`, `sprites`, `tilesets`, `fonts`, `emotes`, `avatars` or `ui`, with the same size as before (or the new size, after **Resize…**);
-- a new PNG when you make one with **New**, a wizard, the Map Room or the Graphics window, or save a picture from another project into this one (it never replaces a file; GB Studio adds its own settings for it);
+- a new PNG when you make one with **New**, a wizard, the Map Room or the Asset Catalog, or save a picture from another project into this one (it never replaces a file; GB Studio adds its own settings for it);
 - the `tileColors` field of a background's or tileset's `.png.gbsres` sidecar;
 - the `paletteIndex` of the slices in a sprite sheet's `.png.gbsres` sidecar;
 - palette files in `project/palettes/`: a new one when you add or duplicate a palette, the name and
