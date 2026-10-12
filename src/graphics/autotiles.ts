@@ -196,8 +196,6 @@ function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number)
   inner.dot(2, 2, mark); inner.dot(13, 2, mark); inner.dot(2, 13, mark); inner.dot(13, 13, mark);
 }
 
-const dots = (t: Pen, shade: number, step = 5) => { for (let y = 1; y < t.h; y += step) for (let x = (y / step) % 2 ? 3 : 1; x < t.w; x += step) t.dot(x, y, shade); };
-const thinSide = (shade: number) => (t: Pen, s: number) => t.side(s, shade);
 
 /** Atlas grass: light ground with tufts, a dark edge with a lighter line inside it (a mown verge). */
 export function atlasGrassTemplate(): Canvas {
