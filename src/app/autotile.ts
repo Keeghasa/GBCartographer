@@ -46,7 +46,7 @@ export function maskAt(filled: (tx: number, ty: number) => boolean, tx: number, 
  * corner-Wang. The wall-face sheet is 4 × 3 tiles: floor, nothing; the upper wall row and the lower wall row, each
  * as middle, left end, right end, both ends.
  */
-export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall";
+export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall" | "mound" | "forest";
 const whole = (w: number, h: number) => w % 8 === 0 && h % 8 === 0;
 export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: string; size: string; fits: (w: number, h: number) => boolean }[] = [
   { id: "box", glyph: "9", name: "Box", about: "drag a rectangle: corners, edges and middle stretch over it", size: "whole tiles, at least 3 × 3", fits: (w, h) => whole(w, h) && w >= 24 && h >= 24 },
@@ -58,9 +58,11 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
   { id: "corner", glyph: "C", name: "Corner Wang (2 terrains)", about: "paint at the grid's corners: two ground types blend (grass into sand, water into shore)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
   { id: "wallface", glyph: "F", name: "Wall face", about: "paint floor: walls grow two tiles tall above it, nothing (black) everywhere else", size: "a 4 × 3-tile sheet", fits: (w, h) => w === 32 && h === 24 },
   { id: "anim", glyph: "▶", name: "Animated tile", about: "frames side by side: stamps the first frame, the card plays them all", size: "square frames side by side, at least 2", fits: (w, h) => h % 8 === 0 && h > 0 && w % h === 0 && w / h >= 2 },
-  { id: "atlas", glyph: "A", name: "Atlas ground (2 × 3)", about: "paint 16 px cells: an RPG Maker-style 2 × 3 block of 16 × 16 tiles fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
-  { id: "atlasAnim", glyph: "A▶", name: "Atlas water (animated)", about: "an Atlas block in three frames side by side: paints frame 1, the picture plays the frames while it's in hand", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
-  { id: "atlasWall", glyph: "A▣", name: "Atlas wall (roof + face)", about: "paint an area: its roof fits like Atlas ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
+  { id: "atlas", glyph: "A", name: "RPG Maker ground (2 × 3)", about: "paint 16 px cells: a 2 × 3 block of 16 × 16 tiles in RPG Maker's layout fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
+  { id: "atlasAnim", glyph: "~", name: "Water (3 frames)", about: "a 2 × 3 block in three frames side by side (RPG Maker's water layout): paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
+  { id: "mound", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 8-minitile sheet, 48 × 64", fits: (w, h) => w === 48 && h === 64 },
+  { id: "forest", glyph: "T", name: "Forest (trees)", about: "paint 32 px tree units: a clump of trees inside, single trees along the edge (the author's trees)", size: "a clump and a single tree side by side, 64 × 32", fits: (w, h) => w === 64 && h === 32 },
+  { id: "atlasWall", glyph: "A▣", name: "RPG Maker wall (roof + face)", about: "paint an area: its roof fits like RPG Maker ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
 ];
 
 /**
@@ -75,6 +77,23 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
  * over a 2 × 2-tile wall region (4 × 4 minitiles, 32 × 32: edges and corners only, no inner corners).
  */
 export const ATLAS_W = 32, ATLAS_H = 48, ATLAS_FRAMES = 3, ATLAS_WALL_H = 32;
+
+/**
+ * The mound ledge (the author's piece, 2026-10-12), a 48 × 64 sheet of 6 × 8 minitiles: columns 1–4 are the plateau
+ * (row 0 its rounded top border, rows 1–2 the light plate between orange borders, row 3 the bottom border); columns
+ * 0 and 5 are the rock that flanks it; rows 4–5 the rock face under it and rows 6–7 the foot with its rounded ends.
+ * A painted cell is plateau; the cell below its bottom edge grows the face, and the cells beside grow a rock column.
+ */
+export function moundCell(mask: number): [number, number][] {
+  const has = (bit: number) => Boolean(mask & bit);
+  const quarter = (right: boolean, bottom: boolean, side: boolean, up: boolean, diagonal: boolean): [number, number] => {
+    if (side && up) return diagonal ? [right ? 3 : 2, bottom ? 2 : 1] : [right ? 4 : 1, bottom ? 2 : 1];
+    if (side) return [right ? 3 : 2, bottom ? 3 : 0];
+    if (up) return [right ? 4 : 1, bottom ? 2 : 1];
+    return [right ? 4 : 1, bottom ? 3 : 0];
+  };
+  return [quarter(false, false, has(W), has(N), has(NW)), quarter(true, false, has(E), has(N), has(NE)), quarter(false, true, has(W), has(S), has(SW)), quarter(true, true, has(E), has(S), has(SE))];
+}
 
 /** The minitile (column, row in 8 px units) of a 2 × 3 block for one quarter of a cell. `quarter`: 0 TL, 1 TR, 2 BL, 3 BR. */
 export function atlasMinitile(quarter: number, sideA: boolean, sideB: boolean, diagonal: boolean): [number, number] {

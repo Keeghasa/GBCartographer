@@ -49,7 +49,7 @@ palettes straight back into the project.
   Chorbi and Overworld sets (CC0), Game Boy screens, and SpicyGame's public-domain palettes, each with its license
   and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 65 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
-  window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, a template for every auto-tile, and **Atlas** blocks: RPG Maker-style autotiles (16 px cells; a 2 × 3 block fits every edge and inner corner) for ground, floors, animated water and walls, drawn as our own wireframes to repaint, and the author's hand-drawn outdoor pieces (ledges and trees).
+  window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, a template for every auto-tile, and the author's **Outdoor pieces** as auto-tiles: a mound ledge that wraps any plateau you paint, pine and round forests that fill with a clump and ring themselves with single trees, and water in three animation frames whose shores fit (RPG Maker's 2 × 3 water layout, 16 px cells).
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of

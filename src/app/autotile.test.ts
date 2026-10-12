@@ -1,6 +1,8 @@
+import { pieces } from "../graphics/pieces";
 import { describe, expect, it } from "vitest";
-import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasCell, atlasWallCell, SE, SW } from "./autotile";
-import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate , atlasGrassTemplate, atlasFloorTemplate, atlasWaterTemplate, atlasWallTemplate } from "../graphics/autotiles";
+import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasCell, atlasWallCell, moundCell, SE, SW } from "./autotile";
+import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, atlasWaterTemplate } from "../graphics/autotiles";
+import { canvas as atlasBlank } from "../graphics/pen";
 import { AUTOTILES } from "./autotile";
 
 describe("auto-tiles", () => {
@@ -32,7 +34,7 @@ describe("auto-tiles", () => {
   });
 
   it("draws a template for every auto-tile that fits it, its painted tiles all different", () => {
-    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate(), atlas: atlasGrassTemplate(), atlasAnim: atlasWaterTemplate(), atlasWall: atlasWallTemplate() };
+    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate(), atlas: atlasBlank(32, 48), atlasAnim: atlasWaterTemplate(), atlasWall: atlasBlank(32, 80), mound: pieces.moundSheet(), forest: pieces.pines() };
     for (const kind of AUTOTILES) expect(kind.fits(made[kind.id].width, made[kind.id].height), kind.id).toBe(true);
     const distinct = (sheet: { width: number; pixels: Uint8Array }, count: number, columns: number) => new Set(Array.from({ length: count }, (_, index) => { const x = (index % columns) * 8, y = Math.floor(index / columns) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]).join(""); })).size;
     expect(distinct(made.path, 16, 4)).toBe(16);
@@ -43,7 +45,7 @@ describe("auto-tiles", () => {
     expect(distinct(roadTemplate(), 16, 4)).toBe(16);
     // Atlas blocks: no minitile is a plain single shade (painting tells a block's cells by their minitiles), and the
     // edges, corners and inner corners are told apart.
-    for (const sheet of [made.atlas, atlasFloorTemplate(), made.atlasAnim, made.atlasWall]) {
+    for (const sheet of [made.atlasAnim]) {
       const tiles = Array.from({ length: 24 }, (_, index) => { const x = (index % 4) * 8, y = Math.floor(index / 4) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]); });
       expect(tiles.some((tile) => new Set(tile).size === 1), "a plain minitile").toBe(false);
       expect(distinct(sheet, 24, 4)).toBeGreaterThanOrEqual(13);
@@ -61,5 +63,9 @@ describe("auto-tiles", () => {
     // A wall face: a lone cell is all ends; one with faces either side and above uses the middle of the region.
     expect(atlasWallCell(false, false, false, false, 6)).toEqual([[0, 6], [3, 6], [0, 9], [3, 9]]);
     expect(atlasWallCell(true, true, true, false, 6)).toEqual([[1, 7], [2, 7], [1, 9], [2, 9]]);
+    // The mound: alone, the rounded top corners and the bottom border corners; inside a plateau, the light plate.
+    expect(moundCell(0)).toEqual([[1, 0], [4, 0], [1, 3], [4, 3]]);
+    expect(moundCell(255)).toEqual([[2, 1], [3, 1], [2, 2], [3, 2]]);
+    expect(moundCell(E | W)).toEqual([[2, 0], [3, 0], [2, 3], [3, 3]]);
   });
 });

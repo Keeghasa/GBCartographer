@@ -1293,7 +1293,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const kind = autotileKind(asset.autotile);
     if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
     if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
-    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall"].includes(kind.id) ? " Alt clears." : ""}` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
@@ -2125,8 +2125,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     Object.assign(sheet, { width: source.w, height: source.h });
     sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint8Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, source.palettes), source.w, source.h), 0, 0);
     const key = (pixels: Uint8Array, width: number, x: number, y: number) => { let out = ""; for (let row = 0; row < CELL; row += 1) out += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";"; return out; };
+    // See-through pixels land as the picture's blank, so the sheet's tiles are matched that way (a tile that is all blank never counts).
+    const blankShade = blank(doc), flat = source.pixels.map((shade) => shade === CLEAR ? blankShade : shade), empty = key(new Uint8Array(CELL * CELL).fill(blankShade), CELL, 0, 0);
     const minitiles = new Map<string, [number, number]>();
-    for (let row = 0; row < source.h / CELL; row += 1) for (let column = 0; column < frameColumns; column += 1) { const k = key(source.pixels, source.w, column * CELL, row * CELL); if (!minitiles.has(k)) minitiles.set(k, [column, row]); }
+    for (let row = 0; row < source.h / CELL; row += 1) for (let column = 0; column < frameColumns; column += 1) { const k = key(flat, source.w, column * CELL, row * CELL); if (!minitiles.has(k) && k !== empty) minitiles.set(k, [column, row]); }
     const cw = cellsWide(doc.width), ch = Math.ceil(doc.height / CELL);
     Object.assign(canvas, { width: cw * CELL, height: ch * CELL });
     const context = canvas.getContext("2d")!;

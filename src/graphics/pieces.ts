@@ -231,7 +231,18 @@ const ROUNDTREES = [
   "11111111111133222233111111111111.............322223.............",
 ];
 
+/**
+ * The mound ledge as an auto-tile sheet (autotile.ts moundCell), 48 × 64 cut from the tall mound so every part sits
+ * on the 8 px grid: the rounded top border, the plate (twice, so a wide plateau's inside repeats), the bottom border,
+ * the face and the foot with its rounded ends.
+ */
+const MOUND_SHEET = [...LEDGETALL.slice(0, 8), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(32, 40), ...LEDGETALL.slice(40, 56), ...LEDGETALL.slice(48, 64)]
+  // A faint dot at the top left of each plate minitile: a plain lightest tile would pass for blank picture, and the
+  // painter tells a plateau's cells by their tiles.
+  .map((row, y) => y % 8 === 0 && y >= 8 && y < 24 ? `${row.slice(0, 16)}1${row.slice(17, 24)}1${row.slice(25)}` : row);
+
 export const pieces = {
+  moundSheet: () => fromRows(MOUND_SHEET),
   ledgeCap: () => fromRows(LEDGECAP),
   ledge: () => fromRows(LEDGE),
   ledgeTall: () => fromRows(LEDGETALL),

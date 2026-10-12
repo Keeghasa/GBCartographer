@@ -8,7 +8,7 @@
  *   laid out as src/app/autotile.ts reads them. Every tile of a sheet that painting recognises is different.
  */
 import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, E, EDGE_E, EDGE_N, EDGE_S, EDGE_W, N, NE, NW, S, SE, SW, W, WANG_COLUMNS, WANG_MASKS, WANG_ROWS } from "../app/autotile";
-import { canvas, Pen, type Canvas } from "./pen";
+import { canvas, CLEAR, Pen, type Canvas } from "./pen";
 
 export function wangTemplate(): Canvas {
   const out = canvas(WANG_COLUMNS * 8, WANG_ROWS * 8, 3), p = new Pen(out);
@@ -197,45 +197,33 @@ function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number)
 }
 
 
-/** Atlas grass: light ground with tufts, a dark edge with a lighter line inside it (a mown verge). */
-export function atlasGrassTemplate(): Canvas {
-  const out = canvas(32, 48, 0), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(0); for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 1); x < t.w; x += 8) { t.dot(x, y, 1); t.dot(x + 1, y - 1, 1); t.dot(x + 2, y, 1); } }, (t, s) => { t.side(s, 3); t.side(s, 1, 1); });
-  return out;
-}
-
-/** Atlas floor: flagstones (8 × 8 slabs with a mortar line and a chipped corner), a dark edge. */
-export function atlasFloorTemplate(): Canvas {
-  const out = canvas(32, 48, 1), p = new Pen(out);
-  atlasBlock(p, (t) => { t.fill(1); for (let y = 0; y < t.h; y += 8) for (let x = 0; x < t.w; x += 8) { t.rect(x, y + 7, 8, 1, 2); t.rect(x + 7, y, 1, 8, 2); t.dot(x + 1, y + 1, 0); t.dot(x + 5, y + 4, 2); } }, (t, s) => { t.side(s, 3); t.side(s, 2, 1); });
-  return out;
-}
 
 
 
-/** Atlas water: three blocks, the wave crests (light arcs over a mid body) drifting a step each frame; a dark shoreline with foam inside. */
+
+/**
+ * Water in the author's piece style (2026-10-12): a 2 × 3 block in three frames side by side (96 × 48). The body is
+ * mid-light with light wave crests that drift a step each frame; where it meets ground, a dark outline with a light
+ * foam line inside it, and the outer corners rounded (see-through beyond the curve, so the ground shows).
+ */
 export function atlasWaterTemplate(): Canvas {
   const out = canvas(32 * 3, 48, 1), p = new Pen(out);
   for (let frame = 0; frame < 3; frame += 1) {
-    atlasBlock(p.at(frame * 32, 0, 32, 48), (t) => {
+    const block = p.at(frame * 32, 0, 32, 48);
+    atlasBlock(block, (t) => {
       t.fill(1);
-      // Wave crests: a light arc eight pixels long with its trough in mid-dark, rows staggered, drifting right a frame.
-      for (let y = 2; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 3 - 8; x < t.w + 8; x += 8) {
-        t.dot(x, y + 1, 0); t.rect(x + 1, y, 4, 1, 0); t.dot(x + 5, y + 1, 0); t.dot(x + 6, y + 2, 2); t.rect(x + 1, y + 1, 4, 1, 2);
-      }
-    }, (t, s) => { t.side(s, 3); t.side(s, 0, 1); });
+      for (let y = 3; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 3 - 8; x < t.w + 8; x += 8) { t.dot(x, y, 0); t.rect(x + 1, y - 1, 3, 1, 0); t.dot(x + 4, y, 0); t.rect(x + 1, y + 1, 3, 1, 2); }
+    }, (t, s) => { t.side(s, 3); t.side(s, 0, 1); }, 0);
+    // Rounded outer corners: beyond a quarter circle of radius 8 the corner is see-through, the curve outlined.
+    const corners: [number, number, number, number][] = [[0, 16, 1, 1], [24, 16, -1, 1], [0, 40, 1, -1], [24, 40, -1, -1]];
+    for (const [x0, y0, dx, dy] of corners) for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
+      const px = dx > 0 ? x : 7 - x, py = dy > 0 ? y : 7 - y;
+      const d = Math.hypot(7.5 - px, 7.5 - py);
+      if (d > 8) block.dot(x0 + x, y0 + y, CLEAR);
+      else if (d > 7) block.dot(x0 + x, y0 + y, 3);
+      else if (d > 6) block.dot(x0 + x, y0 + y, 0);
+    }
   }
   return out;
 }
 
-/** Atlas wall: a tiled roof (rows of shingles with a light ridge on each) over a brick face (offset courses, mortar lines) that ends in a dark foot, 32 × 80. */
-export function atlasWallTemplate(): Canvas {
-  const out = canvas(32, 80, 2), p = new Pen(out);
-  atlasBlock(p.at(0, 0, 32, 48), (t) => { t.fill(2); for (let y = 0; y < t.h; y += 4) { t.rect(0, y + 3, t.w, 1, 3); for (let x = ((y / 4) % 2 ? 4 : 0); x < t.w; x += 8) { t.rect(x + 1, y, 6, 1, 1); t.dot(x, y + 1, 3); } } }, (t, s) => { t.side(s, 0); if (s === 2) t.side(2, 3, 1); }, 0);
-  const face = p.at(0, 48, 32);
-  face.fill(1);
-  for (let y = 0; y < 32; y += 4) { face.rect(0, y + 3, 32, 1, 2); for (let x = ((y / 4) % 2 ? 4 : 0); x < 32; x += 8) { face.rect(x + 3, y, 1, 3, 2); face.dot(x + 1, y + 1, 0); } }
-  face.rect(0, 0, 32, 1, 3); face.rect(0, 1, 32, 1, 0);
-  face.rect(0, 30, 32, 2, 3); face.rect(0, 0, 1, 32, 3); face.rect(31, 0, 1, 32, 3);
-  return out;
-}

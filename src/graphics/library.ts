@@ -10,7 +10,7 @@ import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
-import { acrossTemplate, animTemplate, atlasFloorTemplate, atlasGrassTemplate, atlasWallTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
+import { acrossTemplate, animTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate } from "./autotiles";
 
 export type { WireAsset };
 
@@ -53,15 +53,10 @@ export const GRAPHICS: WireAsset[] = [
   { id: "autotile-shore", name: "Overworld shore (C)", group: "Auto-tiles", kind: "stamps", autotile: "corner", about: "16 tiles, 4 × 4, in the overworld's look: grass and water by corner with a dark shoreline. The overworld generator's Shores draws its water with it; paint shores by hand at the grid's corners.", make: shoreTemplate },
   { id: "autotile-road", name: "Overworld road (P)", group: "Auto-tiles", kind: "stamps", autotile: "path", about: "16 tiles, 4 × 4, in the overworld's look: a dirt road joining up, down, left and right. The overworld generator's Roads draws its roads with it.", make: roadTemplate },
   { id: "autotile-wallface", name: "Wall face (F)", group: "Auto-tiles", kind: "stamps", autotile: "wallface", about: "4 × 3 tiles: floor and nothing, then the upper and lower wall rows (middle, left end, right end, both ends). Paint floor and the walls grow above it.", make: wallFaceTemplate },
-  { id: "atlas-grass", name: "Atlas grass", group: "Atlas", kind: "stamps", autotile: "atlas", about: "An RPG Maker-style 2 × 3 block (32 × 48): the inner-corner tile and the sample on top, a 2 × 2 region with its edges below. Paint 16 px cells and every edge and corner fits. Repaint as grass, sand, snow.", make: atlasGrassTemplate },
-  { id: "atlas-floor", name: "Atlas floor", group: "Atlas", kind: "stamps", autotile: "atlas", about: "The same 2 × 3 block as paving with a dark edge, for interiors. Repaint as boards, carpet, stone.", make: atlasFloorTemplate },
-  { id: "atlas-water", name: "Atlas water", group: "Atlas", kind: "stamps", autotile: "atlasAnim", about: "Three 2 × 3 blocks side by side (96 × 48), one per animation frame, the waves moving. Paints frame 1 and fits its shores; the picture plays the frames while the stamp is in hand. Repaint as sea, lava, a waterfall pool.", make: atlasWaterTemplate },
-  { id: "atlas-wall", name: "Atlas wall", group: "Atlas", kind: "stamps", autotile: "atlasWall", about: "A roof block (2 × 3) over a wall region (2 × 2 tiles with edges), 32 × 80: paint an area, its roof fits, and a wall face two cells tall grows below its bottom edge. Repaint as houses, castle walls, cliffs.", make: atlasWallTemplate },
-  { id: "piece-pines", name: "Pine trees", group: "Outdoor pieces", kind: "stamps", about: "64 × 32: a clump of three pines (stamp it side by side for a dense forest) and one pine on its own, see-through around them.", make: pieces.pines },
-  { id: "piece-round-trees", name: "Round trees", group: "Outdoor pieces", kind: "stamps", about: "64 × 32: a clump of three round trees (for forest) and one on its own, see-through around them.", make: pieces.roundTrees },
-  { id: "piece-ledge-cap", name: "Ledge cap", group: "Outdoor pieces", kind: "stamps", about: "32 × 32: a lone rounded ledge top with its lighter plate.", make: pieces.ledgeCap },
-  { id: "piece-ledge", name: "Ledge", group: "Outdoor pieces", kind: "stamps", about: "48 × 48: a mound, the rounded top over a rock face that wraps its sides and foot.", make: pieces.ledge },
-  { id: "piece-ledge-tall", name: "Ledge (tall)", group: "Outdoor pieces", kind: "stamps", about: "48 × 64: the same mound with a taller face.", make: pieces.ledgeTall },
+  { id: "piece-pines", name: "Pine forest", group: "Outdoor pieces", kind: "stamps", autotile: "forest", about: "64 × 32: a clump of three pines and one pine on its own. Paint in 32 px tree units: the clump inside the forest, single pines along its edge.", make: pieces.pines },
+  { id: "piece-round-trees", name: "Round forest", group: "Outdoor pieces", kind: "stamps", autotile: "forest", about: "64 × 32: a clump of three round trees and one on its own. Paint in 32 px tree units: the clump inside, single trees along the edge.", make: pieces.roundTrees },
+  { id: "piece-water", name: "Water", group: "Outdoor pieces", kind: "stamps", autotile: "atlasAnim", about: "96 × 48: a 2 × 3 water block in three animation frames, in the ledge's style (rounded corners, a dark outline with foam inside). Paint 16 px cells: shores fit; the picture plays the frames while it is in hand. Save writes frame 1.", make: atlasWaterTemplate },
+  { id: "piece-mound", name: "Mound ledge", group: "Outdoor pieces", kind: "stamps", autotile: "mound", about: "48 × 64: the ledge as an auto-tile. Paint 16 px cells: a plateau with a rounded top plate; the rock face grows under its bottom edge and a rock column up its sides.", make: pieces.moundSheet },
   { id: "autotile-anim", name: "Animated tile", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "Water in four 8 × 8 frames side by side: stamps the first frame; the card plays them. Repaint as flowers, torches or lava.", make: animTemplate },
   { id: "scene-title", name: "Title screen", group: "Scenes", kind: "backgrounds", make: scenes.title },
   { id: "scene-logo", name: "Logo splash", group: "Scenes", kind: "backgrounds", make: scenes.logo },
