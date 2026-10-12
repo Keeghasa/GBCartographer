@@ -121,6 +121,7 @@
 .app-row:hover:not(:disabled) { background: var(--k-hover); color: var(--k-hover-ink); }
 .app-row[aria-pressed="true"], .app-row[aria-selected="true"] { background: rgba(var(--k-acc-rgb), .16); box-shadow: inset 0 0 0 1px rgba(var(--k-acc-rgb), .5); }
 .app-row:disabled { opacity: .45; cursor: default; }
+.app-row--outside .app-chips, .app-row--outside .app-name { opacity: .45; }
 .app-row .app-slot { width: 16px; flex: none; color: var(--k-ink-3); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; text-align: right; }
 .app-row .app-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-row .k-chip { height: 18px; padding: 0 6px; }

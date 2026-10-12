@@ -59,6 +59,8 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     })
     .filter(({ palette, index }) => index === activePalette || matches(palette.name, filter))
     .sort((a, b) => (a.index === 0 ? -1 : b.index === 0 ? 1 : a.slot >= 0 && b.slot >= 0 ? a.slot - b.slot : a.slot >= 0 ? -1 : b.slot >= 0 ? 1 : a.index - b.index));
+  // A palette outside the slots (and not a time-of-day version of one) can't be painted on a project picture.
+  const outside = (index: number, slot: number, named: number) => Boolean(index && sceneSlots.length && slot < 0 && named < 0);
   const openSlotMenu = (event: ReactMouseEvent, palette: number, slot?: number) => { if (!palette || (slot === undefined && !sceneSlots.length && !palettes[palette - 1]?.id)) return; event.preventDefault(); onSlotMenu(event.clientX, event.clientY, palette, slot); };
   const unchanged = !libraryColors || (picked && libraryColors.join() === picked.colors.join());
   const sprite = Boolean(doc?.keyGreen);
@@ -97,7 +99,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
         <input type="search" className="k-input" placeholder="Filter palettes" aria-label="Filter palettes by name" value={filter} onChange={(event) => onFilter(event.target.value)} />
         <div className="app-list gbp-palettes" role="listbox" aria-label="Palettes">
           {shown.map(({ palette, index, slot, slots, named }) => (
-            <button key={`${index}-${palette.name}`} role="option" aria-selected={activePalette === index} className="app-row" title={index && sceneSlots.length ? "Right-click: put in a slot, rename, duplicate" : index && palette.id ? "Right-click: rename, duplicate" : undefined} onClick={() => onPick(index)} onContextMenu={(event) => openSlotMenu(event, index)}>
+            <button key={`${index}-${palette.name}`} role="option" aria-selected={activePalette === index} className={`app-row${outside(index, slot, named) ? " app-row--outside" : ""}`} title={outside(index, slot, named) ? "Not in the slots: the palette brush can't paint it, since GB Studio couldn't show it here. Right-click: put in a slot" : index && sceneSlots.length ? "Right-click: put in a slot, rename, duplicate" : index && palette.id ? "Right-click: rename, duplicate" : undefined} onClick={() => onPick(index)} onContextMenu={(event) => openSlotMenu(event, index)}>
               <Chips colors={palette.colors} /><span className="app-name">{palette.name}</span>
               {slot >= 0 && <Chip title={`${doc?.asset?.kind === "sprites" ? "Sprite palette slot" : "Palette slot"}${slots.length > 1 ? "s" : ""} ${slots.join(" and ")}${doc?.asset?.kind === "sprites" ? "" : " of this background's scene"}`}>{slots.join(" · ")}</Chip>}
               {named >= 0 && <Chip title={`Saves as slot ${named + 1} (time-of-day palettes)`}>→ {named + 1}</Chip>}

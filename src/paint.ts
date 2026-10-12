@@ -213,6 +213,22 @@ export function namedSlot(name: string, slotNames: readonly (string | undefined)
 }
 
 /**
+ * The slot each palette saves as (palette number, 1-based → slot 0–7): one of the eight slots, or with Time-of-day
+ * palettes on (`named`), a D / N / S version takes its base palette's. A palette not in the map isn't loaded into
+ * the slots: Save leaves its tiles' slots as they are, so the palette brush won't paint with it (2026-10-12).
+ */
+export function paletteSlots(palettes: readonly { id?: string; name: string }[], slots: readonly string[], named: boolean): Map<number, number> {
+  const slotNames = slots.map((id) => palettes.find((palette) => palette.id === id)?.name);
+  const result = new Map<number, number>();
+  palettes.forEach((palette, index) => {
+    const slot = palette.id ? slots.indexOf(palette.id) : -1;
+    const byName = slot < 0 && named ? namedSlot(palette.name, slotNames) : -1;
+    if (slot >= 0 || byName >= 0) result.set(index + 1, slot >= 0 ? slot : byName);
+  });
+  return result;
+}
+
+/**
  * Gives each cell the palette of its GB Studio tile color: the low three bits of `tileColors[cell]` pick one of
  * the scene's eight `slots` (palette ids), found by id among `palettes` (cell value = position + 1, 0 when the
  * palette is not in the list). Cells beyond the tile colors, and cells whose value is negative (a sprite sheet's

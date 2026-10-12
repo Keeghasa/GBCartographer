@@ -12,7 +12,7 @@ import { applyFont, loadFont, type FontChoice } from "./ui/theme";
 import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
-import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, namedSlot, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
+import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
 import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
@@ -237,6 +237,13 @@ export default function PaintApp() {
     onSelectionMenu: (x, y) => setSelectionMenu({ x, y }),
     onPlaceText: (point) => void placeText(point),
     collisionBrush: () => collisionBrush(collisionDefs(doc).filter((def) => collisionPick.includes(def.key))),
+    paletteBlocked: () => {
+      // A project picture with slots: only palettes loaded into them paint (Save couldn't write the others).
+      const slots = doc?.asset?.slots;
+      if (!doc || !slots?.length || !activePalette || paletteSlots(doc.palettes, slots, namedSlots).has(activePalette)) return null;
+      const name = doc.palettes[activePalette - 1]?.name ?? "That palette";
+      return `${name} isn't in ${doc.asset?.slotScene ? `${doc.asset.slotScene}'s` : "the project's default"} palette slots, so GB Studio can't show it on these tiles. Put it in a slot first (right-click it in the list).`;
+    },
   });
 
   /** A message: it slides in at the bottom left (Messages.tsx) and is kept for the Messages window. */
@@ -1297,13 +1304,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
    */
   async function saveTileColors(target: Doc): Promise<string[]> {
     const asset = target.asset!;
-    const slotOf = new Map<number, number>();
-    const slotNames = asset.slots!.map((id) => target.palettes.find((palette) => palette.id === id)?.name);
-    target.palettes.forEach((palette, index) => {
-      const slot = palette.id ? asset.slots!.indexOf(palette.id) : -1;
-      const named = slot < 0 && namedSlotsRef.current ? namedSlot(palette.name, slotNames) : -1;
-      if (slot >= 0 || named >= 0) slotOf.set(index + 1, slot >= 0 ? slot : named);
-    });
+    const slotOf = paletteSlots(target.palettes, asset.slots!, namedSlotsRef.current);
     let outside = 0;
     const slots = Array.from(target.cells, (wear, cell) => {
       if (!wear) return null;

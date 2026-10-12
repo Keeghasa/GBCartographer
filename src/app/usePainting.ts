@@ -49,6 +49,8 @@ interface Painting {
   onPlaceText: (point: Point) => void;
   /** The collision brush's value and mask (the picked collision tiles; GB Studio's rule). */
   collisionBrush: () => { value: number; mask: number };
+  /** Why the palette brush can't paint with the picked palette (not loaded into the slots), or null. */
+  paletteBlocked: () => string | null;
 }
 
 export function usePainting(app: Painting) {
@@ -389,6 +391,8 @@ export function usePainting(app: Painting) {
       setPriority(doc, point, on);
       drag.current = { kind: "priority", last: point, on };
     } else if (tool === "palette") {
+      const blocked = app.paletteBlocked();
+      if (blocked) { app.say(blocked); return; }
       app.pushUndo(doc);
       for (const [x, y] of event.shiftKey && lastPoint.current ? linePoints(lastPoint.current.x, lastPoint.current.y, point.x, point.y) : [[point.x, point.y]]) setCell(doc, { x, y });
       drag.current = { kind: "cells", last: point };

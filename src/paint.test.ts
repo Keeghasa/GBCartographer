@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, quantize, snapRect, toRgba , timeVariant } from "./paint";
+import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, paletteSlots, quantize, snapRect, toRgba , timeVariant } from "./paint";
 
 describe("GB Cartographer pixels", () => {
   it("fits colored art to four colors a tile and at most eight palettes, reporting what changed", () => {
@@ -145,6 +145,14 @@ describe("GB Cartographer pixels", () => {
     expect(namedSlot("DWC-6-MauveBldg S", slots)).toBe(-1);
     expect(namedSlot("WIN-2-Sky", slots)).toBe(-1);
     expect(namedSlot("Town day", slots)).toBe(-1);
+  });
+
+  it("knows which palettes are loaded into the slots (the only ones the palette brush paints)", () => {
+    const palettes = [{ id: "a", name: "Cliffs" }, { id: "b", name: "Town" }, { id: "c", name: "Town N" }, { name: "Mine" }, { id: "d", name: "Sky" }];
+    const slots = ["b", "", "a", "", "", "", "", "a"];
+    expect([...paletteSlots(palettes, slots, false)]).toEqual([[1, 2], [2, 0]]);
+    // Time-of-day palettes on: a D / N / S version saves as its base's slot.
+    expect([...paletteSlots(palettes, slots, true)]).toEqual([[1, 2], [2, 0], [3, 0]]);
   });
 
   it("reads the GB greens exactly and writes them back unchanged", () => {
