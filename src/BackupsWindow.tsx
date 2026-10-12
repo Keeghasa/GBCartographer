@@ -279,7 +279,7 @@ export default function BackupsWindow({ projectName, initialFile, onClose, onRes
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide tall title="Backups" sub={`${projectName} · the last 10 versions of every file GB Cartographer replaced`} icon={<History size={18} />}
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide tall title="Backups" sub={`${projectName} · the last 10 versions of every file GB Cartographer replaced, kept in the project (Cartographer/backups)`} icon={<History size={18} />}
       headExtra={<Button size="sm" variant="ghost" icon={<FolderOpen />} title="Open this project's backups folder" onClick={() => void fetch("./__cartographer/reveal?backups=1", { method: "POST" })}>Show backups folder</Button>}
       footer={<><span className="k-muted k-small">Restoring backs up the current file first, so you can undo it here.</span><span className="k-spacer" /><Button variant="primary" disabled={busy || !entry || !chosen} onClick={() => void restore()}>Restore this version</Button></>}>
       <div className="bw-two">

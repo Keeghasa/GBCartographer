@@ -164,14 +164,14 @@ GB Cartographer is careful with your game files. It only ever writes:
   `defaultSpritePaletteIds` in `project/settings.gbsres`); and when you copy a background's palettes onto another
   background (**Copy** beside the scene slots), that scene's whole `paletteIds` list (the same palettes, no copies);
 - its own folder, `Cartographer/`, beside `assets/` and `project/`: saved stamps in `Cartographer/stamps/` (a PNG
-  each, its tile palettes, tags and auto-tile in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`, and a
-  `README.txt` saying what the folder is. GB Studio
-  doesn't read this folder; it travels with your project.
+  each, its tile palettes, tags and auto-tile in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`,
+  the backups in `Cartographer/backups/`, a `README.txt` saying what the folder is and a `cartographer.json` saying
+  its format. GB Studio doesn't read this folder; it travels with your project.
 
 And when you **Delete** a picture (it asks every time), its PNG and sidecar move into GB Cartographer's backups.
 
 Every other field of those files, and every other file in the project, is left untouched. Before each write the
-old file is copied to GB Cartographer's backups folder (the last 10 versions of each file, kept per project; **Backups…** in the project menu shows them and puts one back), and a file that changed on disk
+old file is copied to the project's `Cartographer/backups/` (the last 10 versions of each file; **Backups…** in the project menu shows them and puts one back), and a file that changed on disk
 since you opened it is never overwritten without asking. GB Studio 4 projects (the folder with `assets/` and
 `project/`) are supported (see GB Studio versions above). A GB Studio 3 project needs opening and saving once in GB Studio 4
 first. Colors other than the four greens shade exactly as GB Studio reads them (by their green channel), and a
@@ -195,9 +195,8 @@ can also set `GBC_PROJECT=/path/to/project` or write `{ "project": "/path/to/pro
 
 ### Where GB Cartographer keeps its things
 
-The desktop app keeps its settings (`settings.json`: the open project and recent ones), the demo project's copy
-(`demo-project/`) and the backups (`backups/<project>-<id>/…`, the last 10 versions of every file it overwrote) in
-its data folder:
+The desktop app keeps its settings (`settings.json`: the open project and recent ones) and the demo project's copy
+(`demo-project/`) in its data folder:
 
 | System | Data folder |
 | --- | --- |
@@ -205,10 +204,13 @@ its data folder:
 | Windows | `%APPDATA%\GB Cartographer` |
 | Linux | `~/.config/GB Cartographer` |
 
-**Show backups folder** in the project menu opens this project's backups. On the dev server they go to `backups/` in
-the checkout instead, next to `cartographer.local.json`. Open pictures and per-window choices (font, tint, panels)
-live in the app's own browser storage. Saved stamps and Map Room layouts are kept in the project itself, in its
-`Cartographer/` folder, so they travel with it.
+Backups, saved stamps and Map Room layouts are kept in the project itself, in its `Cartographer/` folder, so they
+travel with it to another computer. The backups keep the last 10 versions of every file GB Cartographer changed, so
+the folder grows with the pictures you edit (leave it out of a copy if you don't need them). **Show backups folder**
+in the project menu opens them. Backups made before 2026-10-12 lived in the data folder (`backups/<project>-<id>/`,
+or `backups/` in the checkout for the dev server); the first time a project is opened they are copied into it and
+the old folder is renamed `….moved-to-project`, never deleted. Open pictures and per-window choices (font, tint,
+panels) live in the app's own browser storage.
 
 `npm run install-mac-app` puts a GB Cartographer app in /Applications that runs this checkout; `npm run install-shortcut`
 does the same on Windows.

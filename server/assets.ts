@@ -9,7 +9,7 @@ import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, 
 import { createHash, randomUUID } from "node:crypto";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { deflateSync, inflateSync } from "node:zlib";
-import { backupFile } from "./backups";
+import { OWN_FOLDER, backupFile, ownFolderReadme } from "./backups";
 import { decodeTileColors, encodeTileColors, resolveScenePaletteIds } from "../src/gb/gbstudio";
 import { decodePng, encodePng } from "../src/gb/png";
 import { KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, spriteShades, timeVariant, toRgba } from "../src/paint";
@@ -21,13 +21,8 @@ export const AUTOTILE_NAMES = ["box", "wang", "across", "down", "path", "edges",
 export type AutotileName = typeof AUTOTILE_NAMES[number];
 export const isAutotile = (value: unknown): value is AutotileName => (AUTOTILE_NAMES as readonly unknown[]).includes(value);
 export const ASSET_KINDS = ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui", "stamps"] as const;
-/**
- * GB Cartographer's own folder inside a project, for what it needs and GB Studio doesn't (approved by the author
- * 2026-10-10): stamps (Cartographer/stamps/<name>.png, tile palettes in <name>.png.json) and the Map Room's
- * layouts (Cartographer/maps.json, server/maps.ts). GB Studio reads only
- * its own folders (assets/, project/, plugins/), so it leaves this one alone.
- */
-export const OWN_FOLDER = "Cartographer";
+// GB Cartographer's own folder inside a project (server/backups.ts says what it holds).
+export { OWN_FOLDER, ownFolderReadme } from "./backups";
 /** Kinds GB Studio draws as sprites: their key green is see-through. */
 export const KEYED_KINDS: readonly AssetKind[] = ["sprites", "emotes"];
 export type AssetKind = typeof ASSET_KINDS[number];
@@ -753,16 +748,6 @@ export function createAsset(project: string, kind: AssetKind, name: string, byte
     throw error;
   }
   return { file };
-}
-
-const OWN_README = "This folder belongs to GB Cartographer (https://github.com/Keeghasa/GBCartographer), not to GB Studio.\nIt keeps what GB Cartographer needs and GB Studio doesn't:\n- stamps/ holds saved stamps (a PNG each, and its tile palettes in a .json beside it);\n- maps.json holds the Map Room's layouts (which background sits where in each map).\nGB Studio ignores this folder; deleting it loses only these files.\n";
-
-/** Says what the Cartographer folder is (written when GB Cartographer first uses it, and kept up to date). */
-export function ownFolderReadme(project: string) {
-  const readme = join(project, OWN_FOLDER, "README.txt");
-  if (existsSync(readme) && readFileSync(readme, "utf8") === OWN_README) return;
-  mkdirSync(join(project, OWN_FOLDER), { recursive: true });
-  writeFileSync(readme, OWN_README);
 }
 
 /**

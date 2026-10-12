@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { decodeTileColors } from "../src/gb/gbstudio";
 import { encodePng } from "../src/gb/png";
 import { handleCartographerRequest } from "./endpoints";
-import { KEEP, listBackups, projectBackupDir } from "./backups";
+import { KEEP, legacyBackupDir, listBackups, projectBackupDir } from "./backups";
 import { setProjectFolder, versionNote, setTemporaryRoots, demoAvailable } from "./project";
 
 // A throwaway folder with a tiny fake GB Studio 4 project.
@@ -439,7 +439,7 @@ describe("map room layouts", () => {
     // A layout kept in the app's data folder (before maps moved into the project) moves there on first read.
     const old = [{ id: "m0", name: "Old", screen: { width: 160, height: 144 }, overlap: 1, cells: [{ x: 0, y: 0, file: "town.png" }] }];
     mkdirSync(join(root, "maps"), { recursive: true });
-    const oldFile = join(root, "maps", `${basename(projectBackupDir("", project))}.json`);
+    const oldFile = join(root, "maps", `${basename(legacyBackupDir("", project))}.json`);
     writeFileSync(oldFile, JSON.stringify({ maps: old }));
     expect((await json<{ maps: unknown[] }>(await fetch(`${base}/maps`))).maps).toEqual(old);
     expect(existsSync(oldFile)).toBe(false);

@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { OWN_FOLDER, ownFolderReadme } from "./assets";
-import { backupFile, projectBackupDir } from "./backups";
+import { backupFile, legacyBackupDir } from "./backups";
 
 export interface MapCell { x: number; y: number; file: string }
 export interface MapLayout { id: string; name: string; screen: { width: number; height: number }; /** Tiles neighbouring screens share at each edge (1 or 2). */ overlap?: number; cells: MapCell[] }
@@ -18,7 +18,7 @@ export function mapsFile(project: string): string {
 
 /** Where they were kept before (the app's data folder, one file per project, keyed like the backups). */
 function oldMapsFile(dataDir: string, project: string): string {
-  return join(dataDir, "maps", `${basename(projectBackupDir("", project))}.json`);
+  return join(dataDir, "maps", `${basename(legacyBackupDir("", project))}.json`);
 }
 
 function parseMaps(file: string): MapLayout[] {
