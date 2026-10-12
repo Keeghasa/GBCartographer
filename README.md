@@ -59,6 +59,8 @@ palettes straight back into the project.
   match, add a screen next to another, and export the whole map as one picture.
 - **Palettes edited in place.** Click a shade square again to change that color; Save writes the recolored
   palette back into the project, and undo brings old colors back.
+- **A draft layer** (Shift+D). Paint over the picture with any tool; the changes show tinted. Commit keeps them
+  (one undo takes them back), Wipe puts the picture back as it was.
 - **The usual tools.** Pencil, eraser, spray, line, rectangle, ellipse, fill (Alt-click replaces a shade
   everywhere) with fill patterns, eyedropper, select and move, flip and turn, mirror painting, brush sizes, undo,
   tabs, drag-and-drop, paste from the clipboard. Selections on tile edges take their tiles' palettes with them,
