@@ -42,8 +42,8 @@ export interface CaveSettings {
   style: "cave" | "dungeon";
   /** Size in GB screens (160 × 144 each). */
   columns: number; rows: number;
-  /** Pixels per map cell: 16 (2 × 2 tiles) or 8 (one tile). */
-  cell: 8 | 16;
+  /** Pixels per map cell: 32 (4 × 4 tiles), 16 (2 × 2 tiles) or 8 (one tile). */
+  cell: 8 | 16 | 32;
   seed: number;
   /** Cave: how much starts as rock (percent). */
   fill: number;
@@ -63,7 +63,8 @@ export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2,
 
 /** The cave's grid: 1 rock, 0 floor (2 stairs), the edge always rock. */
 export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: Uint8Array } {
-  const w = Math.max(3, Math.floor(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.floor(settings.rows * SCREEN_H / settings.cell));
+  // 32-pixel cells don't divide a 144-pixel screen: the grid runs one row past it and the picture is cut to the screens.
+  const w = Math.max(3, Math.ceil(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.ceil(settings.rows * SCREEN_H / settings.cell));
   const random = seeded(settings.seed);
   const edge = (x: number, y: number) => x === 0 || y === 0 || x === w - 1 || y === h - 1;
   let grid = new Uint8Array(w * h).fill(1);
@@ -241,10 +242,24 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
   // Stairs: a box of steps on their cell.
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     if (grid[y * w + x] !== 2) continue;
-    const pen = new Pen(out, x * size, y * size, size), inset = size === 16 ? 2 : 1;
+    const pen = new Pen(out, x * size, y * size, size), inset = size === 8 ? 1 : size / 8;
     pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
     pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
-    for (let step = inset + 2; step < size - inset - 1; step += size === 16 ? 3 : 2) pen.rect(inset, step, size - inset * 2, 1, 2);
+    for (let step = inset + 2; step < size - inset - 1; step += size === 8 ? 2 : size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+  }
+  return cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+}
+
+/** The picture cut to `width` × `height` from its top left (its tile palettes too). */
+function cropTo(picture: Generated, width: number, height: number): Generated {
+  if (width === picture.width && height === picture.height) return picture;
+  const pixels = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) pixels.set(picture.pixels.subarray(y * picture.width, y * picture.width + width), y * width);
+  const out: Generated = { ...picture, width, height, pixels };
+  if (picture.cells) {
+    const from = Math.ceil(picture.width / 8), to = Math.ceil(width / 8);
+    out.cells = new Uint8Array(to * Math.ceil(height / 8));
+    for (let y = 0; y < Math.ceil(height / 8); y += 1) out.cells.set(picture.cells.subarray(y * from, y * from + to), y * to);
   }
   return out;
 }

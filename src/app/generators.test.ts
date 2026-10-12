@@ -29,6 +29,17 @@ describe("map generators", () => {
     expect(grid.filter((cell) => cell === 2).length).toBe(2);
   });
 
+  it("draws 32-pixel cells cut to whole screens (144 isn't a multiple of 32)", () => {
+    for (const [columns, rows] of [[1, 1], [2, 3], [3, 2]]) {
+      const cave = drawCave({ ...CAVE_DEFAULTS, cell: 32, columns, rows, seed: 4 });
+      expect([cave.width, cave.height]).toEqual([columns * 160, rows * 144]);
+      expect(cave.pixels.length).toBe(cave.width * cave.height);
+      expect(countUniqueTiles(cave.pixels, cave.width, cave.height, false)).toBeLessThan(192);
+    }
+    const themed = drawCave({ ...CAVE_DEFAULTS, cell: 32, rows: 1, theme: "V20-5-Stone" });
+    expect(themed.cells?.length).toBe(Math.ceil(themed.width / 8) * Math.ceil(themed.height / 8));
+  });
+
   it("joins every dungeon room", () => {
     const { w, grid } = caveGrid({ ...CAVE_DEFAULTS, style: "dungeon", columns: 3, seed: 9 });
     const floor = grid.filter((cell) => cell !== 1).length;

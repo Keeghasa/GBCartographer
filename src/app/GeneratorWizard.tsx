@@ -11,6 +11,7 @@ import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
+import { isSuggestedName, randomName, type NameKind } from "./names";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -29,6 +30,8 @@ interface Props {
   /** The project's stamps a cave can be drawn with (Wall face F, Wang W, Wang edges E), and how to read one. */
   tileStamps: Asset[];
   loadTiles: (stamp: Asset) => Promise<CaveTiles | null>;
+  /** Names the project's backgrounds already have (a suggested name is never one of them). */
+  takenNames: string[];
 }
 
 const newSeed = () => Math.floor(Math.random() * 1_000_000);
@@ -43,10 +46,13 @@ function Setting({ label, value, unit = "", min, max, step, onChange, title }: {
   );
 }
 
-export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap, tileStamps, loadTiles }: Props) {
+export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap, tileStamps, loadTiles, takenNames }: Props) {
   const [cave, setCave] = useState<CaveSettings>(() => ({ ...CAVE_DEFAULTS, seed: newSeed(), theme: "V20-5-Stone" }));
   const [world, setWorld] = useState<WorldSettings>(() => ({ ...WORLD_DEFAULTS, seed: newSeed() }));
-  const [name, setName] = useState(mode === "cave" ? "Cave" : "Overworld");
+  // A random "Kind-Name" (the author, 2026-10-12): Cave- or Dungeon- follows the style while it's still a suggestion.
+  const nameKind = (style = cave.style): NameKind => mode === "world" ? "Overworld" : style === "dungeon" ? "Dungeon" : "Cave";
+  const [name, setName] = useState(() => randomName(nameKind(), takenNames));
+  const rollName = (kind = nameKind()) => setName((old) => randomName(kind, takenNames, Math.random, old));
   const [busy, setBusy] = useState(false);
   const setC = (change: Partial<CaveSettings>) => setCave((old) => ({ ...old, ...change }));
   const setW = (change: Partial<WorldSettings>) => setWorld((old) => ({ ...old, ...change }));
@@ -105,7 +111,6 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
       title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />}
       sub={mode === "cave" ? "A cave or dungeon in placeholder art, sized in screens" : "An RPG-style overworld in placeholder art: water, forest, mountains, towns"}
       footer={<>
-        <span className="k-label">Name</span><input className="k-input gw-name" aria-label="Name" value={name} onChange={(event) => setName(event.target.value)} />
         <span className="k-spacer" />
         <Button onClick={() => { onOpen(picture, name.trim() || "Map"); onClose(); }} disabled={busy}>Open as picture</Button>
         {columns * rows > 1 && <Button disabled={!projectName || !valid || busy} title={!projectName ? "Open a GB Studio project first" : `Makes ${columns * rows} backgrounds (${name.trim()} 1-1 …), one per screen sharing a tile at each edge, and a Map Room map of them`} onClick={() => void saveMap()}>Make map ({columns * rows} screens)</Button>}
@@ -113,6 +118,10 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
       </>}>
       <div className="gw">
         <div className="gw-controls k-stack">
+          <div className="k-stack k-stack--tight">
+            <span className="k-label">Name</span>
+            <span className="k-row gw-name-row"><input className="k-input" aria-label="Name" value={name} onChange={(event) => setName(event.target.value)} /><IconButton label="Another name" onClick={() => rollName()}><Dices /></IconButton></span>
+          </div>
           <div className="k-stack k-stack--tight" title={theme ? `${theme.palettes.length === 7 ? "7 terrain palettes made from these colors" : `${theme.palettes.length} palette${theme.palettes.length === 1 ? "" : "s"}`}; Make background adds ${theme.palettes.length === 1 ? "it" : "them"} to the project` : undefined}>
             <Select label="Palettes" value={(mode === "cave" ? cave.theme : world.theme) || "greens"} onChange={(id) => mode === "cave" ? setC({ theme: id === "greens" ? "" : id }) : setW({ theme: id === "greens" ? "" : id })}
               options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
@@ -127,13 +136,13 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Placeholder roads")} />
             <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your C stamp for shores, your P stamp for roads" : "Stamps marked C or P (Graphics → Art → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
-          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (name === "Cave" || name === "Dungeon") setName(style === "cave" ? "Cave" : "Dungeon"); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
+          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
           <Setting label="Screens tall" value={rows} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ rows: value }) : setW({ rows: value })} />
           {mode === "cave" && <>
             <div className="k-stack k-stack--tight">
               <span className="k-label">Cells</span>
-              <Segmented fill size="sm" label="Cell size" value={String(cave.cell)} onChange={(cell) => setC({ cell: Number(cell) as 8 | 16 })} options={[{ value: "16", label: "16 px", title: "2 × 2 tiles a cell: broad passages" }, { value: "8", label: "8 px", title: "One tile a cell: twisty passages" }]} />
+              <Segmented fill size="sm" label="Cell size" value={String(cave.cell)} onChange={(value) => { const cell = Number(value) as 8 | 16 | 32; setC({ cell, roomSize: Math.min(10, Math.max(3, Math.round(cave.roomSize * cave.cell / cell))) }); }} options={[{ value: "32", label: "32 px", title: "4 × 4 tiles a cell: big rooms and halls" }, { value: "16", label: "16 px", title: "2 × 2 tiles a cell: broad passages" }, { value: "8", label: "8 px", title: "One tile a cell: twisty passages" }]} />
             </div>
             {cave.style === "cave" ? <>
               <Setting label="Rock" value={cave.fill} unit="%" min={30} max={62} onChange={(fill) => setC({ fill })} title="How much starts as rock: more is tighter" />

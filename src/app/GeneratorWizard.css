@@ -13,5 +13,5 @@
   background-image:
     repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--gw-cols) - 1px), rgba(72, 220, 240, .75) calc(100% / var(--gw-cols) - 1px) calc(100% / var(--gw-cols))),
     repeating-linear-gradient(180deg, transparent 0 calc(100% / var(--gw-rows) - 1px), rgba(72, 220, 240, .75) calc(100% / var(--gw-rows) - 1px) calc(100% / var(--gw-rows))); }
-.gw-name { width: 180px; }
+.gw-name-row { flex-wrap: nowrap; } .gw-name-row .k-input { flex: 1; min-width: 0; }
 .gw-controls.k-stack { gap: 12px; }
