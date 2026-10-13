@@ -15,6 +15,7 @@ import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
 import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
 import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
+import { PATTERN_TAG } from "./app/stampGroups";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
 import { HelpWindow } from "./app/HelpWindow";
@@ -48,7 +49,7 @@ import { framesOf, saveFile } from "./app/files";
 import { ToolColumn } from "./app/ToolColumn";
 import { PicturePane } from "./app/PicturePane";
 import { usePainting } from "./app/usePainting";
-import { PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxRobotHappy, PxSnake } from "./ui/setIcons";
+import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxRobotHappy, PxSnake } from "./ui/setIcons";
 import { PalettesPane } from "./app/PalettesPane";
 import { FramesStrip } from "./app/FramesStrip";
 import { StampsStrip } from "./app/StampsStrip";
@@ -97,6 +98,8 @@ export default function PaintApp() {
   const [seamless, setSeamless] = useState(false);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const seamlessCanvas = useRef<HTMLCanvasElement>(null);
+  /** The repeat tile's copies around the picture (a pattern stamp, the author 2026-10-13). */
+  const repeatCanvas = useRef<HTMLCanvasElement>(null);
   /** The fill pattern for Flood fill and Filled rectangle (D cycles it). */
   const [pattern, setPattern] = useState<Pattern>(() => readStored(PATTERN_KEY, "solid"));
   const cyclePattern = () => { const next = PATTERNS[(PATTERNS.findIndex((item) => item.id === pattern) + 1) % PATTERNS.length]; setPattern(next.id); store(PATTERN_KEY, next.id); say(`Fill pattern: ${next.label}`); };
@@ -789,6 +792,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
 
   /** Opens a project asset as a picture (or shows it, when it is already open). */
   async function openAsset(asset: Asset) {
+    // A repeat tile is drawn with its copies around it: the seamless 3 × 3 view comes on (the author, 2026-10-13).
+    if (asset.kind === "stamps" && asset.tags?.includes(PATTERN_TAG)) setSeamless(true);
     const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file);
     if (open) return setActiveId(open.id);
     try {
@@ -1826,6 +1831,16 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     bump();
   }
 
+  /** A stamp onto (or off) the Repeat tiles shelf: its "pattern" tag, in its own sidecar (slots and tile palettes kept). */
+  async function setRepeatTile(asset: Asset, on: boolean) {
+    const info = await fetch(`${ASSET_URL}-info?${assetQuery(asset)}`, { cache: "no-cache" }).then((reply) => reply.json() as Promise<AssetInfo>).catch(() => null);
+    if (!info) return say(`Could not read ${asset.name}.`);
+    const tags = [...(asset.tags ?? []).filter((tag) => tag !== PATTERN_TAG), ...(on ? [PATTERN_TAG] : [])];
+    await postStampMeta(asset.file, { slots: info.slots, tileColors: info.tileColors, tags }, info.metaMtime, true);
+    await loadProject();
+    say(on ? `${asset.name} is a repeat tile now: it opens with the seamless view on.` : `${asset.name} is an object again.`);
+  }
+
   async function askDelete(asset: Asset) {
     const check = await fetch(`./__cartographer/gbstudio-asset-delete?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.json() as Promise<{ ok?: boolean; files?: string[]; uses?: string[]; error?: string }>).catch(() => null);
     if (!check?.ok) return say(`Could not check ${asset.name}: ${check?.error ?? "no answer"}`);
@@ -1897,7 +1912,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   /** The biggest zoom step at which the whole picture fits the stage. */
   function fitView() {
     if (!doc) return;
-    const next = fitZoom(doc.width, doc.height);
+    // A repeat tile fits with its copies around it (3 × 3).
+    const next = repeatTile ? fitZoom(doc.width * 3, doc.height * 3) : fitZoom(doc.width, doc.height);
     flushSync(() => { doc.zoom = next; bump(); });
     say(`Zoom ${next * 100}%: the whole picture fits.`);
   }
@@ -2192,6 +2208,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   });
 
   // Seamless view: what repeats, drawn from the canvas as shown (palettes and screen look included).
+  /** The open picture is a repeat tile (a stamp tagged "pattern"): drawn among its copies. */
+  const repeatTile = Boolean(doc?.asset?.kind === "stamps" && project?.assets.find((item) => item.kind === "stamps" && item.file === doc.asset!.file)?.tags?.includes(PATTERN_TAG));
   const seamlessArea = doc && seamless ? (doc.sel && doc.sel.w > 0 && doc.sel.h > 0 ? doc.sel : hoverCell ? { x: hoverCell.x * CELL, y: hoverCell.y * CELL, w: Math.min(CELL, doc.width - hoverCell.x * CELL), h: Math.min(CELL, doc.height - hoverCell.y * CELL) } : null) : null;
 
   // GB Studio's collisions over the picture, as GB Studio draws them: each tile's collision icons in their colors (half
@@ -2436,6 +2454,20 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     });
   });
 
+  // A repeat tile opens (or becomes one) zoomed so its 3 × 3 fits.
+  useEffect(() => { if (doc && repeatTile) { doc.zoom = fitZoom(doc.width * 3, doc.height * 3); bump(); } }, [doc?.id, repeatTile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A repeat tile (a stamp tagged "pattern") is drawn among its copies: the picture repeated 3 × 3 behind it, kept up
+  // to date as it is painted, so the seams show while drawing.
+  useLayoutEffect(() => {
+    const target = repeatCanvas.current, sheet = canvasRef.current;
+    if (!target || !sheet || !doc) return;
+    Object.assign(target, { width: doc.width * 3, height: doc.height * 3 });
+    const context = target.getContext("2d")!;
+    context.imageSmoothingEnabled = false;
+    for (let row = 0; row < 3; row += 1) for (let column = 0; column < 3; column += 1) context.drawImage(sheet, 0, 0, doc.width, doc.height, column * doc.width, row * doc.height, doc.width, doc.height);
+  });
+
   // The seamless view copies the picture as just drawn, so it runs after the drawing above.
   useLayoutEffect(() => {
     const target = seamlessCanvas.current, sheet = canvasRef.current;
@@ -2539,7 +2571,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         { separator: true },
       ] as MenuEntry[] : []),
       ...(slotTarget.id ? [
-        { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
+        ...(assetMenu.asset.kind === "stamps" && !assetMenu.asset.autotile ? [{ label: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Make it an object" : "Make it a repeat tile", icon: <PhCheckerboard size={15} />, title: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Back to the Objects shelf" : "A seamless pattern: on the Repeat tiles shelf, and it opens with the seamless 3 × 3 view on", onSelect: () => void setRepeatTile(assetMenu.asset, !assetMenu.asset.tags?.includes(PATTERN_TAG)) }] : []),
+    { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
         { label: "Duplicate", icon: <CopyPlus />, title: "A new project palette with the same colors", onSelect: () => void duplicateProjectPalette(slotTarget) },
       ] as MenuEntry[] : []),
       { note: !slotTarget.id ? "Add this palette to the project first (palette manager)." : sceneSlots.length ? `Put in slot writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Open a project background or sprite sheet to put it in a slot." },
@@ -2685,7 +2718,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           )}
           {doc ? (
             <div className={`gbp-stage ${tool === "hand" ? "pan" : ""}`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onContextMenu={(event) => event.preventDefault()}>
-              <div className="gbp-grow">
+              <div className="gbp-grow" style={repeatTile ? { margin: `${doc.height * doc.zoom}px ${doc.width * doc.zoom}px` } : undefined}>
+                {repeatTile && <canvas ref={repeatCanvas} className="gbp-repeat" aria-hidden style={{ width: doc.width * doc.zoom * 3, height: doc.height * doc.zoom * 3, left: -doc.width * doc.zoom, top: -doc.height * doc.zoom }} />}
                 <div className="gbp-wrap" ref={wrapRef} style={{ width: doc.width * doc.zoom, height: doc.height * doc.zoom }}>
                   <canvas ref={canvasRef} />
                   {gridLines && <div className="gbp-grid" style={{ backgroundSize: `${gridLines} ${gridLines}` }} />}

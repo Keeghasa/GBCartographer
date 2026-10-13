@@ -68,3 +68,5 @@
 .gbp-grow:hover .gbp-grow-x, .gbp-grow:hover .gbp-grow-y, .gbp-grow-x:focus-within, .gbp-grow-y:focus-within { opacity: 1; }
 .gbp-grow-x { left: 100%; top: 50%; transform: translate(6px, -50%); }
 .gbp-grow-y { top: 100%; left: 50%; transform: translate(-50%, 6px); }
+/* A repeat tile's copies around the picture: the same picture 3 × 3 behind it, faded, so the seams show. */
+.gbp-repeat { position: absolute; pointer-events: none; image-rendering: pixelated; opacity: .5; border-radius: 4px; }

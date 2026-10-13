@@ -180,3 +180,5 @@
 .app-collision-picks { display: flex; flex-wrap: wrap; gap: 4px; }
 .app-collision-picks .k-btn { gap: 6px; }
 .app-collision-icon { width: 16px; height: 16px; image-rendering: pixelated; background: rgba(0, 0, 0, .35); border-radius: 3px; }
+/* The rule above the stamps' four shelves on the rail. */
+.app-rail-rule { width: 70%; margin: 4px 0; border: 0; border-top: 1px solid var(--k-edge-2); }

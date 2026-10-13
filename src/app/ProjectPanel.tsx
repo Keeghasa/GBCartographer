@@ -13,9 +13,11 @@ import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, ty
 import type { AutotileKind } from "./autotile";
 import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
-import { Archive, FolderClosed, MessageSquareText, Pencil, Pin } from "lucide-react";
+import { Archive, Blocks, FolderClosed, MessageSquareText, Pencil, Pin, TreePine, Waves } from "lucide-react";
+import { PhCheckerboard } from "../ui/setIcons";
+import { STAMP_GROUPS, stampGroup, type StampGroup } from "./stampGroups";
 import { HiddenWindow } from "./HiddenWindow";
-import { readStored } from "./storage";
+import { readStored, store } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
 import { AnimThumb } from "./AnimThumb";
 import { Chip, IconButton } from "../ui/kit";
@@ -47,6 +49,8 @@ const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchPa
 
 export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages, unreadMessages, slotsVersion, stateOf, onOpen, onUseStamp, onAutotile, onMenu }: ProjectPanelProps) {
   const [filter, setFilter] = useState("");
+  // Which stamp shelf shows when the folder is stamps (Objects, Repeat tiles, Autotiles, Animated tiles).
+  const [group, setGroup] = useState<StampGroup>(() => readStored("gbc-stamp-group", "objects" as StampGroup));
   const [sheet, setSheet] = useState<{ kind: AssetKind; image: HTMLImageElement; cells: Map<string, SheetCell> } | null>(null);
   const [sheetFailed, setSheetFailed] = useState(false);
   // Hidden and pinned pictures live in the project (Cartographer/panel.json, the author's pick 2026-10-12), so they
@@ -114,9 +118,9 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
     return () => { live = false; };
   }, [sheetKey]);
 
-  const label = ASSET_KINDS.find(([id]) => id === kind)?.[1] ?? "";
+  const label = kind === "stamps" ? STAMP_GROUPS.find(([id]) => id === group)![1] : ASSET_KINDS.find(([id]) => id === kind)?.[1] ?? "";
   const wanted = filter.trim().toLowerCase();
-  const matching = project.assets.filter((asset) => asset.kind === kind && (!wanted || asset.name.toLowerCase().includes(wanted)));
+  const matching = project.assets.filter((asset) => asset.kind === kind && (kind !== "stamps" || stampGroup(asset) === group) && (!wanted || asset.name.toLowerCase().includes(wanted)));
   // Hidden ones go into the Hidden folder; pinned ones first, then the rest.
   const hiddenHere = matching.filter((asset) => hidden.has(hideKey(asset)));
   const visible = matching.filter((asset) => !hidden.has(hideKey(asset)));
@@ -132,9 +136,16 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   return (
     <>
       <nav className="k-panel app-rail" aria-label="Asset folders">
-        {ASSET_KINDS.map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = kind === id && open; return (
+        {ASSET_KINDS.filter(([id]) => id !== "stamps").map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = kind === id && open; return (
           <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} · ${count}${on ? " · click to hide" : ""}`} onClick={() => onKind(id)}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>
         ); })}
+        {/* The stamps, on four shelves of their own (GB Cartographer's, in Cartographer/stamps). */}
+        <hr className="app-rail-rule" />
+        {STAMP_GROUPS.map(([id, name]) => {
+          const Icon = { objects: TreePine, repeat: PhCheckerboard, autotiles: Blocks, animated: Waves }[id];
+          const count = project.assets.filter((asset) => asset.kind === "stamps" && stampGroup(asset) === id).length, on = kind === "stamps" && group === id && open;
+          return <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} (stamps) · ${count}${on ? " · click to hide" : ""}`} onClick={() => { if (kind === "stamps" && group !== id) { setGroup(id); store("gbc-stamp-group", id); if (!open) onKind("stamps"); return; } setGroup(id); store("gbc-stamp-group", id); onKind("stamps"); }}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>;
+        })}
         <button type="button" className="app-rail-fill" aria-label={open ? "Hide the pictures" : "Show the pictures"} title={open ? "Hide the pictures" : "Show the pictures"} onClick={onToggle} />
         <IconButton variant="ghost" aria-label={`Messages${unreadMessages ? ` (${unreadMessages} new)` : ""}`} label={`Messages: everything GB Cartographer said${unreadMessages ? ` · ${unreadMessages} new` : ""}`} onClick={onMessages}><MessageSquareText size={18} />{unreadMessages > 0 && <span className="app-badge">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}</IconButton>
       </nav>

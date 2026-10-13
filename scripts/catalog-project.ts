@@ -65,7 +65,7 @@ for (const asset of GRAPHICS) {
   const keyed = (KEYED_KINDS as readonly string[]).includes(asset.kind);
   const rgba = toRgba(art.pixels, new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)), art.width, [], keyed ? KEY_GREEN : undefined);
   writeFileSync(file, encodePng(rgba, art.width, art.height, (bytes) => deflateSync(bytes)));
-  if (asset.kind === "stamps") writeFileSync(`${file}.json`, `${JSON.stringify({ _resourceType: "cartographerStamp", slots: [], tileColors: [], ...(asset.autotile ? { autotile: asset.autotile } : {}) }, null, 2)}\n`);
+  if (asset.kind === "stamps") writeFileSync(`${file}.json`, `${JSON.stringify({ _resourceType: "cartographerStamp", slots: [], tileColors: [], ...(asset.group === "Patterns" ? { tags: ["pattern"] } : {}), ...(asset.autotile ? { autotile: asset.autotile } : {}) }, null, 2)}\n`);
   addedArt += 1;
 }
 ownFolderReadme(folder);
