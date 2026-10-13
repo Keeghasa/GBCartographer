@@ -307,7 +307,7 @@ export function xpWaterTemplate(): Canvas {
   for (let y = 0; y < 16; y += 1) for (let x = 0; x < 16; x += 1) {
     const dx = x + 0.5 - 8, dy = y + 0.5 - 8, angle = Math.atan2(dy, dx);
     const depth = Math.floor(6.2 + 0.45 * Math.sin(angle * 4 + frame * 2.1) - Math.hypot(dx, dy));
-    out.pixels[y * out.width + frame * 48 + x] = depth < 0 ? CLEAR : water(depth, (frame * 48 + x) % 8, y % 8);
+    out.pixels[y * out.width + frame * 48 + x] = depth < 0 ? CLEAR : water(depth, (frame * 48 + x) % 8, y % 8, frame * 48 + x, y);
   }
   }
   // Where the shore steps in or out, the outline turns the corner too: a water pixel beside see-through (within its
