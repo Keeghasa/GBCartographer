@@ -6,7 +6,7 @@ import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect } from "
 import type { AutotileKind } from "./autotile";
 import type { CollisionTileDef } from "../gb/collisions";
 
-export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text" | "collision";
+export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "patternFill" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text" | "collision";
 
 export const MIRRORS: Mirror[] = ["off", "x", "y", "xy"];
 export const MIRROR_LABEL = { off: "Mirror off", x: "Mirror ↔", y: "Mirror ↕", xy: "Mirror ↔↕" } as const;
@@ -138,7 +138,7 @@ export type Drag =
   | { kind: "corner"; last: Point; erase: boolean }
   /** The collision brush painting GB Studio collisions tile by tile (Alt or right-drag clears). */
   | { kind: "collision"; last: Point; erase: boolean }
-  | { kind: "shape"; start: Point; base: Uint8Array }
+  | { kind: "shape"; start: Point; base: Uint8Array; /** Dragged off its first pixel (a Pattern fill click floods instead). */ moved?: boolean }
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }
   | { kind: "pan"; x: number; y: number; left: number; top: number };

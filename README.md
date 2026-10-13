@@ -224,7 +224,7 @@ does the same on Windows.
 
 As close to Photoshop's as fits (Cmd on a Mac):
 B pencil · Shift+B spray · E eraser · U shapes in turn (L line · R rectangle · Shift+R filled · O ellipse) ·
-G fill · Shift+G flood erase · I pick shade · S stamp · T text · P palette brush · Shift+P priority brush ·
+G fill · Shift+G flood erase · D pattern fill (D again: next pattern) · I pick shade · S stamp · T text · P palette brush · Shift+P priority brush ·
 M select · V move · H pan (or Space) · 1–4 shades · 0 see-through · [ ] brush size · Shift+M mirror · F flip ·
 Ctrl+N new · Ctrl+O open · Ctrl+S save · Ctrl+E export copy · Ctrl+Z / Ctrl+Shift+Z undo / redo ·
 Ctrl+C / X / V · Ctrl+A select all · Ctrl+D deselect (or Esc) · Ctrl+I invert · Ctrl+T turn · Ctrl+' grid ·

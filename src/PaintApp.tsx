@@ -102,7 +102,10 @@ export default function PaintApp() {
   const repeatCanvas = useRef<HTMLCanvasElement>(null);
   /** The fill pattern for Flood fill and Filled rectangle (D cycles it). */
   const [pattern, setPattern] = useState<Pattern>(() => readStored(PATTERN_KEY, "solid"));
-  const cyclePattern = () => { const next = PATTERNS[(PATTERNS.findIndex((item) => item.id === pattern) + 1) % PATTERNS.length]; setPattern(next.id); store(PATTERN_KEY, next.id); say(`Fill pattern: ${next.label}`); };
+  // The Pattern fill tool's pattern (never solid: the other fills are; the author, 2026-10-13).
+  const PATTERNED = PATTERNS.filter((item) => item.id !== "solid");
+  const patternInUse = pattern === "solid" ? PATTERNED[0].id : pattern;
+  const cyclePattern = () => { const next = PATTERNED[(PATTERNED.findIndex((item) => item.id === patternInUse) + 1) % PATTERNED.length]; setPattern(next.id); store(PATTERN_KEY, next.id); say(`Pattern: ${next.label}`); };
   const [usage, setUsage] = useState<{ key: string; usage: TileUsage } | null>(null);
   const usageCanvas = useRef<HTMLCanvasElement>(null);
   const priorityCanvas = useRef<HTMLCanvasElement>(null);
@@ -242,7 +245,7 @@ export default function PaintApp() {
     return (target!.collision!.types[scene.type] ?? SCENE_TYPE_COLLISIONS[scene.type] ?? DEFAULT_COLLISIONS);
   };
   const { takeStamp, setStamp, heldStamp: stampInHand, pointerDown, pointerMove, pointerUp } = usePainting({
-    doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, seamless, activePalette, hoverCell,
+    doc, tool, shade, brush, cellBrush, mirror, pattern: patternInUse, linked, snap, seamless, activePalette, hoverCell,
     wrapRef, scrollerRef, readoutRef, brushRef, spaceDown, paintTool,
     setShade, setActivePalette, setHoverCell, setToolState, say, pushUndo, touch, bump, floatSelection, dropFloat, moveFloat, clonePalettes, blank,
     onSelectionMenu: (x, y) => setSelectionMenu({ x, y }),
@@ -1973,12 +1976,13 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       event.preventDefault();
       return;
     }
+    // D: the Pattern fill tool; pressed again with it in hand, the next pattern.
+    if (key === "d" && !event.shiftKey && tool === "patternFill") return cyclePattern();
     const found = TOOLS.find(([, , , keys]) => keys.toLowerCase() === `${event.shiftKey ? "shift+" : ""}${key}`);
     if (found) return setTool(found[0]);
     // U: the shape tools in turn, as Photoshop's shape group (line, rectangle, filled rectangle, ellipse).
     if (key === "u" && !event.shiftKey) { const shapes = ["line", "rect", "rectFill", "ellipse"] as const; const at = shapes.indexOf(tool as typeof shapes[number]); return setTool(shapes[(at + 1) % shapes.length]); }
     if (event.shiftKey && key === "m") return setMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length]);
-    if (key === "d" && !event.shiftKey) return cyclePattern();
     if (key === "`" || key === "~") {
       // Focus: both side panels hide (or come back) at once.
       const show = !(showProject || showSide);
@@ -2691,7 +2695,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
-        <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
+        <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={patternInUse} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
           {doc && tool === "collision" && <CollisionStrip collision={doc.collision} isBackground={doc.asset?.kind === "backgrounds"} defs={collisionDefs(doc)} picked={collisionPick} onPick={setCollisionPick} onScene={(index) => { if (doc.collision) { doc.collision.scene = index; setCollisionPick(["solid"]); bump(); } }} />}

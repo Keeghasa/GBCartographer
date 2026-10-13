@@ -1,7 +1,7 @@
 /** The paint tools (with their icons and help) and the asset kinds' icons. */
 import { BrickWall, CaseSensitive, Circle, DropletOff, Eraser, Ghost, Layers2, Move, PaintBucket, Palette as PaletteIcon, Pencil, Pipette, SprayCan, Square, Type } from "lucide-react";
 import { FilledSquare, LineEnds } from "../ui/icons";
-import { PhPuzzlePiece, PhSelection, PhSticker, PxAvatar, PxHand, PxImage, PxMessageReply, PxSmile } from "../ui/setIcons";
+import { PhCheckerboard, PhPuzzlePiece, PhSelection, PhSticker, PxAvatar, PxHand, PxImage, PxMessageReply, PxSmile } from "../ui/setIcons";
 
 /** id, label, icon, key, one-clause hint (status bar), the longer explanation (the ? help). */
 export const TOOLS = [
@@ -10,9 +10,10 @@ export const TOOLS = [
   ["spray", "Spray can", SprayCan, "Shift+B", "drag to scatter pixels", "Drag to scatter pixels of the active shade inside the brush."],
   ["line", "Line", LineEnds, "L", "drag from one end to the other", "Drag from one end of the line to the other."],
   ["rect", "Rectangle", Square, "R", "drag a box", "Drag a box to outline it in the active shade."],
-  ["rectFill", "Filled rectangle", FilledSquare, "Shift+R", "drag a box to fill · D pattern", "Drag a box to fill it with the active shade, or with the fill pattern (D cycles it)."],
+  ["rectFill", "Filled rectangle", FilledSquare, "Shift+R", "drag a box to fill it", "Drag a box to fill it with the active shade (always solid: the Pattern fill tool, D, fills with a pattern)."],
   ["ellipse", "Ellipse", Circle, "O", "drag a box; the ellipse fills it", "Drag a box; the ellipse fills it."],
-  ["fill", "Flood fill", PaintBucket, "G", "click an area to fill · Alt-click replaces that shade everywhere · D pattern", "Click an area to fill it with the active shade. Alt-click replaces that shade everywhere with the active one (inside the selection, if there is one). D cycles the fill pattern (solid, checker, dots, dense, rows, columns): only the pattern's pixels take the shade."],
+  ["fill", "Flood fill", PaintBucket, "G", "click an area to fill · Alt-click replaces that shade everywhere", "Click an area to fill it with the active shade (always solid: the Pattern fill tool, D, fills with a pattern). Alt-click replaces that shade everywhere with the active one (inside the selection, if there is one)."],
+  ["patternFill", "Pattern fill", PhCheckerboard, "D", "click an area or drag a box to fill it with the pattern · D next pattern", "Fills with a pattern in the active shade over what is there (checker, dots, dense, rows, columns): click an area to fill it, or drag a box. Press D again (or click the swatch) for the next pattern."],
   ["fillErase", "Flood erase", DropletOff, "Shift+G", "click an area to erase", "Click an area to erase it."],
   ["eyedropper", "Pick", Pipette, "I", "click to pick a shade, or a tile's palette", "Click a pixel to paint with its shade. Reached from the palette brush, it picks the tile's palette instead and goes back to the brush."],
   ["palette", "Palette brush", PaletteIcon, "P", "drag over tiles · Shift-click line · [ ] size · right-click picks", "Pick a palette on the right, then drag over tiles to give it to them. Shift-click draws a straight line of tiles. [ and ] set the brush to 1, 2 × 2 or 3 × 3 tiles. Right-click picks a tile's palette. On a project background or sprite sheet, Save writes each tile's palette into GB Studio as its slot; None leaves a tile's slot as it is."],

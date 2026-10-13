@@ -53,7 +53,7 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>
       <IconButton label={`${MIRROR_LABEL[mirror]}: paint both halves at once`} keys="Shift+M" aria-label={MIRROR_LABEL[mirror]} pressed={mirror !== "off"} onClick={() => onMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length])}><FlipHorizontal size={17} /></IconButton>
       <IconButton label="Invert: the selection's shades turned over (lightest ↔ darkest), or the whole picture's" keys="Ctrl+I" aria-label="Invert" onClick={onInvert}><Contrast size={17} /></IconButton>
-      {(tool === "fill" || tool === "rectFill") && <IconButton label={`Fill pattern: ${patternLabel}`} keys="D" aria-label={`Fill pattern: ${patternLabel}`} pressed={pattern !== "solid"} onClick={onPattern}><PhCheckerboard size={17} /></IconButton>}
+      {tool === "patternFill" && <IconButton label={`Fill pattern: ${patternLabel}`} keys="D" aria-label={`Fill pattern: ${patternLabel}`} pressed={pattern !== "solid"} onClick={onPattern}><PhCheckerboard size={17} /></IconButton>}
       <hr />
       {tool === "palette" || tool === "priority" ? (
         <span className="app-size" role="group" aria-label="Palette brush size">
@@ -68,7 +68,7 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
           <IconButton label="Bigger brush" keys="]" variant="ghost" disabled={brush >= 16} onClick={() => onBrush(brush + 1)}><Plus /></IconButton>
         </span>
       )}
-      {(tool === "fill" || tool === "rectFill") && <PatternSwatch pattern={pattern} label={patternLabel ?? pattern} shade={shade} shades={shades} onPattern={onPattern} />}
+      {tool === "patternFill" && <PatternSwatch pattern={pattern} label={patternLabel ?? pattern} shade={shade} shades={shades} onPattern={onPattern} />}
     </aside>
   );
 }

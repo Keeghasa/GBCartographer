@@ -434,8 +434,9 @@ export function usePainting(app: Painting) {
   }
 
   function drawShape(target: Doc, a: Point, b: Point, value: number) {
-    if (tool === "rectFill") {
-      return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, pattern);
+    if (tool === "rectFill" || tool === "patternFill") {
+      // The filled rectangle is always solid; the Pattern fill tool draws its box in the pattern.
+      return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, tool === "patternFill" ? pattern : "solid");
     }
     const points = tool === "line" ? linePoints(a.x, a.y, b.x, b.y)
       : tool === "ellipse" ? ellipsePoints(a.x, a.y, b.x, b.y)
@@ -608,7 +609,7 @@ export function usePainting(app: Painting) {
     } else if (tool === "fill" || tool === "fillErase") {
       app.pushUndo(doc);
       // Alt-click replaces that shade everywhere (inside the selection, if any) instead of filling one area.
-      const changed = event.altKey ? replaceShade(doc.pixels, doc.width, doc.height, doc.pixels[point.y * doc.width + point.x], value, doc.sel) > 0 : floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value, pattern);
+      const changed = event.altKey ? replaceShade(doc.pixels, doc.width, doc.height, doc.pixels[point.y * doc.width + point.x], value, doc.sel) > 0 : floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value);
       if (!changed) doc.undo.pop();
     } else if (tool === "pencil" || tool === "eraser") {
       app.pushUndo(doc);
@@ -621,7 +622,7 @@ export function usePainting(app: Painting) {
       drag.current = { kind: "spray", last: point };
     } else {
       app.pushUndo(doc);
-      drag.current = { kind: "shape", start: point, base: doc.pixels.slice() };
+      drag.current = { kind: "shape", start: point, base: doc.pixels.slice(), moved: false };
       drawShape(doc, point, point, value);
     }
     followLinks(doc);
@@ -693,6 +694,7 @@ export function usePainting(app: Painting) {
       for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) setPriority(doc, { x, y }, state.on);
       state.last = point;
     } else if (state.kind === "shape") {
+      if (point.x !== state.start.x || point.y !== state.start.y) state.moved = true;
       doc.pixels.set(state.base);
       drawShape(doc, state.start, point, value);
     } else if (state.kind === "marquee") {
@@ -712,6 +714,13 @@ export function usePainting(app: Painting) {
     linkStroke.current = null;
     if (!doc || !state || state.kind === "pan") return;
     if (state.kind === "marquee" && doc.sel && doc.sel.w < 2 && doc.sel.h < 2) doc.sel = null;
+    // Pattern fill: a click (no drag) fills the area under it with the pattern instead of a one-pixel box.
+    if (state.kind === "shape" && tool === "patternFill" && !state.moved) {
+      doc.pixels.set(state.base);
+      const value = shade === CLEAR && !doc.hasAlpha ? app.blank(doc) : shade;
+      if (!floodFill(doc.pixels, doc.width, doc.height, state.start.x, state.start.y, value, pattern)) doc.undo.pop();
+      followLinks(doc);
+    }
     if (state.kind !== "marquee") app.touch(doc);
     else app.bump();
   }
