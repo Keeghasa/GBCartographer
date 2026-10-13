@@ -36,14 +36,14 @@ function save(name: string, art: Canvas) {
 }
 
 /** Every outline pixel (shade 3) inside the filled cells is within 3 px of an empty cell (rounded corners sit a little in): no lines inside an area. */
-function strayOutlines(art: Canvas, cell: number, filled: (x: number, y: number) => boolean): number {
+function strayOutlines(art: Canvas, cell: number, filled: (x: number, y: number) => boolean, near = 3): number {
   let stray = 0;
   const empty = (px: number, py: number) => px < 0 || py < 0 || px >= art.width || py >= art.height || !filled(Math.floor(px / cell), Math.floor(py / cell));
   for (let py = 0; py < art.height; py += 1) for (let px = 0; px < art.width; px += 1) {
     if (empty(px, py) || art.pixels[py * art.width + px] !== 3) continue;
-    let near = false;
-    for (let dy = -3; dy <= 3; dy += 1) for (let dx = -3; dx <= 3; dx += 1) if (empty(px + dx, py + dy)) near = true;
-    if (!near) stray += 1;
+    let close = false;
+    for (let dy = -near; dy <= near; dy += 1) for (let dx = -near; dx <= near; dx += 1) if (empty(px + dx, py + dy)) close = true;
+    if (!close) stray += 1;
   }
   return stray;
 }
@@ -91,7 +91,8 @@ describe("area auto-tiles, painted offline", () => {
     for (const [sheetName, sheet] of [["ground", xpGroundTemplate()], ["water", xpWaterTemplate()]] as const) for (const [name, { w, h, filled }] of [["L", L], ["blob", blob]] as const) {
       const art = paint(sheet, w, h, 16, (x, y) => filled(x, y) ? xpCell(maskAt((cx, cy) => cx < 0 || cy < 0 || cx >= w || cy >= h ? false : filled(cx, cy), x, y)) : [null, null, null, null]);
       save(`xp-${sheetName}-${name}`, art);
-      expect(strayOutlines(art, 16, filled), `${sheetName} ${name}`).toBe(0);
+      // Water's shore stops 3–4 px short of the cell's edge, so its outline sits up to 6 px from an empty cell.
+      expect(strayOutlines(art, 16, filled, sheetName === "water" ? 6 : 3), `${sheetName} ${name}`).toBe(0);
     }
     const hills = shape(["...........", "...##..###.", ".#####.###.", ".#####.###.", ".##.##..##.", "......#....", "..........."]);
     save("xp-cliff", paint(xpCliffTemplate(), hills.w, hills.h, 16, (x, y) => xpCliffCell(hills.filled, x, y)));

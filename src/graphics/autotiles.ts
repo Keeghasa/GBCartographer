@@ -239,36 +239,42 @@ type Shader = (depth: number, x: number, y: number) => number;
  * rounded with radius `r`; `notch` corners (0 TL, 1 TR, 2 BL, 3 BR) get an inner corner instead (the two edges of the
  * neighbours meeting there). Textures use x and y modulo 8, so minitiles from anywhere in a sheet join seamlessly.
  */
-function xpRegion(out: Canvas, x0: number, y0: number, w: number, h: number, open: { n?: boolean; e?: boolean; s?: boolean; w?: boolean }, shade: Shader, r = 6, notch: number[] = []) {
+function xpRegion(out: Canvas, x0: number, y0: number, w: number, h: number, open: { n?: boolean; e?: boolean; s?: boolean; w?: boolean }, shade: Shader, r = 6, notch: number[] = [], inset?: Inset) {
+  // `inset`: how far in from an open side the area stops, by the position along that side (a wavy shore); the
+  // corners and notches stop `inset.corner` in. Pixels outside are see-through.
+  const along = (n: number) => inset ? inset.at(n) : 0, cornerIn = inset?.corner ?? 0;
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     let depth = 99;
-    if (open.n) depth = Math.min(depth, y);
-    if (open.s) depth = Math.min(depth, h - 1 - y);
-    if (open.w) depth = Math.min(depth, x);
-    if (open.e) depth = Math.min(depth, w - 1 - x);
+    if (open.n) depth = Math.min(depth, y - along(x0 + x));
+    if (open.s) depth = Math.min(depth, h - 1 - y - along(x0 + x));
+    if (open.w) depth = Math.min(depth, x - along(y0 + y));
+    if (open.e) depth = Math.min(depth, w - 1 - x - along(y0 + y));
     // Rounded outer corners: inside the r × r corner box, depth is measured from the arc.
     const cx = x < r ? r - (x + 0.5) : x >= w - r ? x + 0.5 - (w - r) : 0, cy = y < r ? r - (y + 0.5) : y >= h - r ? y + 0.5 - (h - r) : 0;
     const roundX = (x < r && open.w) || (x >= w - r && open.e), roundY = (y < r && open.n) || (y >= h - r && open.s);
     if (roundX && roundY && cx > 0 && cy > 0) {
-      const d = r - Math.hypot(cx, cy);
-      if (d < 0) { out.pixels[(y0 + y) * out.width + x0 + x] = CLEAR; continue; }
+      const d = r - Math.hypot(cx, cy) - cornerIn;
       depth = Math.min(depth, Math.floor(d));
     }
     for (const corner of notch) {
       const nx = corner % 2 ? w - 1 - x : x, ny = corner >= 2 ? h - 1 - y : y;
-      depth = Math.min(depth, Math.round(Math.hypot(nx + 0.5, ny + 0.5) - 0.707));
+      depth = Math.min(depth, Math.round(Math.hypot(nx + 0.5, ny + 0.5) - 0.707) - cornerIn);
     }
+    if (depth < 0) { out.pixels[(y0 + y) * out.width + x0 + x] = CLEAR; continue; }
     out.pixels[(y0 + y) * out.width + x0 + x] = shade(depth, (x0 + x) % 8, (y0 + y) % 8);
   }
 }
 
+/** A shore that stops short of its cell's edge: `at(n)` pixels in at position n along the side, `corner` at corners. */
+interface Inset { at: (n: number) => number; corner: number }
+
 /** An XP block (48 × 64) at x0: the lone tile, a plain sample, the inner corners, then the 3 × 3-tile block. */
-function xpBlock(out: Canvas, x0: number, shade: Shader) {
+function xpBlock(out: Canvas, x0: number, shade: Shader, inset?: Inset, r = 6) {
   const all = { n: true, e: true, s: true, w: true };
-  xpRegion(out, x0, 0, 16, 16, all, shade);
-  xpRegion(out, x0 + 16, 0, 16, 16, {}, shade);
-  xpRegion(out, x0 + 32, 0, 16, 16, {}, shade, 6, [0, 1, 2, 3]);
-  xpRegion(out, x0, 16, 48, 48, all, shade);
+  xpRegion(out, x0, 0, 16, 16, all, shade, r, [], inset);
+  xpRegion(out, x0 + 16, 0, 16, 16, {}, shade, r, [], inset);
+  xpRegion(out, x0 + 32, 0, 16, 16, {}, shade, r, [0, 1, 2, 3], inset);
+  xpRegion(out, x0, 16, 48, 48, all, shade, r, [], inset);
 }
 
 /** XP ground (48 × 64): a dirt patch, outlined dark with a mid band inside, specks on the fill. */
@@ -278,15 +284,28 @@ export function xpGroundTemplate(): Canvas {
   return out;
 }
 
-/** XP water (144 × 64): three frames of the block side by side, a dark outline with foam inside, crests drifting. */
+/**
+ * XP water (144 × 64): three frames of the block side by side, a dark outline with foam inside, crests drifting. The
+ * shore stops short of the cell's edge (the author, 2026-10-12: the silhouette of an XP water sheet they like): 3 px
+ * in, stepping out to 4 px for every other 4 px along the side (so neighbouring cells meet it), corners rounded.
+ */
 export function xpWaterTemplate(): Canvas {
   const out = canvas(144, 64, CLEAR);
+  const shore: Inset = { at: (n) => ((n + 2) & 4) ? 4 : 3, corner: 3 };
   for (let frame = 0; frame < 3; frame += 1) xpBlock(out, frame * 48, (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
     const crest = (x - frame * 3 + 16 + (y >= 4 ? 4 : 0)) % 8;
     return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
-  });
+  }, shore, 7);
+  // Where the shore steps in or out, the outline turns the corner too: a water pixel beside see-through (within its
+  // own 8 × 8 piece, so pieces never outline each other's edges) is outline.
+  const before = out.pixels.slice(), at = (x: number, y: number) => before[y * out.width + x];
+  for (let y = 0; y < out.height; y += 1) for (let x = 0; x < out.width; x += 1) {
+    if (at(x, y) === CLEAR) continue;
+    const beside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => (x + dx) >> 3 === x >> 3 && (y + dy) >> 3 === y >> 3 && x + dx >= 0 && y + dy >= 0 && at(x + dx, y + dy) === CLEAR);
+    if (beside) out.pixels[y * out.width + x] = 3;
+  }
   return out;
 }
 
