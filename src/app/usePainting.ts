@@ -282,7 +282,7 @@ export function usePainting(app: Painting) {
     const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
     if (cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const blank = app.blank(target);
-    const keys = sheetKeys(6, 54, blank);
+    const keys = sheetKeys(6, 60, blank);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
     const keyAt = (tx: number, ty: number) => tileKey(target.pixels, target.width, tx * CELL, ty * CELL);
     const empty = tileKey(new Uint8Array(CELL * CELL).fill(blank), CELL, 0, 0);

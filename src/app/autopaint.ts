@@ -31,10 +31,11 @@ export function rpgCell(mask: number): [number, number][] {
 }
 
 /**
- * The mound ledge sheet (src/graphics/pieces.ts, 48 × 72, 6 × 9 minitiles): columns 1–4 rows 0–3 the plateau
+ * The mound ledge sheet (src/graphics/pieces.ts, 48 × 80, 6 × 10 minitiles): columns 1–4 rows 0–3 the plateau
  * (row 0 its top border, rows 1–2 the plate inside, row 3 its bottom border; columns 1 and 4 its left and right
  * borders, the corners rounded); columns 0 and 5 the rock that flanks it; rows 4–5 the rock face, rows 6–7 its
- * foot; row 8 the inner corners (columns 0–3: notched at the top left, top right, bottom left, bottom right).
+ * foot; row 8 the inner corners (columns 0–3: notched at the top left, top right, bottom left, bottom right);
+ * row 9 the flank of a taller plateau (left straight, left closing, right straight, right closing).
  */
 export function moundPlateau(mask: number): [number, number][] {
   const has = (bit: number) => Boolean(mask & bit);
@@ -60,12 +61,16 @@ export function moundLayout(plateau: Filled, x: number, y: number, continues: Fi
     const left = plateau(x - 1, y - 1), right = plateau(x + 1, y - 1);
     return { kind: "face", pieces: [[left ? 2 : 1, 4], [right ? 3 : 4, 4], [left ? 2 : 1, 6], [right ? 3 : 4, 6]] };
   }
-  // Rock beside a plateau or a face: the half of this cell next to it.
+  // Rock beside a plateau or a face: the half of this cell next to it. Beside a plateau the side slopes out once,
+  // from the top cell (the mound's own side, rows 0–1) to full width at the plateau's bottom cell, straight between.
   const beside = (right: boolean): [Piece, Piece] => {
     const nx = right ? x + 1 : x - 1, column = right ? 0 : 5;
     if (face(nx, y)) return [[column, 4], [column, 6]];
-    if (plateau(nx, y)) return plateau(nx, y - 1) ? [[column, 1], [column, 2]] : [[column, 0], [column, 1]];
-    return [null, null];
+    if (!plateau(nx, y)) return [null, null];
+    const top = !plateau(nx, y - 1), bottom = !plateau(nx, y + 1);
+    const straight: [number, number] = [right ? 0 : 2, 9], closing: [number, number] = [right ? 1 : 3, 9];
+    if (top) return [[column, 0], [column, 1]];
+    return bottom ? [closing, [column, 3]] : [straight, straight];
   };
   const [rightTop, rightBottom] = beside(true), [leftTop, leftBottom] = beside(false);
   const pieces: Piece[] = [leftTop, rightTop, leftBottom, rightBottom];

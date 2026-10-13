@@ -89,7 +89,8 @@ describe("area auto-tiles, painted offline", () => {
 
   it("draws the mound with no lines inside the plateau, a face under it and rock beside it", () => {
     const sheet = pieces.moundSheet();
-    for (const [name, { w, h, filled }] of [["mound-L", L], ["mound-blob", blob]] as const) {
+    const tall = shape(["..........", ".###..###.", ".###..###.", ".###.####.", ".###.####.", ".....#..#.", ".........."]);
+    for (const [name, { w, h, filled }] of [["mound-L", L], ["mound-blob", blob], ["mound-tall", tall]] as const) {
       const plateau = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && filled(x, y);
       const art = paint(sheet, w, h + 1, 16, (x, y) => moundLayout(plateau, x, y).pieces);
       save(name, art);

@@ -234,7 +234,7 @@ const ROUNDTREES = [
 /**
  * The mound ledge as an auto-tile sheet (autopaint.ts moundLayout), 48 × 72: cut from the tall mound so every part
  * sits on the 8 px grid (the rounded top border, the plate twice so a wide plateau's inside repeats, the bottom
- * border, the face and the foot with its rounded ends), and a row of inner corners.
+ * border, the face and the foot with its rounded ends), a row of inner corners and a row of straight sides, 48 × 80.
  */
 const MOUND_SHEET = [...LEDGETALL.slice(0, 8), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(32, 40), ...LEDGETALL.slice(40, 56), ...LEDGETALL.slice(48, 64)]
   // A faint dot at the top left of each plate minitile: a plain lightest tile would pass for blank picture, and the
@@ -245,7 +245,15 @@ const MOUND_SHEET = [...LEDGETALL.slice(0, 8), ...LEDGETALL.slice(8, 16), ...LED
   .concat(Array.from({ length: 8 }, (_, y) => [0, 1, 2, 3].map((notch) => Array.from({ length: 8 }, (_, x) => {
     const cx = notch % 2 ? 7 : 0, cy = notch >= 2 ? 7 : 0;
     return x === cx && y === cy ? "3" : "1";
-  }).join("")).join("") + "................"));
+  }).join("")).join("") + "................"))
+  // Row 9: the rock beside a plateau taller than one cell, so its side is one line, not a slope restarting every
+  // cell: the left side straight (columns 0) and closing to full width at the plateau's bottom (1), the right side
+  // the same mirrored (2, 3). The top cell's side is the mound's own (rows 0–1), and it ends where these begin.
+  .concat(Array.from({ length: 8 }, (_, y) => {
+    const leftSlope = Math.max(0, 3 - Math.floor((y + 1) / 2)), rightSlope = Math.min(7, 4 + Math.floor((y + 1) / 2));
+    const left = (at: number) => ".".repeat(at) + "3" + "2".repeat(7 - at), right = (at: number) => "2".repeat(at) + "3" + ".".repeat(7 - at);
+    return left(3) + left(leftSlope) + right(4) + right(rightSlope) + "................";
+  }));
 
 export const pieces = {
   moundSheet: () => fromRows(MOUND_SHEET),
