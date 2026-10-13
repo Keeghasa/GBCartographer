@@ -25,7 +25,10 @@ const WALKS = "Six frames: down, down step, up, up step, right, right step (GB S
 const LOOP = (frames: number) => `${frames} frames, one looping animation.`;
 const TWO = (a: string, b: string) => `Two frames: ${a}, ${b} (one animation; pick a frame from an event).`;
 
-export const GRAPHICS: WireAsset[] = [
+/** Taken out at the author's word (2026-10-13: what they hid in the Asset Catalog project, they didn't like). */
+const DROPPED = new Set(["person-villager", "person-traveler", "thing-bullet", "thing-bush", "thing-coinStill", "thing-crate", "thing-potion", "anim-chest", "anim-checkbox"]);
+
+const ALL: WireAsset[] = [
   ...PEOPLE.map(([id, name, look]): WireAsset => ({ id: `person-${id}`, name, group: "People", kind: "sprites", about: WALKS, make: () => walker(look) })),
   ...Object.entries(things).map(([id, make]): WireAsset => ({ id: `thing-${id}`, name: ({ coinStill: "Coin", bullet: "Bullet" } as Record<string, string>)[id] ?? id[0].toUpperCase() + id.slice(1), group: "Things", kind: "sprites", about: "One frame.", make })),
   ...Object.entries(animated).map(([id, make]): WireAsset => {
@@ -79,5 +82,7 @@ export const GRAPHICS: WireAsset[] = [
   // The temp assets the author approved (swipe review, 2026-10-13): XP area auto-tiles and seamless patterns.
   ...TEMP_ASSETS.filter((asset) => APPROVED.has(asset.id)).map((asset): WireAsset => ({ id: asset.id, name: asset.name, group: asset.family === "xp" ? "XP auto-tiles" : "Patterns", kind: "stamps", about: asset.about, make: asset.make, ...(asset.autotile ? { autotile: asset.autotile } : {}) })),
 ];
+
+export const GRAPHICS: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id));
 
 export const GRAPHIC_GROUPS = [...new Set(GRAPHICS.map((asset) => asset.group))];

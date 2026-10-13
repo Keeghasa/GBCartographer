@@ -7,6 +7,7 @@
 
 import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, wangSlot } from "./autotile";
 import { Pen } from "../graphics/pen";
+import { paintCliffs, paintForest, paintXp, sheet } from "../graphics/areas";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 
 export { OVERWORLD_PALETTES } from "./mapThemes";
@@ -216,7 +217,15 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
   const blit = (x: number, y: number, column: number, row: number) => {
     for (let py = 0; py < 8; py += 1) out.pixels.set(tiles!.pixels.subarray((row * 8 + py) * tiles!.width + column * 8, (row * 8 + py) * tiles!.width + column * 8 + 8), (y * 8 + py) * out.width + x * 8);
   };
-  for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
+  // With no stamp of the author's chosen and cells of 16 px or more: drawn with the library's pieces (2026-10-13), the
+  // rock as cliffs (Cliff XP, its face where the floor begins below) and the floor a stone floor area (Stone floor XP).
+  if (!tiles && size >= 16) {
+    const sub = size / 16, cw = w * sub, ch = h * sub, canvasOut = { width: out.width, height: out.height, pixels: out.pixels };
+    const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
+    out.pixels.fill(3);
+    paintCliffs(canvasOut, (x, y) => !open(x, y), cw, ch);
+    paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
+  } else for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
     if (tiles?.kind === "wallface") {
       // As the Wall face stamp paints (usePainting): floor, the face with its ends, nothing.
@@ -446,6 +455,51 @@ function drawRoads(out: Generated, grid: Uint8Array, w: number, h: number, sheet
   }
 }
 
+/**
+ * The overworld drawn with the library's pieces (the author, 2026-10-13), as if painted with the stamps: grass with
+ * tufts, sand round the water (Sand XP), the water itself (Water XP, frame 1), dirt roads (Dirt XP), mountains as
+ * cliffs (Cliff XP: plateaus whose bottom row is the rock face) and forests from the pine or round forest brush on
+ * 32 px units (a lone tree where a forest is too small for a unit), towns as two houses.
+ */
+function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number, settings: WorldSettings): Generated {
+  const at = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
+  const canvasOut = { width: out.width, height: out.height, pixels: out.pixels };
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    const pen = new Pen(out, x * 16, y * 16, 16);
+    pen.fill(0);
+    if (hash(x, y, settings.seed) % 3 === 0) { pen.dot(4, 3, 1); pen.dot(3, 4, 1); pen.dot(5, 4, 1); pen.dot(11, 10, 1); pen.dot(10, 11, 1); pen.dot(12, 11, 1); }
+  }
+  // The map's own edge: water runs off it on an island, so no shore shows there.
+  const wet = (x: number, y: number) => at(x, y) === WATER, sandy = (x: number, y: number) => at(x, y) === WATER || at(x, y) === SHORE;
+  paintXp(canvasOut, sheet("xp-sand"), sandy, w, h, settings.island);
+  paintXp(canvasOut, sheet("water"), wet, w, h, settings.island);
+  paintXp(canvasOut, sheet("xp-dirt"), (x, y) => at(x, y) === ROAD, w, h);
+  paintCliffs(canvasOut, (x, y) => at(x, y) === MOUNTAIN, w, h);
+  // Forests: a 32 px unit is forest when all four of its cells are; forest cells left over get a lone tree.
+  const uw = Math.floor(w / 2), uh = Math.floor(h / 2), forest = (x: number, y: number) => at(x, y) === FOREST;
+  const unit = (ux: number, uy: number) => forest(ux * 2, uy * 2) && forest(ux * 2 + 1, uy * 2) && forest(ux * 2, uy * 2 + 1) && forest(ux * 2 + 1, uy * 2 + 1);
+  paintForest(canvasOut, sheet(settings.seed % 2 ? "pines" : "round"), unit, uw, uh);
+  const lone = sheet(settings.seed % 2 ? "round" : "pines");
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    if (!forest(x, y) || (x < uw * 2 && y < uh * 2 && unit(x >> 1, y >> 1))) continue;
+    // A lone tree, the sheet's single tree shrunk to its top-left 16 px quarter's place: drawn whole at half size.
+    for (let py = 0; py < 16; py += 1) for (let px = 0; px < 16; px += 1) {
+      const value = lone.pixels[(py * 2) * lone.width + 32 + px * 2];
+      if (value <= 3) out.pixels[(y * 16 + py) * out.width + x * 16 + px] = value;
+    }
+  }
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    if (grid[y * w + x] !== TOWN) continue;
+    const pen = new Pen(out, x * 16, y * 16, 16);
+    for (const [hx, hy] of [[1, 0], [8, 6]]) {
+      for (let row = 0; row < 4; row += 1) { pen.rect(hx + 3 - row, hy + 1 + row, row * 2 + 1, 1, 2); pen.dot(hx + 3 - row, hy + 1 + row, 3); pen.dot(hx + 3 + row, hy + 1 + row, 3); }
+      pen.rect(hx, hy + 5, 7, 5, 1); pen.box(hx, hy + 5, 7, 5, 3);
+      pen.rect(hx + 3, hy + 7, 1, 3, 3);
+    }
+  }
+  return out;
+}
+
 export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): Generated {
   const { w, h, grid } = worldGrid(settings);
   const out: Generated = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
@@ -458,6 +512,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
     out.palettes = theme.palettes.map(({ name, colors }) => ({ name, colors: [...colors] }));
   }
   const at = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
+  if (!tiles?.shore && !tiles?.road) return drawWorldPieces(out, grid, w, h, settings);
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     const pen = new Pen(out, x * 16, y * 16, 16);
     const cell = grid[y * w + x];

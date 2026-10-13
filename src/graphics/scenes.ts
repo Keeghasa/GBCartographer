@@ -4,20 +4,25 @@
  * (an 8 × 8 nine-slice) and the 8 × 8 menu cursor. Backgrounds in screens of 160 × 144 (10 × 9 tiles).
  */
 import { drawCave, drawWorld } from "../app/generators";
+import { paintXp, sheet } from "./areas";
 import { Pen, canvas, textWidth, type Canvas } from "./pen";
 import { TILES } from "./tiles";
 
 /** A background from rows of letters, each letter a tile id in `legend` (space: the first entry). Tall tiles go on
  * after the rest, over the cell below them too. */
-export function fromMap(rows: string[], legend: Record<string, string>): Canvas {
+export function fromMap(rows: string[], legend: Record<string, string>, between?: (out: Canvas) => void): Canvas {
   const width = Math.max(...rows.map((row) => row.length)) * 16, out = canvas(width, rows.length * 16);
   const blank = Object.values(legend)[0];
-  for (const tall of [false, true]) rows.forEach((row, y) => {
+  for (const tall of [false, true]) {
+    // Between the flat tiles and the tall ones: areas painted with the library's pieces, under the trees.
+    if (tall && between) between(out);
+    rows.forEach((row, y) => {
     for (let x = 0; x < width / 16; x += 1) {
       const tile = TILES[legend[row[x] ?? " "] ?? blank];
       if (tile && Boolean(tile.tall) === tall) tile.draw(new Pen(out, x * 16, y * 16, 16, tall ? 32 : 16));
     }
-  });
+    });
+  }
   return out;
 }
 
@@ -158,10 +163,19 @@ function village(): string[] {
   set(12, 14, "r");
   return map.map((row) => row.join(""));
 }
-const villageLegend = { ".": "grass", Q: "oakTall", K: "oakTall2", P: "pineTall", N: "pineTall2", R: "roof", W: "houseWall", D: "door", ",": "path", F: "fence", f: "flowers", b: "bush", s: "sign", "~": "water", w: "well", r: "rock" };
+const villageLegend = { ".": "grass", Q: "oakTall", K: "oakTall2", P: "pineTall", N: "pineTall2", R: "roof", W: "houseWall", D: "door", ",": "grass", F: "fence", f: "flowers", b: "bush", s: "sign", "~": "grass", w: "well", r: "rock" };
 
-/** The village as one picture (480 × 288). */
-export const villageMap = () => fromMap(village(), villageLegend);
+/**
+ * The village as one picture (480 × 288). Its pond and paths are painted with the library's pieces (the author,
+ * 2026-10-13): Water XP for the pond, Dirt XP for the paths, joined at their edges as the stamps would.
+ */
+export const villageMap = () => {
+  const rows = village(), w = rows[0].length, h = rows.length;
+  return fromMap(rows, villageLegend, (out) => {
+    paintXp(out, sheet("xp-dirt"), (x, y) => rows[y][x] === ",", w, h, false);
+    paintXp(out, sheet("water"), (x, y) => rows[y][x] === "~", w, h, false);
+  });
+};
 
 /**
  * The village cut into 3 × 2 screens for the Map Room: neighbours share their edge tiles (one 8-pixel column or row),

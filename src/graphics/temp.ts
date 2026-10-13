@@ -42,7 +42,11 @@ const xpSquare = (shade: Shader): Canvas => { const out = canvas(48, 64, CLEAR);
 const woodFloor: Shader = edged((x, y) => (y % 4 === 3) ? 2 : (x === (y < 4 ? 5 : 1)) ? 2 : 1);
 const carpet: Shader = (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 0 : depth === 2 ? 2 : (Math.abs(x - 3.5) + Math.abs(y - 3.5) === 3) ? 0 : 1;
 const tiledFloor: Shader = edged((x, y) => ((x >> 2) + (y >> 2)) % 2 ? 2 : 0, 3);
-const brickFill = tileFill(OUTDOOR.houseWall), plankFill = tileFill(INDOOR.woodFloor), wallpaperFill = tileFill(OUTDOOR.grass);
+/** The old path tile's design (the path tile is now drawn from Dirt XP itself, so this keeps its own copy). */
+const oldPath = (p: Pen) => { p.fill(1); for (const [x, y] of [[3, 4], [10, 2], [12, 11], [5, 12]]) p.rect(x, y, 2, 1, 2); };
+/** Made on first use, so this module can load before the tiles do (tiles.ts draws some tiles from these sheets). */
+const lazyFill = (tile: () => Tile) => { let fill: ((gx: number, gy: number) => number) | null = null; return (gx: number, gy: number) => (fill ??= tileFill(tile()))(gx, gy); };
+const brickFill = lazyFill(() => OUTDOOR.houseWall), plankFill = lazyFill(() => INDOOR.woodFloor), wallpaperFill = lazyFill(() => OUTDOOR.grass);
 /** The flower bed, inverted (the author's note): a dark bed with light flowers, the outline kept dark. */
 const flowerBed: Shader = (depth, x, y) => { if (depth === 0) return 3; const f = at([[2, 1], [1, 2], [3, 2], [2, 3], [6, 5], [5, 6], [7, 6], [6, 7]], x, y), c = at([[2, 2], [6, 6]], x, y); return 3 - (depth === 1 ? 1 : c ? 3 : f ? 2 : 0); };
 
@@ -50,7 +54,7 @@ const XP: TempAsset[] = [
   { id: "xp-grass", name: "Grass XP", family: "xp", autotile: "xp", about: "A grass patch: tufts on light ground, a soft mid edge.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) },
     make: () => xp(edged((x, y) => at([[1, 2], [2, 1], [3, 2], [5, 6], [6, 5], [7, 6]], x, y) ? 2 : 0, 1, 2)) },
   { id: "xp-dirt", name: "Dirt XP", family: "xp", autotile: "xp", about: "The path tile's design turned a quarter, with a dark border around the area.", before: { name: "Path tile", make: () => tileNow(OUTDOOR.path) },
-    make: () => { const fill = tileFill(OUTDOOR.path, true); return xp((depth, _x, _y, gx, gy) => depth === 0 ? 3 : depth === 1 ? 2 : fill(gx, gy)); } },
+    make: () => { const fill = tileFill({ name: "Path", draw: oldPath }, true); return xp((depth, _x, _y, gx, gy) => depth === 0 ? 3 : depth === 1 ? 2 : fill(gx, gy)); } },
   { id: "xp-sand", name: "Sand XP", family: "xp", autotile: "xp", about: "Pale sand, just dots; the edge a mid band.", before: { name: "Sand tile", make: () => tileNow(OUTDOOR.sand) },
     make: () => xp(edged((x, y) => at([[1, 2], [5, 1], [3, 5], [7, 6]], x, y) ? 1 : 0, 1, 2)) },
   { id: "xp-snow", name: "Snow XP", family: "xp", autotile: "xp", about: "Snow banks: white with blue-ish shadow dots, a thick soft edge.",

@@ -3,9 +3,18 @@
  * sheets. Each draws into a 16 × 16 pen (a tall one 16 × 32). Placeholders to paint over: plain shapes, light ground
  * (shade 0), dark outlines (shade 3). Grouped by where they go: outdoors, indoors, side-view levels.
  */
-import type { Pen } from "./pen";
+import type { Canvas, Pen } from "./pen";
+import { pieceOf, sheet } from "./areas";
 
 export interface Tile { name: string; /** Two tiles tall (16 × 32): drawn over the cell below it too. */ tall?: boolean; draw: (p: Pen) => void }
+
+/**
+ * A tile copied from a piece of the library's sheets (the author, 2026-10-13: the tile sheets drawn from what we made,
+ * the XP grounds and floors, Water XP, Cliff XP), so a scene built from tiles matches one painted with the stamps.
+ */
+const from = (piece: () => Canvas) => (p: Pen) => { const art = piece(); for (let y = 0; y < 16; y += 1) for (let x = 0; x < 16; x += 1) p.dot(x, y, art.pixels[y * 16 + x]); };
+/** An XP block's middle (columns 2–3, rows 4–5): the fill that repeats inside an area. */
+const middle = (id: Parameters<typeof sheet>[0]) => from(() => pieceOf(sheet(id), 2, 4));
 
 // ---- shared bits ----------------------------------------------------------------------------------------------------
 
@@ -20,13 +29,13 @@ const flame = (p: Pen, x: number, y: number) => { p.rect(x + 1, y, 1, 1, 3); p.r
 // ---- outdoors ---------------------------------------------------------------------------------------------------------
 
 export const OUTDOOR: Record<string, Tile> = {
-  grass: { name: "Grass", draw: (p) => { p.fill(0); tufts(p); } },
+  grass: { name: "Grass", draw: middle("xp-grass") },
   tallGrass: { name: "Tall grass", draw: (p) => { p.fill(0); for (const [x, y] of [[2, 3], [9, 2], [5, 9], [12, 10]]) { p.line(x, y + 3, x + 1, y, 2); p.line(x + 2, y + 3, x + 1, y, 2); p.line(x + 3, y + 3, x + 4, y + 1, 2); } } },
   flowers: { name: "Flowers", draw: (p) => { p.fill(0); for (const [x, y] of [[3, 3], [11, 5], [6, 11]]) { p.dot(x, y - 1, 2); p.dot(x - 1, y, 2); p.dot(x + 1, y, 2); p.dot(x, y + 1, 2); p.dot(x, y, 3); } } },
-  path: { name: "Path", draw: (p) => { p.fill(1); for (const [x, y] of [[3, 4], [10, 2], [12, 11], [5, 12]]) p.rect(x, y, 2, 1, 2); } },
-  sand: { name: "Sand", draw: (p) => { p.fill(0); for (const [x, y] of [[2, 2], [9, 4], [13, 9], [5, 8], [10, 13], [2, 13]]) p.dot(x, y, 1); } },
-  water: { name: "Water", draw: (p) => { p.fill(1); p.rect(2, 4, 4, 1, 2); p.rect(10, 11, 4, 1, 2); } },
-  waterEdge: { name: "Water edge", draw: (p) => { p.fill(1); p.rect(0, 0, 16, 4, 0); p.rect(0, 4, 16, 1, 3); p.rect(3, 9, 4, 1, 2); p.rect(10, 13, 4, 1, 2); } },
+  path: { name: "Path", draw: middle("xp-dirt") },
+  sand: { name: "Sand", draw: middle("xp-sand") },
+  water: { name: "Water", draw: middle("water") },
+  waterEdge: { name: "Water edge", draw: from(() => pieceOf(sheet("water"), 2, 2)) },
   bridge: { name: "Bridge", draw: (p) => { p.fill(1); for (let x = 3; x < 16; x += 4) p.rect(x, 0, 1, 16, 2); p.side(0, 3); p.side(2, 3); p.rect(0, 1, 16, 1, 2); } },
   tree: { name: "Tree", draw: (p) => { p.fill(0); p.oval(2, 0, 12, 11, 1); p.dot(5, 3, 2); p.dot(9, 6, 2); p.rect(7, 11, 2, 4, 3); p.rect(5, 15, 6, 1, 2); } },
   pine: { name: "Pine", draw: (p) => { p.fill(0); p.peak(3, 0, 10, 7, 2); p.peak(2, 5, 12, 8, 2); p.rect(7, 13, 2, 3, 3); } },
@@ -36,7 +45,7 @@ export const OUTDOOR: Record<string, Tile> = {
   fence: { name: "Fence", draw: (p) => { p.fill(0); p.rect(0, 6, 16, 1, 3); p.rect(0, 10, 16, 1, 3); p.panel(2, 3, 3, 11, 1); p.panel(11, 3, 3, 11, 1); } },
   sign: { name: "Sign", draw: (p) => { p.fill(0); p.rect(7, 9, 2, 6, 3); p.panel(2, 2, 12, 8, 1); p.rect(4, 4, 8, 1, 2); p.rect(4, 6, 6, 1, 2); } },
   mountain: { name: "Mountain", draw: (p) => { p.fill(0); p.peak(1, 2, 14, 13, 1); for (let row = 0; row < 12; row += 1) p.rect(8, 3 + row, Math.round(row * 6 / 12), 1, 2); } },
-  cliff: { name: "Cliff", draw: (p) => { p.fill(2); p.rect(0, 0, 16, 3, 1); p.rect(0, 3, 16, 1, 3); p.rect(2, 8, 5, 1, 3); p.rect(9, 12, 6, 1, 3); p.rect(11, 6, 3, 1, 3); } },
+  cliff: { name: "Cliff", draw: from(() => pieceOf(sheet("cliff"), 2, 4)) },
   stoneStairs: { name: "Stone stairs", draw: (p) => steps(p, 1, 3) },
   caveMouth: { name: "Cave mouth", draw: (p) => { p.fill(2); p.rect(0, 0, 16, 2, 1); p.oval(2, 4, 12, 16, 3); p.rect(3, 12, 10, 4, 3); } },
   well: { name: "Well", draw: (p) => { p.fill(0); p.oval(2, 3, 12, 12, 1); p.oval(5, 6, 6, 6, 3); p.rect(1, 1, 14, 1, 3); p.rect(2, 1, 1, 4, 3); p.rect(13, 1, 1, 4, 3); } },
@@ -53,9 +62,9 @@ export const OUTDOOR: Record<string, Tile> = {
 // ---- indoors ------------------------------------------------------------------------------------------------------------
 
 export const INDOOR: Record<string, Tile> = {
-  woodFloor: { name: "Wood floor", draw: (p) => { p.fill(1); for (let y = 3; y < 16; y += 4) p.rect(0, y, 16, 1, 2); for (const [x, y] of [[5, 0], [12, 4], [3, 8], [10, 12]]) p.rect(x, y, 1, 3, 2); } },
-  tileFloor: { name: "Tile floor", draw: (p) => { p.fill(0); p.side(0, 1); p.side(3, 1); p.rect(0, 8, 16, 1, 1); p.rect(8, 0, 1, 16, 1); } },
-  carpet: { name: "Carpet", draw: (p) => { p.fill(2); for (let x = 1; x < 16; x += 4) for (let y = 1; y < 16; y += 4) p.dot(x, y, 1); } },
+  woodFloor: { name: "Wood floor", draw: middle("xp-wood-floor") },
+  tileFloor: { name: "Tile floor", draw: middle("xp-tile-floor") },
+  carpet: { name: "Carpet", draw: middle("xp-carpet") },
   wall: { name: "Wall", draw: (p) => { p.fill(1); for (let x = 1; x < 16; x += 4) p.rect(x, 0, 1, 16, 2); } },
   wallBase: { name: "Wall base", draw: (p) => { p.fill(1); for (let x = 1; x < 16; x += 4) p.rect(x, 0, 1, 11, 2); p.rect(0, 11, 16, 1, 3); p.rect(0, 12, 16, 4, 2); } },
   wallTopIn: { name: "Wall top", draw: (p) => { p.fill(3); p.rect(0, 13, 16, 3, 2); } },
@@ -82,8 +91,8 @@ export const INDOOR: Record<string, Tile> = {
 
 export const SIDE: Record<string, Tile> = {
   sky: { name: "Sky", draw: (p) => p.fill(0) },
-  groundTop: { name: "Ground top", draw: (p) => { p.fill(2); p.rect(0, 0, 16, 4, 1); p.rect(0, 4, 16, 1, 3); for (const x of [2, 7, 12]) p.dot(x, 0, 0); p.dot(4, 9, 3); p.dot(11, 12, 3); } },
-  ground: { name: "Ground", draw: (p) => { p.fill(2); p.dot(4, 3, 3); p.dot(11, 7, 3); p.dot(6, 12, 3); } },
+  groundTop: { name: "Ground top", draw: from(() => pieceOf(sheet("cliff"), 2, 0)) },
+  ground: { name: "Ground", draw: from(() => pieceOf(sheet("cliff"), 2, 4)) },
   brick: { name: "Brick", draw: (p) => { p.fill(1); bricks(p, 3); } },
   platform: { name: "Platform", draw: (p) => { p.fill(0); p.panel(0, 0, 16, 6, 1); p.rect(4, 6, 1, 3, 3); p.rect(11, 6, 1, 3, 3); } },
   ladder: { name: "Ladder", draw: (p) => { p.fill(0); p.rect(3, 0, 1, 16, 3); p.rect(12, 0, 1, 16, 3); for (let y = 2; y < 16; y += 5) p.rect(4, y, 8, 1, 2); } },
