@@ -346,7 +346,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
 
   async function removeFromProject() {
     if (collection !== "project" || !picked?.id || !onRemoveProject || busy) return;
-    if (!await confirmBox(`Take ${picked.name} out of the project? Nothing uses it; its file goes to the backups folder (Backups… can put it back).`)) return;
+    if (!await confirmBox(`Take ${picked.name} out of the project? Nothing uses it; its file goes to the backups folder. Backups… puts it back… up.`)) return;
     setBusy(true);
     try {
       if (await onRemoveProject(picked.id, picked.name)) choose("project", Math.max(0, selected - 1));

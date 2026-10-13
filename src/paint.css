@@ -61,3 +61,9 @@
 }
 /* GB Studio collisions: half see-through, as GB Studio shows its collision layer. */
 .gbp-collisions { mix-blend-mode: normal; opacity: .55; }
+/* The + buttons beside the picture (grow it a frame or a tile): to its right, and under it. */
+.gbp-grow { position: relative; }
+.gbp-grow-x, .gbp-grow-y { position: absolute; opacity: .55; transition: opacity .15s; }
+.gbp-grow:hover .gbp-grow-x, .gbp-grow:hover .gbp-grow-y, .gbp-grow-x:focus-within, .gbp-grow-y:focus-within { opacity: 1; }
+.gbp-grow-x { left: 100%; top: 50%; transform: translate(6px, -50%); }
+.gbp-grow-y { top: 100%; left: 50%; transform: translate(-50%, 6px); }

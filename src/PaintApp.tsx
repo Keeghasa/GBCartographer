@@ -820,7 +820,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     if (open) await reloadAsset(open);
     await rereadSlots();
     setSlotsVersion((value) => value + 1);
-    say(`Restored ${file.split("/").pop()} from ${new Date(versionTime(version)).toLocaleString()}`);
+    say(`Restored ${file.split("/").pop()} from ${new Date(versionTime(version)).toLocaleString()}: put back… up.`);
     return true;
   }
 
@@ -1021,7 +1021,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string } | null : null;
     if (!response?.ok || !result?.ok) { say(`${name} stays: ${result?.error ?? "no answer"}`); return false; }
     await loadProject();
-    say(`${name} was taken out of the project (Backups… can put it back).`);
+    say(`${name} was taken out of the project. Backups… puts it back… up.`);
     return true;
   }
 
@@ -1679,6 +1679,25 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /**
+   * Invert (the author, 2026-10-13): the selection's shades turned over, lightest ↔ darkest (0 ↔ 3, 1 ↔ 2), or the
+   * whole picture's with nothing selected; see-through stays see-through. One undo takes it back.
+   */
+  function invertSelection() {
+    if (!doc) return;
+    if (doc.sel || doc.float) {
+      const floating = floatSelection(doc, false);
+      if (!floating) return;
+      floating.pixels = floating.pixels.map((value) => value <= 3 ? 3 - value : value);
+      setToolState("select");
+    } else {
+      pushUndo(doc);
+      doc.pixels = doc.pixels.map((value) => value <= 3 ? 3 - value : value);
+    }
+    touch(doc);
+    say(doc.sel ? "Inverted the selection" : "Inverted the picture");
+  }
+
+  /**
    * PNGs opened from disk with a handle (not project pictures) are watched too, so a picture another app saves
    * (Aseprite exporting on every save, say) reloads here: in place when it has no unsaved changes, else the bar asks.
    */
@@ -1926,6 +1945,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
     const found = TOOLS.find(([, , , keys]) => keys.toLowerCase() === `${event.shiftKey ? "shift+" : ""}${key}`);
     if (found) return setTool(found[0]);
+    if (event.shiftKey && key === "i") return invertSelection();
     if (event.shiftKey && key === "m") return setMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length]);
     if (key === "d" && !event.shiftKey) return cyclePattern();
     if (key === "`" || key === "~") {
@@ -1934,7 +1954,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       setShowProject(show); setShowSide(show); store("gbc-side", show);
       return say(show ? "Panels back" : "Panels hidden: ` brings them back");
     }
-    if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
+        if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
     if (key === "f" || (key === "t" && doc?.sel)) return transformSelection(key === "t" ? "turn" : event.shiftKey ? "y" : "x");
     if (key >= "1" && key <= "4") return setShade(Number(key) - 1);
     if (key === "0" && doc?.hasAlpha) return setShade(CLEAR);
@@ -2623,7 +2643,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
-        <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
+        <ToolColumn tool={tool} onTool={setTool} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={pattern} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
           {doc && tool === "collision" && <CollisionStrip collision={doc.collision} isBackground={doc.asset?.kind === "backgrounds"} defs={collisionDefs(doc)} picked={collisionPick} onPick={setCollisionPick} onScene={(index) => { if (doc.collision) { doc.collision.scene = index; setCollisionPick(["solid"]); bump(); } }} />}
@@ -2650,17 +2670,24 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           )}
           {doc ? (
             <div className={`gbp-stage ${tool === "hand" ? "pan" : ""}`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp} onContextMenu={(event) => event.preventDefault()}>
-              <div className="gbp-wrap" ref={wrapRef} style={{ width: doc.width * doc.zoom, height: doc.height * doc.zoom }}>
-                <canvas ref={canvasRef} />
-                {gridLines && <div className="gbp-grid" style={{ backgroundSize: `${gridLines} ${gridLines}` }} />}
-                {budgetView && <canvas ref={usageCanvas} className="gbp-usage" />}
-                {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
-                {(showCollisions || tool === "collision") && doc.collision?.scenes.length ? <canvas ref={collisionCanvas} className="gbp-usage gbp-collisions" /> : null}
-                {atlasPlaying && <canvas ref={atlasAnimCanvas} className="gbp-usage" />}
-                {screens && <div className="gbp-screens" style={{ backgroundSize: `${160 * doc.zoom}px ${144 * doc.zoom}px` }} />}
-                {current && current.tiles.map((tile, index) => <div key={index} className="gbp-frame-slice" style={{ left: tile.sliceX * doc.zoom, top: tile.sliceY * doc.zoom, width: 8 * doc.zoom, height: 16 * doc.zoom }} />)}
-                {doc.sel && <div className={`gbp-selection ${doc.float ? "floating" : ""}`} style={{ left: doc.sel.x * doc.zoom, top: doc.sel.y * doc.zoom, width: doc.sel.w * doc.zoom, height: doc.sel.h * doc.zoom }} />}
-                <div className="gbp-brush-outline" ref={brushRef} />
+              <div className="gbp-grow">
+                <div className="gbp-wrap" ref={wrapRef} style={{ width: doc.width * doc.zoom, height: doc.height * doc.zoom }}>
+                  <canvas ref={canvasRef} />
+                  {gridLines && <div className="gbp-grid" style={{ backgroundSize: `${gridLines} ${gridLines}` }} />}
+                  {budgetView && <canvas ref={usageCanvas} className="gbp-usage" />}
+                  {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
+                  {(showCollisions || tool === "collision") && doc.collision?.scenes.length ? <canvas ref={collisionCanvas} className="gbp-usage gbp-collisions" /> : null}
+                  {atlasPlaying && <canvas ref={atlasAnimCanvas} className="gbp-usage" />}
+                  {screens && <div className="gbp-screens" style={{ backgroundSize: `${160 * doc.zoom}px ${144 * doc.zoom}px` }} />}
+                  {current && current.tiles.map((tile, index) => <div key={index} className="gbp-frame-slice" style={{ left: tile.sliceX * doc.zoom, top: tile.sliceY * doc.zoom, width: 8 * doc.zoom, height: 16 * doc.zoom }} />)}
+                  {doc.sel && <div className={`gbp-selection ${doc.float ? "floating" : ""}`} style={{ left: doc.sel.x * doc.zoom, top: doc.sel.y * doc.zoom, width: doc.sel.w * doc.zoom, height: doc.sel.h * doc.zoom }} />}
+                  <div className="gbp-brush-outline" ref={brushRef} />
+                </div>
+                {/* Grow the canvas a step (the author, 2026-10-13): a frame (16 px) on sprite sheets, a tile (8 px) elsewhere. */}
+                {(() => { const step = doc.asset?.kind === "sprites" ? 16 : CELL, what = doc.asset?.kind === "sprites" ? "16 px (a frame)" : "8 px (a tile)"; return (<>
+                  <span className="gbp-grow-x" onPointerDown={(event) => event.stopPropagation()}><IconButton label={`Add a column: ${what} wider (undo history starts over)`} aria-label="Wider" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false)}><Plus /></IconButton></span>
+                  <span className="gbp-grow-y" onPointerDown={(event) => event.stopPropagation()}><IconButton label={`Add a row: ${what} taller (undo history starts over)`} aria-label="Taller" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false)}><Plus /></IconButton></span>
+                </>); })()}
               </div>
             </div>
           ) : (

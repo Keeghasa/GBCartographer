@@ -291,14 +291,14 @@ export function xpGroundTemplate(): Canvas {
  * not in and out): 2–4 px in, repeating every 8 px (so cells join), the ripple moving 3 px along the shore each frame;
  * corners rounded 3 px in.
  */
-export function xpWaterTemplate(): Canvas {
-  const out = canvas(144, 64, CLEAR);
-  for (let frame = 0; frame < 3; frame += 1) {
-  const shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * 3) * Math.PI / 4)), corner: 3 };
+export function xpWaterTemplate(frames = 3): Canvas {
+  const out = canvas(48 * frames, 64, CLEAR);
+  for (let frame = 0; frame < frames; frame += 1) {
+  const shift = frames === 2 ? 4 : 3, shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * shift) * Math.PI / 4)), corner: 3 };
   const water: Shader = (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
-    const crest = (x - frame * 3 + 16 + (y >= 4 ? 4 : 0)) % 8;
+    const crest = (x - frame * shift + 16 + (y >= 4 ? 4 : 0)) % 8;
     return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
   };
   xpBlock(out, frame * 48, water, shore, 7);

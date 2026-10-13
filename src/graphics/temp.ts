@@ -6,7 +6,7 @@
  * - seamless patterns (32 × 32 stamps): fills that tile in any direction.
  * Each may name the existing library piece it would replace (`before`). They join the catalog only once reviewed.
  */
-import { xpBlock, type Shader } from "./autotiles";
+import { xpBlock, xpWaterTemplate, type Shader } from "./autotiles";
 import { canvas, CLEAR, Pen, type Canvas } from "./pen";
 import { INDOOR, OUTDOOR, type Tile } from "./tiles";
 
@@ -63,6 +63,10 @@ const XP: TempAsset[] = [
     make: () => xpAnim((f) => edged((x, y) => { if (at([[2, 2], [3, 2], [2, 3]], x, y)) return 1; const ripple = (x + f * 2) % 8; return y === 6 && ripple < 3 ? 1 : 2; }, 1)) },
   { id: "xp-stone-floor", name: "Stone floor XP", family: "xp", autotile: "xp", about: "Flagstones in a dungeon: big slabs with dark joints.",
     make: () => xp(edged((x, y) => (y === 7 || (x === 7 && y < 7) || (x === 3 && y === 7)) ? 2 : at([[2, 2], [5, 4]], x, y) ? 2 : 1)) },
+  { id: "xp-water-calm", name: "Calm water XP", family: "xp", autotile: "xp", about: "Water XP's first frame on its own: still water, no animation, a third of the tiles.", before: { name: "Water XP (3 frames)", make: () => xpWaterTemplate() },
+    make: () => { const sheet = xpWaterTemplate(), out = canvas(48, 64, CLEAR); for (let y = 0; y < 64; y += 1) out.pixels.set(sheet.pixels.subarray(y * 144, y * 144 + 48), y * 48); return out; } },
+  { id: "xp-water-2", name: "Water XP (2 frames)", family: "xp", autotile: "xpAnim", about: "Water XP in two frames: the waves and the shore ripple half a step apart, two thirds of the tiles of the 3-frame one.", before: { name: "Water XP (3 frames)", make: () => xpWaterTemplate() },
+    make: () => xpWaterTemplate(2) },
   { id: "xp-wood-floor", name: "Wood floor XP", family: "xp", autotile: "xp", about: "Plank floor with a dark rim, boards end to end.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xp(woodFloor) },
   { id: "xp-wood-floor-square", name: "Wood floor XP (square)", family: "xp", autotile: "xp", about: "The wood floor with square corners, to fill a room edge to edge.", make: () => xpSquare(woodFloor) },
   { id: "xp-carpet", name: "Carpet XP", family: "xp", autotile: "xp", about: "A rug: a light border band inside the outline, a diamond weave in the middle.", make: () => xp(carpet) },

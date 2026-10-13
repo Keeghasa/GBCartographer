@@ -1,5 +1,5 @@
 /** The paint tools: one button per tool, the view and painting toggles, and the brush size for the tool in hand. */
-import { Dna, FlipHorizontal, Grid2x2, Minus, Plus } from "lucide-react";
+import { Contrast, Dna, FlipHorizontal, Grid2x2, Minus, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { PATTERNS, inPattern, type Mirror, type Pattern } from "../paint";
 import { MIRRORS, MIRROR_LABEL, type ToolId } from "./model";
@@ -12,6 +12,8 @@ interface Props {
   seamless: boolean; onSeamless: (on: boolean) => void;
   linked: boolean; onLinked: (on: boolean) => void;
   mirror: Mirror; onMirror: (mirror: Mirror) => void;
+  /** Invert: the selection's (or the picture's) shades turned over, lightest ↔ darkest. */
+  onInvert: () => void;
   pattern: Pattern; onPattern: () => void;
   cellBrush: number; onCellBrush: (size: number) => void;
   brush: number; onBrush: (size: number) => void;
@@ -41,7 +43,7 @@ function PatternSwatch({ pattern, label, shade, shades, onPattern }: { pattern: 
   );
 }
 
-export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
+export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, onInvert, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
   const patternLabel = PATTERNS.find((item) => item.id === pattern)?.label;
   return (
     <aside className="k-panel app-tools gbp-tools" role="toolbar" aria-label="Paint tools">
@@ -50,6 +52,7 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
       <IconButton label="Seamless view: the tile under the pointer (or the selection) repeated 3 × 3" aria-label="Seamless view" pressed={seamless} onClick={() => onSeamless(!seamless)}><Grid2x2 size={17} /></IconButton>
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>
       <IconButton label={`${MIRROR_LABEL[mirror]}: paint both halves at once`} keys="Shift+M" aria-label={MIRROR_LABEL[mirror]} pressed={mirror !== "off"} onClick={() => onMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length])}><FlipHorizontal size={17} /></IconButton>
+      <IconButton label="Invert: the selection's shades turned over (lightest ↔ darkest), or the whole picture's" keys="Shift+I" aria-label="Invert" onClick={onInvert}><Contrast size={17} /></IconButton>
       {(tool === "fill" || tool === "rectFill") && <IconButton label={`Fill pattern: ${patternLabel}`} keys="D" aria-label={`Fill pattern: ${patternLabel}`} pressed={pattern !== "solid"} onClick={onPattern}><PhCheckerboard size={17} /></IconButton>}
       <hr />
       {tool === "palette" || tool === "priority" ? (
