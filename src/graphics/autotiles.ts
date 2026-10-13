@@ -286,18 +286,20 @@ export function xpGroundTemplate(): Canvas {
 
 /**
  * XP water (144 × 64): three frames of the block side by side, a dark outline with foam inside, crests drifting. The
- * shore stops short of the cell's edge (the author, 2026-10-12: the silhouette of an XP water sheet they like): 3 px
- * in, stepping out to 4 px for every other 4 px along the side (so neighbouring cells meet it), corners rounded.
+ * shore stops short of the cell's edge, its four borders straight (the author's edit, 2026-10-12) and the corners
+ * rounded: 3 px in on frames 1 and 3, 4 px in on frame 2, so the shore breathes in and out while the waves drift.
  */
 export function xpWaterTemplate(): Canvas {
   const out = canvas(144, 64, CLEAR);
-  const shore: Inset = { at: (n) => ((n + 2) & 4) ? 4 : 3, corner: 3 };
-  for (let frame = 0; frame < 3; frame += 1) xpBlock(out, frame * 48, (depth, x, y) => {
+  for (let frame = 0; frame < 3; frame += 1) {
+  const inset = frame === 1 ? 4 : 3, shore: Inset = { at: () => inset, corner: inset };
+  xpBlock(out, frame * 48, (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
     const crest = (x - frame * 3 + 16 + (y >= 4 ? 4 : 0)) % 8;
     return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
   }, shore, 7);
+  }
   // Where the shore steps in or out, the outline turns the corner too: a water pixel beside see-through (within its
   // own 8 × 8 piece, so pieces never outline each other's edges) is outline.
   const before = out.pixels.slice(), at = (x: number, y: number) => before[y * out.width + x];
