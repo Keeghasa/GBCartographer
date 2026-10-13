@@ -294,12 +294,20 @@ export function xpWaterTemplate(): Canvas {
   const out = canvas(144, 64, CLEAR);
   for (let frame = 0; frame < 3; frame += 1) {
   const shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * 3) * Math.PI / 4)), corner: 3 };
-  xpBlock(out, frame * 48, (depth, x, y) => {
+  const water: Shader = (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
     const crest = (x - frame * 3 + 16 + (y >= 4 ? 4 : 0)) % 8;
     return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
-  }, shore, 7);
+  };
+  xpBlock(out, frame * 48, water, shore, 7);
+  // The lone pond (one cell on its own): a round pool about 6 px across the middle, its rim wobbling a little as the
+  // frames play, like the shore.
+  for (let y = 0; y < 16; y += 1) for (let x = 0; x < 16; x += 1) {
+    const dx = x + 0.5 - 8, dy = y + 0.5 - 8, angle = Math.atan2(dy, dx);
+    const depth = Math.floor(6.2 + 0.45 * Math.sin(angle * 4 + frame * 2.1) - Math.hypot(dx, dy));
+    out.pixels[y * out.width + frame * 48 + x] = depth < 0 ? CLEAR : water(depth, (frame * 48 + x) % 8, y % 8);
+  }
   }
   // Where the shore steps in or out, the outline turns the corner too: a water pixel beside see-through (within its
   // own 8 × 8 piece, so pieces never outline each other's edges) is outline.
