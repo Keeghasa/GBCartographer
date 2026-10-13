@@ -61,7 +61,7 @@ export function NewBackgroundWizard({ projectName, palettes, onClose, onCreate, 
         <div className="k-stack k-stack--tight">
           <span className="k-label">Size</span>
           <Segmented fill size="sm" label="Size" value={size} onChange={setSize} options={SIZES.map(([c, r, label]) => ({ value: `${c}x${r}`, label, title: `${c * 160} × ${r * 144} px` }))} />
-          <span className="k-row"><Chip>{width} × {height} px</Chip><Chip>{(width / 8) * (height / 8)} tiles</Chip></span>
+          <span className="k-row"><Chip>{width} × {height} px</Chip><Chip title="Tile places; GB Studio counts only the different tiles against its limit">{width / 8} × {height / 8} tiles</Chip></span>
         </div>
         <div className="k-stack k-stack--tight">
           <span className="k-label">Palettes</span>

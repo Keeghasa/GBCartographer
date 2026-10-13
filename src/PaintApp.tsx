@@ -2880,7 +2880,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onFixPalette={async (palette) => { if (!await okToWriteProjectJson()) return false; const id = await writeProjectPalette(palette); await loadProject(); setSlotsVersion((value) => value + 1); return Boolean(id); }}
           onRemovePalette={removeProjectPalette}
           onOpen={(kind, file) => void openByFile(kind, file)}
-          onFixTiles={(kind, file) => void openByFile(kind, file).then((opened) => { if (opened) setWizard("budget"); })} />
+          onFixTiles={(kind, file, colorOnly) => void openByFile(kind, file).then((opened) => { if (opened) { setBudgetId(colorOnly ? "colorOnly" : "monochrome"); setWizard("budget"); } })} />
       )}
       {showPictureWizard && <PictureWizard projectName={project?.name ?? null} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} />}
       {showHealth && project && <HealthWindow projectName={project.name} onClose={() => setShowHealth(false)} onOpen={(kind, file) => { if ((kind as string) === "palettes") { setPaletteFocus(file); setShowPalettes(true); return; } const asset = project.assets.find((item) => item.kind === kind && item.file === file); if (asset) { setProjectKind(kind); void openAsset(asset); } }} />}

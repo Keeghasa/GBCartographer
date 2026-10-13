@@ -52,7 +52,7 @@ function frame(source: ImageBitmap, width: number, height: number, framing: Fram
   return context.getImageData(0, 0, width, height).data;
 }
 
-function Picture({ rgba, width, height, label, source, extra }: { rgba: Uint8ClampedArray | null; width: number; height: number; label: ReactNode; source?: boolean; extra?: ReactNode }) {
+function Picture({ rgba, width, height, label, extra }: { rgba: Uint8ClampedArray | null; width: number; height: number; label: ReactNode; extra?: ReactNode }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const target = canvas.current;
@@ -60,7 +60,27 @@ function Picture({ rgba, width, height, label, source, extra }: { rgba: Uint8Cla
     if (target.width !== width || target.height !== height) Object.assign(target, { width, height });
     target.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
   }, [rgba, width, height]);
-  return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className={`pw-frame${source ? " pw-frame--source" : ""}`}><canvas ref={canvas} width={width} height={height} />{extra}</div></figure>;
+  return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className="pw-frame"><canvas ref={canvas} width={width} height={height} />{extra}</div></figure>;
+}
+
+/** The whole source picture, the part the frame takes boxed on it (Fill crops; Fit inside takes it all). */
+function SourceView({ source, width, height, framing, pan }: { source: Source; width: number; height: number; framing: Framing; pan: { x: number; y: number } }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const target = canvas.current;
+    if (!target) return;
+    Object.assign(target, { width: source.image.width, height: source.image.height });
+    target.getContext("2d")!.drawImage(source.image, 0, 0);
+  }, [source]);
+  const sw = source.image.width, sh = source.image.height;
+  const scale = Math.max(width / sw, height / sh), w = width / scale / sw, h = height / scale / sh;
+  const box = framing === "cover" ? { left: (1 - w) * pan.x, top: (1 - h) * pan.y, width: w * 100, height: h * 100 } : null;
+  return (
+    <figure className="pw-pic"><figcaption className="k-eyebrow">Your picture · {source.name}</figcaption>
+      <div className="pw-frame pw-frame--source"><span className="pw-src"><canvas ref={canvas} />
+        {box && <i className="pw-crop" style={{ left: `${box.left}%`, top: `${box.top}%`, width: `${box.width}%`, height: `${box.height}%` }} />}</span></div>
+    </figure>
+  );
 }
 
 export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [] }: Props) {
@@ -131,8 +151,8 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
               <span className="k-muted k-xs">It is framed to whole screens, fitted to 8 palettes of 4 colors a tile, and kept under the tile budget.</span>
             </div>
           ) : (<>
-            <Picture rgba={after ?? framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined} />
-            <div style={{ width: "46%" }}><Picture rgba={framed} width={width} height={height} label={<>Your picture · {source.name}</>} source /></div>
+            <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined} />
+            <div style={{ width: "46%" }}><SourceView source={source} width={width} height={height} framing={framing} pan={pan} /></div>
           </>)}
         </div>
         <div className="pw-controls">
@@ -149,7 +169,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {result && <>
             <Meter label="Tiles" value={result.tiles} of={result.limit} tone={tone} title={result.merged ? `${result.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
-            <p className="pw-report">{result.merged ? `${result.tilesBefore} → ${result.tiles} tiles after merging ${result.merged} near ones. ` : ""}{result.report.after} palette{result.report.after === 1 ? "" : "s"} · {result.report.overfull.length} tile{result.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{result.tiles > result.limit ? ` Still ${result.tiles - result.limit} over GB Studio's ${result.limit}: keep fewer colors, or turn on dithering off.` : ""}</p>
+            <p className="pw-report">{result.merged ? `${result.tilesBefore} → ${result.tiles} tiles after merging ${result.merged} near ones. ` : ""}{result.report.after} palette{result.report.after === 1 ? "" : "s"} · {result.report.overfull.length} tile{result.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{result.tiles > result.limit ? ` Still ${result.tiles - result.limit} over GB Studio's ${result.limit}: keep fewer colors, or turn dithering off.` : ""}</p>
             <div className="pw-palettes" aria-label="Palettes">{result.palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>
           </>}
         </div>

@@ -229,7 +229,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
                   <div className="psw-swatches" role="group" aria-label={`Palette ${index + 1}`}>
                     {colors.map((color, at) => <button key={at} type="button" className="psw-swatch" style={{ background: color }} aria-pressed={picked?.[0] === index && picked[1] === at} aria-label={`Color ${at + 1}: ${color}`} title={`Color ${at + 1}: ${color}`} onClick={() => pick(index, at)} />)}
                   </div>
-                  {close.length > 0 && <Chip tone="warn" title={close.map(({ a, b }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart`).join("; ")}><TriangleAlert size={11} />close</Chip>}
+                  {close.length > 0 && <Chip tone="warn" title={close.map(({ a, b }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart`).join("; ")}><TriangleAlert size={11} />too alike</Chip>}
                   <IconButton size="sm" variant="ghost" label={sorted ? "Already lightest first" : "Sort lightest first"} disabled={sorted} onClick={() => edit(palettes.map((each, at) => at === index ? lightestFirst(each) : each))}><ArrowDownWideNarrow /></IconButton>
                 </div>
               );
@@ -241,7 +241,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
       {step === 2 && (
         <div className="k-stack">
           <div className="psw-base">
-            <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last}, unless you name one below`}>
+            <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last} where a name below is left empty`}>
               <input className="k-input" value={base} onChange={(event) => { setBase(event.target.value); setDone({}); }} />
             </Field>
           </div>

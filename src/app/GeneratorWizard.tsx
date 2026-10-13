@@ -110,7 +110,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} wide tall
       title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />}
-      sub={mode === "cave" ? "A cave or dungeon in placeholder art, sized in screens" : "An RPG-style overworld in placeholder art: water, forest, mountains, towns"}
+      sub={mode === "cave" ? "A cave or dungeon in the catalog's art, sized in screens" : "An RPG-style overworld in the catalog's art: water, forest, mountains, towns"}
       footer={<>
         <span className="k-spacer" />
         <Button onClick={() => { onOpen(picture, name.trim() || "Map"); onClose(); }} disabled={busy}>Open as picture</Button>
@@ -129,12 +129,12 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
           {mode === "cave" && <div className="k-stack k-stack--tight" title="Draw the cave with one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
-            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)} options={stampOptions(["wallface", "wang", "edges"], "Placeholder art")} />
+            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)} options={stampOptions(["wallface", "wang", "edges"], "Catalog art")} />
             <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Asset Catalog → Auto-tiles) can draw it"}</span>
           </div>}
           {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
-            <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Placeholder shores")} />
-            <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Placeholder roads")} />
+            <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Catalog shores")} />
+            <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Catalog roads")} />
             <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your C stamp for shores, your P stamp for roads" : "Stamps marked C or P (Asset Catalog → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
           {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
@@ -177,7 +177,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <Chip>{picture.width} × {picture.height} px</Chip>
             <Chip>{columns} × {rows} screens</Chip>
             <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} unique tiles</Chip>
-            <span className="k-muted k-xs">Placeholder art: paint over it. Cyan lines are screen edges.</span>
+            <span className="k-muted k-xs">The catalog's art: paint over it as you like. Cyan lines are screen edges.</span>
           </span>
         </div>
       </div>

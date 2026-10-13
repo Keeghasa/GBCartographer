@@ -20,8 +20,8 @@ export interface CheckupWizardProps {
   onRemovePalette: (id: string, name: string) => Promise<boolean>;
   /** Opens a picture (kind + file) in the painter. */
   onOpen: (kind: string, file: string) => void;
-  /** Opens the tile budget fixer on that picture (after opening it). */
-  onFixTiles: (kind: string, file: string) => void;
+  /** Opens the tile budget fixer on that picture (after opening it), at the project's limit (Color only: 384, flips merge). */
+  onFixTiles: (kind: string, file: string, colorOnly: boolean) => void;
 }
 
 type ProjectPalette = { id: string; name: string; colors: string[] };
@@ -159,7 +159,7 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
 
   const openPicture = (fix: boolean) => {
     if (!issue?.file) return;
-    if (fix) onFixTiles(issue.kind, issue.file); else onOpen(issue.kind, issue.file);
+    if (fix) onFixTiles(issue.kind, issue.file, report?.colorMode === "color"); else onOpen(issue.kind, issue.file);
     onClose();
   };
 
