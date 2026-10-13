@@ -182,3 +182,10 @@
 .app-collision-icon { width: 16px; height: 16px; image-rendering: pixelated; background: rgba(0, 0, 0, .35); border-radius: 3px; }
 /* The rule above the stamps' four shelves on the rail. */
 .app-rail-rule { width: 70%; margin: 4px 0; border: 0; border-top: 1px solid var(--k-edge-2); }
+/* A sprite palette's first color: see-through in GB Studio, so its chip and its color well are crossed out. */
+.app-color { position: relative; display: block; }
+.app-ignored { position: relative; }
+.app-ignored::after { content: ""; position: absolute; inset: 0; pointer-events: none; background:
+  linear-gradient(to top right, transparent calc(50% - 1px), #e0605a calc(50% - 1px), #e0605a calc(50% + 1px), transparent calc(50% + 1px)),
+  linear-gradient(to bottom right, transparent calc(50% - 1px), #e0605a calc(50% - 1px), #e0605a calc(50% + 1px), transparent calc(50% + 1px)); }
+.app-color.app-ignored::after { inset: 4px; border-radius: 4px; }

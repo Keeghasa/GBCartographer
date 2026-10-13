@@ -73,7 +73,9 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     if (fresh.length) say(`Colors ${fresh[0].a + 1} and ${fresh[0].b + 1} of ${picked?.name ?? "this palette"} are too alike to tell apart on a screen now: make one lighter or darker.`);
   };
 
-  const Chips = ({ colors }: { colors: readonly string[] }) => <span className="app-chips">{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>;
+  // On a sprite sheet a palette's first color is see-through (GB Studio ignores it): its chip is crossed out.
+  const IGNORED = "See-through on sprites: GB Studio doesn't draw a sprite palette's first color";
+  const Chips = ({ colors }: { colors: readonly string[] }) => <span className="app-chips">{colors.map((color, at) => <i key={at} className={sprite && at === 0 ? "app-ignored" : undefined} title={sprite && at === 0 ? IGNORED : undefined} style={{ background: color }} />)}</span>;
   return (
     <>
       {sceneSlots.length > 0 && (
@@ -112,7 +114,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
           <hr className="k-divider" />
           <div className="app-section-head"><span className="k-eyebrow">{picked.name} · in this picture</span>{close.length > 0 && <Chip tone="warn" title={close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart (difference ${delta}; aim for 12 or more)`).join("\n")}>low contrast</Chip>}</div>
           <div className="app-colors">
-            {picked.colors.map((color, index) => <input key={index} type="color" aria-label={`${picked.name} color ${index + 1}`} title={`Color ${index + 1}: ${color}`} value={color} onChange={(event) => recolor(picked.colors.map((old, at) => at === index ? event.target.value : old))} />)}
+            {picked.colors.map((color, index) => <span key={index} className={sprite && index === 0 ? "app-color app-ignored" : "app-color"}><input type="color" aria-label={`${picked.name} color ${index + 1}${sprite && index === 0 ? " (see-through on sprites)" : ""}`} title={sprite && index === 0 ? `Color 1: ${color}. ${IGNORED}.` : `Color ${index + 1}: ${color}`} value={color} onChange={(event) => recolor(picked.colors.map((old, at) => at === index ? event.target.value : old))} /></span>)}
           </div>
           <div className="app-actions">
             {picked.id && onSaveToProject && <Button size="sm" variant="primary" disabled={unchanged} title={`Rewrite ${picked.name} in the GB Studio project with these colors (Save does this too)`} onClick={onSaveToProject}>Save to project</Button>}
