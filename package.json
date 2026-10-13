@@ -15,6 +15,7 @@
     "build-app-icon": "vite-node scripts/build-app-icon.ts --",
     "install-mac-app": "scripts/mac/install-app.sh",
     "install-shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/install-shortcut.ps1",
+    "catalog-project": "vite-node scripts/catalog-project.ts",
     "screenshot": "node scripts/screenshot.mjs http://127.0.0.1:5173/ docs/screenshot.png scripts/screenshot-demo.js",
     "dist": "npm run desktop:build && electron-builder --publish never",
     "dist:mac": "npm run desktop:build && electron-builder --mac --publish never",

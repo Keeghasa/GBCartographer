@@ -12,5 +12,6 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["vite.config.ts", "server", "electron", "scripts"]
+  "include": ["vite.config.ts", "server", "electron", "scripts"],
+  "exclude": ["scripts/catalog-project.ts"]
 }
