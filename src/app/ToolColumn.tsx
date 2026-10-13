@@ -1,5 +1,5 @@
 /** The paint tools: one button per tool, the view and painting toggles, and the brush size for the tool in hand. */
-import { Dna, FlipHorizontal, Grid2x2, Layers, Minus, Plus } from "lucide-react";
+import { Dna, FlipHorizontal, Grid2x2, Minus, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { PATTERNS, inPattern, type Mirror, type Pattern } from "../paint";
 import { MIRRORS, MIRROR_LABEL, type ToolId } from "./model";
@@ -10,8 +10,6 @@ import { PhCheckerboard } from "../ui/setIcons";
 interface Props {
   tool: ToolId; onTool: (tool: ToolId) => void;
   seamless: boolean; onSeamless: (on: boolean) => void;
-  /** The draft layer: on while the open picture has one. */
-  draft: boolean; onDraft: () => void;
   linked: boolean; onLinked: (on: boolean) => void;
   mirror: Mirror; onMirror: (mirror: Mirror) => void;
   pattern: Pattern; onPattern: () => void;
@@ -43,13 +41,12 @@ function PatternSwatch({ pattern, label, shade, shades, onPattern }: { pattern: 
   );
 }
 
-export function ToolColumn({ tool, onTool, draft, onDraft, seamless, onSeamless, linked, onLinked, mirror, onMirror, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
+export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
   const patternLabel = PATTERNS.find((item) => item.id === pattern)?.label;
   return (
     <aside className="k-panel app-tools gbp-tools" role="toolbar" aria-label="Paint tools">
       {TOOLS.map(([id, label, Icon, keys]) => <IconButton key={id} label={label} keys={keys} pressed={tool === id} onClick={() => onTool(id)}><Icon size={17} /></IconButton>)}
       <hr />
-      <IconButton label="Draft layer: paint over the picture, then Commit it or Wipe it (the strip above the picture)" keys="Shift+D" aria-label="Draft layer" pressed={draft} onClick={onDraft}><Layers size={17} /></IconButton>
       <IconButton label="Seamless view: the tile under the pointer (or the selection) repeated 3 × 3" aria-label="Seamless view" pressed={seamless} onClick={() => onSeamless(!seamless)}><Grid2x2 size={17} /></IconButton>
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>
       <IconButton label={`${MIRROR_LABEL[mirror]}: paint both halves at once`} keys="Shift+M" aria-label={MIRROR_LABEL[mirror]} pressed={mirror !== "off"} onClick={() => onMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length])}><FlipHorizontal size={17} /></IconButton>

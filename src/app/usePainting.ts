@@ -78,16 +78,8 @@ export function usePainting(app: Painting) {
 
   const inside = (target: Doc, { x, y }: Point) => x >= 0 && y >= 0 && x < target.width && y < target.height;
 
-  /** The draft layer: notes the pixels a brush mark covers (even ones already in that shade). */
-  function touchDot(target: Doc, x: number, y: number) {
-    const draft = target.draft;
-    if (!draft || draft.pixels.length !== target.pixels.length) return;
-    draft.touched ??= new Uint8Array(target.pixels.length);
-    dot(draft.touched, target.width, target.height, x, y, brush, 1);
-  }
-
   function mark(target: Doc, { x, y }: Point, value: number) {
-    for (const [mx, my] of mirrorPoints(x, y, target.width, target.height, mirror)) { dot(target.pixels, target.width, target.height, mx, my, brush, value); touchDot(target, mx, my); }
+    for (const [mx, my] of mirrorPoints(x, y, target.width, target.height, mirror)) dot(target.pixels, target.width, target.height, mx, my, brush, value);
   }
 
   /**
@@ -420,13 +412,12 @@ export function usePainting(app: Painting) {
 
   function drawShape(target: Doc, a: Point, b: Point, value: number) {
     if (tool === "rectFill") {
-      if (target.draft && target.draft.pixels.length === target.pixels.length) fillRect(target.draft.touched ??= new Uint8Array(target.pixels.length), target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), 1, pattern);
       return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, pattern);
     }
     const points = tool === "line" ? linePoints(a.x, a.y, b.x, b.y)
       : tool === "ellipse" ? ellipsePoints(a.x, a.y, b.x, b.y)
       : [...linePoints(a.x, a.y, b.x, a.y), ...linePoints(b.x, a.y, b.x, b.y), ...linePoints(b.x, b.y, a.x, b.y), ...linePoints(a.x, b.y, a.x, a.y)];
-    for (const [x, y] of points) { dot(target.pixels, target.width, target.height, x, y, brush, value); touchDot(target, x, y); }
+    for (const [x, y] of points) dot(target.pixels, target.width, target.height, x, y, brush, value);
   }
 
   function pickShade(target: Doc, point: Point) {
