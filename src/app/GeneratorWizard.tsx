@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
 import { Button, Chip, Dialog, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
-import { CAVE_DEFAULTS, WORLD_DEFAULTS, drawCave, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
+import { CAVE_DEFAULTS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, wallsOf, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
 import { defaultName, isSuggestedName, type NameKind } from "./names";
@@ -128,8 +128,9 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
               options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
-          {mode === "cave" && <div className="k-stack k-stack--tight" title="Draw the cave with one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
-            <Select label="Tiles" value={tilesFile || "placeholder"} onChange={(file) => setTilesFile(file === "placeholder" ? "" : file)} options={stampOptions(["wallface", "wang", "edges"], "Catalog art")} />
+          {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff XP for caves, Stone wall for dungeons) or one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
+            <Select label="Walls" value={tilesFile || `cat:${wallsOf(cave)}`} onChange={(file) => { if (file.startsWith("cat:")) { setTilesFile(""); setC({ walls: file.slice(4) as CaveWalls }); } else setTilesFile(file); }}
+              options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["wallface", "wang", "edges"], "").slice(1)]} />
             <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Asset Catalog → Auto-tiles) can draw it"}</span>
           </div>}
           {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
@@ -137,7 +138,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Catalog roads")} />
             <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your C stamp for shores, your P stamp for roads" : "Stamps marked C or P (Asset Catalog → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
-          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
+          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style, walls: undefined }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
           <Setting label="Screens tall" value={rows} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ rows: value }) : setW({ rows: value })} />
           {mode === "cave" && <>

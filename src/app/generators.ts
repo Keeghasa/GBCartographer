@@ -7,7 +7,7 @@
 
 import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, wangSlot } from "./autotile";
 import { Pen } from "../graphics/pen";
-import { paintCliffs, paintForest, paintXp, sheet } from "../graphics/areas";
+import { paintCliffs, paintForest, paintSliced, paintXp, sheet } from "../graphics/areas";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 
 export { OVERWORLD_PALETTES } from "./mapThemes";
@@ -58,7 +58,20 @@ export interface CaveSettings {
   stairs: boolean;
   /** The palette it wears: a CAVE_THEMES id ("" or unknown: the GB greens). */
   theme?: string;
+  /** The catalog's walls (16 px cells and up; unset: cliff32 for a cave, stone for a dungeon). */
+  walls?: CaveWalls;
 }
+
+/**
+ * The catalog walls a cave or dungeon can wear (the author, 2026-10-13): caves the Cliff XP ridges with a face two
+ * cells (32 px) tall, dungeons Stone wall 9-sliced; either can take the other, the 16 px cliff or Brick wall XP.
+ */
+export type CaveWalls = "cliff32" | "cliff16" | "stone" | "brick";
+export const CAVE_WALLS: { value: CaveWalls; label: string }[] = [
+  { value: "cliff32", label: "Cliff XP · 32 px walls" }, { value: "cliff16", label: "Cliff XP · 16 px walls" },
+  { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall XP" },
+];
+export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "stone" : "cliff32");
 
 export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 16, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 5, connected: true, stairs: true };
 
@@ -255,7 +268,10 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     const sub = size / 16, cw = w * sub, ch = h * sub, canvasOut = { width: out.width, height: out.height, pixels: out.pixels };
     const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
     out.pixels.fill(3);
-    paintCliffs(canvasOut, (x, y) => !open(x, y), cw, ch);
+    const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
+    if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32");
+    else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
+    else paintSliced(canvasOut, sheet("pat-stone-wall"), rock, cw, ch);
     paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
   } else for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
