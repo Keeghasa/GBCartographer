@@ -238,6 +238,8 @@ export default function PaintApp() {
   const swatchColors = picked ? shown(picked.colors) : tintColors;
   const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id }) => ({ name, colors: [...colors], ...(id ? { id } : {}) }));
   const blank = (target: Doc) => target.hasAlpha ? CLEAR : 0;
+  /** A picture that may take see-through pixels: a loose PNG or a stamp (GB Studio itself only keeps them on sprites and emotes, already see-through). */
+  const canSeeThrough = (target: Doc) => !target.asset || target.asset.kind === "stamps";
   // The collision brush: the picked collision tiles of the scene being edited (GB Studio's value and mask).
   const [collisionPick, setCollisionPick] = useState<string[]>(["solid"]);
   const [showCollisions, setShowCollisions] = useState<boolean>(() => readStored("gbc-collisions", false));
@@ -1994,7 +1996,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
     if (key === "f") return transformSelection(event.shiftKey ? "y" : "x");
     if (key >= "1" && key <= "4") return setShade(Number(key) - 1);
-    if (key === "0" && doc?.hasAlpha) return setShade(CLEAR);
+    if (key === "0" && doc && (doc.hasAlpha || canSeeThrough(doc))) { if (!doc.hasAlpha) { doc.hasAlpha = true; touch(doc); } return setShade(CLEAR); }
     if (key === "[") return tool === "palette" || tool === "priority" ? setCellBrush(Math.max(1, cellBrush - 1)) : setBrush(Math.max(1, brush - 1));
     if (key === "]") return tool === "palette" || tool === "priority" ? setCellBrush(Math.min(3, cellBrush + 1)) : setBrush(Math.min(16, brush + 1));
     if (!doc) return;
@@ -2774,7 +2776,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
               </button>
             ))}
           </div>
-          {doc?.hasAlpha && <Button size="sm" className="app-clear" pressed={shade === CLEAR} title="See-through · 0" onClick={() => setShade(CLEAR)}><Kbd>0</Kbd>Transparent</Button>}
+          {doc && (doc.hasAlpha || canSeeThrough(doc)
+            ? <Button size="sm" className="app-clear" pressed={doc.hasAlpha && shade === CLEAR} title={doc.hasAlpha ? "See-through · 0; the eraser paints it too" : "Lets this picture have see-through pixels (saved as PNG transparency); then the eraser and 0 paint them"}
+                onClick={() => { if (!doc.hasAlpha) { doc.hasAlpha = true; touch(doc); say(`${doc.name} can have see-through pixels now: the eraser makes them`); } setShade(CLEAR); }}><Kbd>0</Kbd>Transparent</Button>
+            : <Button size="sm" className="app-clear" disabled title={`GB Studio has no see-through pixels on ${doc.asset?.kind ?? "this kind of picture"} (only sprites and emotes): the eraser paints the lightest shade here`}><Kbd>0</Kbd>Transparent</Button>)}
           <Tabs.Root value={sideTab} onValueChange={(value) => setSideTab(value as "palettes" | "picture")} style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, flex: 1 }}>
             <TabList label="Inspector" tabs={[{ value: "palettes", label: "Palettes" }, { value: "picture", label: "Picture" }]} />
             <Tabs.Content value="palettes" className="app-side-body">
@@ -2793,7 +2798,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         </aside>}
       </div>
       <footer className="app-status">
-        <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>
+        <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {tool === "eraser" ? (doc.hasAlpha ? "drag to erase to see-through" : canSeeThrough(doc) ? "drag to erase to the lightest shade (Transparent, beside the shades, lets this picture be see-through)" : "drag to erase to the lightest shade (GB Studio has no see-through here)") : hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>
         <span ref={readoutRef} className="gbp-readout" />
         <span className="k-spacer" />
         {timeOfDay.view.to !== "day" && <Button size="sm" title="The picture shows its palettes' time-of-day versions (Picture tab → Time of day); nothing is changed. Click for day." onClick={() => { timeOfDay.setPlaying(false); timeOfDay.go("day"); }}>{TIMES.find((time) => time.key === timeOfDay.view.to)?.name} preview<X /></Button>}
