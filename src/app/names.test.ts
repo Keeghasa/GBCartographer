@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAME_WORDS, defaultName, isSuggestedName, randomName, type NameKind } from "./names";
+import { NAME_WORDS, copyName, defaultName, isSuggestedName, randomName, type NameKind } from "./names";
 
 describe("names", () => {
   it("names a new thing after its kind and the moment, as the author wrote it (Dungeon-20261012249)", () => {
@@ -8,6 +8,14 @@ describe("names", () => {
     expect(defaultName("Cave", [], new Date(2026, 0, 5, 0, 7))).toBe("Cave-202601051207");
     expect(defaultName("Dungeon", ["dungeon-20261012249"], at)).toBe("Dungeon-20261012249-2");
     expect(isSuggestedName("Dungeon", "Dungeon-20261012249")).toBe(true);
+  });
+
+  it("names a copy after the original and the moment, swapping an earlier copy's moment instead of adding one", () => {
+    const at = new Date(2026, 9, 12, 15, 11);
+    expect(copyName("Cave", [], at)).toBe("Cave-20261012311");
+    expect(copyName("Cave-20261012249", [], at)).toBe("Cave-20261012311");
+    expect(copyName("Cave-20261012311-2", ["Cave-20261012311"], at)).toBe("Cave-20261012311-2");
+    expect(copyName("Mound ledge", ["mound ledge-20261012311"], at)).toBe("Mound ledge-20261012311-2");
   });
 
   it("rolls three-word names from the dice, file-safe, never one the project has", () => {

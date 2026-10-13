@@ -27,11 +27,24 @@ function untaken(wanted: string, taken: Iterable<string>, not?: string): string 
   return name;
 }
 
+/** The moment as the author writes it: "20261012249" (12 October 2026, 2:49; 12-hour, no leading zero on the hour). */
+function moment(now: Date): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}${now.getHours() % 12 || 12}${two(now.getMinutes())}`;
+}
+
 /** The default name: the kind and the moment, "Dungeon-20261012249" (12 October 2026, 2:49). */
 export function defaultName(kind: NameKind, taken: Iterable<string> = [], now: Date = new Date()): string {
-  const two = (n: number) => String(n).padStart(2, "0");
-  const hour = now.getHours() % 12 || 12;
-  return untaken(`${kind}-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}${hour}${two(now.getMinutes())}`, taken);
+  return untaken(`${kind}-${moment(now)}`, taken);
+}
+
+/**
+ * A copy's name (Duplicate, the author 2026-10-12): the original's name and the moment, "Cave-20261012311"; a copy of
+ * a copy swaps the old moment for the new one instead of piling them up ("Cave-20261012311-2" → "Cave-20261012315").
+ */
+export function copyName(name: string, taken: Iterable<string> = [], now: Date = new Date()): string {
+  const base = name.replace(/-\d{9,12}(-\d+)?$/, "") || name;
+  return untaken(`${base}-${moment(now)}`, taken);
 }
 
 /** A three-word name from the dice: "Cave-Desert-Dunes-Cove", never one in `taken` nor `not` (the name shown now). */

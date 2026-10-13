@@ -14,6 +14,7 @@ import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
 import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
 import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
+import { copyName } from "./app/names";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
 import { HelpWindow } from "./app/HelpWindow";
@@ -1749,9 +1750,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
 
   /** A copy of a picture beside it ("<name> copy"), as a new PNG; a stamp keeps its tile palettes, tags and auto-tile. */
   async function duplicateAsset(asset: Asset) {
-    const taken = new Set(projectRef.current?.assets.filter((item) => item.kind === asset.kind).map((item) => item.name.toLowerCase()));
-    let name = `${asset.name} copy`, count = 1;
-    while (taken.has(name.toLowerCase())) name = `${asset.name} copy ${++count}`;
+    const name = copyName(asset.file.replace(/\.png$/i, ""), (projectRef.current?.assets ?? []).filter((item) => item.kind === asset.kind).flatMap((item) => [item.name, item.file.replace(/\.png$/i, "")]));
     const blob = await fetch(`${ASSET_URL}?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.blob()).catch(() => null);
     if (!blob) return say(`Could not read ${asset.name}.`);
     const response = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind: asset.kind, name })}`, { method: "POST", body: blob }).catch(() => null);
