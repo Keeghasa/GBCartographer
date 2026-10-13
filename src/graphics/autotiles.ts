@@ -286,13 +286,14 @@ export function xpGroundTemplate(): Canvas {
 
 /**
  * XP water (144 × 64): three frames of the block side by side, a dark outline with foam inside, crests drifting. The
- * shore stops short of the cell's edge, its four borders straight (the author's edit, 2026-10-12) and the corners
- * rounded: 3 px in on frames 1 and 3, 4 px in on frame 2, so the shore breathes in and out while the waves drift.
+ * shore stops short of the cell's edge with a gentle ripple along it (the author, 2026-10-12: wiggling side to side,
+ * not in and out): 2–4 px in, repeating every 8 px (so cells join), the ripple moving 3 px along the shore each frame;
+ * corners rounded 3 px in.
  */
 export function xpWaterTemplate(): Canvas {
   const out = canvas(144, 64, CLEAR);
   for (let frame = 0; frame < 3; frame += 1) {
-  const inset = frame === 1 ? 4 : 3, shore: Inset = { at: () => inset, corner: inset };
+  const shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * 3) * Math.PI / 4)), corner: 3 };
   xpBlock(out, frame * 48, (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
