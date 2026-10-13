@@ -219,12 +219,12 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
   for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
     if (tiles?.kind === "wallface") {
-      // As the Wall face stamp paints (usePainting): floor, the lower and upper wall rows with their ends, nothing.
-      const kind = (kx: number, ky: number) => floor(kx, ky) ? "floor" : floor(kx, ky + 1) ? "lower" : floor(kx, ky + 2) ? "upper" : "none";
+      // As the Wall face stamp paints (usePainting): floor, the face with its ends, nothing.
+      const kind = (kx: number, ky: number) => floor(kx, ky) ? "floor" : floor(kx, ky + 1) ? "face" : "none";
       const here = kind(x, y);
       if (here === "floor" || here === "none") { blit(x, y, here === "floor" ? 0 : 1, 0); continue; }
       const left = kind(x - 1, y) !== here, right = kind(x + 1, y) !== here;
-      blit(x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+      blit(x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, 1);
       continue;
     }
     if (tiles && !floor(x, y)) {

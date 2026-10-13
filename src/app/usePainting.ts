@@ -209,30 +209,30 @@ export function usePainting(app: Painting) {
   }
 
   /**
-   * Wall face: (tx, ty) becomes floor (or, erasing, nothing); then the walls around it follow: the two tiles above a
-   * floor that aren't floor are the lower and upper wall rows (drawn over whatever is there), ends drawn where the row
+   * Wall face: (tx, ty) becomes floor (or, erasing, nothing); then the walls around it follow: the tile above a floor
+   * that isn't floor is the face (row 1 of the sheet; drawn over whatever is there, no top), ends drawn where the row
    * stops; tiles of the sheet that are no longer wall become nothing.
    */
   function paintWallFace(target: Doc, tx: number, ty: number, erase: boolean, inside: (x: number, y: number) => boolean, keyAt: (x: number, y: number) => string) {
-    const keys = sheetKeys(4, 12);
+    const keys = sheetKeys(4, 8);
     const FLOOR = 0;
     const marked = new Map<string, boolean>([[`${tx},${ty}`, !erase]]);
     const floor = (x: number, y: number) => inside(x, y) && (marked.get(`${x},${y}`) ?? keys.get(keyAt(x, y)) === FLOOR);
-    const kind = (x: number, y: number) => floor(x, y) ? "floor" : floor(x, y + 1) ? "lower" : floor(x, y + 2) ? "upper" : "none";
+    const kind = (x: number, y: number) => floor(x, y) ? "floor" : floor(x, y + 1) ? "face" : "none";
     putSheetTile(target, tx, ty, erase ? 1 : 0, 0);
-    for (let y = ty - 2; y <= ty + 1; y += 1) for (let x = tx - 2; x <= tx + 2; x += 1) {
+    for (let y = ty - 1; y <= ty + 1; y += 1) for (let x = tx - 2; x <= tx + 2; x += 1) {
       if (!inside(x, y) || (x === tx && y === ty)) continue;
       const here = kind(x, y), ours = keys.has(keyAt(x, y));
       if (here === "floor") continue;
       // Walls grow over whatever is above a floor; "nothing" only replaces the sheet's own tiles.
       if (here === "none") { if (ours) putSheetTile(target, x, y, 1, 0); continue; }
       const left = kind(x - 1, y) !== here, right = kind(x + 1, y) !== here;
-      putSheetTile(target, x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+      putSheetTile(target, x, y, left && right ? 3 : right ? 2 : left ? 1 : 0, 1);
     }
     // The tile just painted may itself sit in a wall's place when erased.
     if (erase && kind(tx, ty) !== "none") {
       const here = kind(tx, ty), left = kind(tx - 1, ty) !== here, right = kind(tx + 1, ty) !== here;
-      putSheetTile(target, tx, ty, left && right ? 3 : right ? 2 : left ? 1 : 0, here === "upper" ? 1 : 2);
+      putSheetTile(target, tx, ty, left && right ? 3 : right ? 2 : left ? 1 : 0, 1);
     }
   }
 

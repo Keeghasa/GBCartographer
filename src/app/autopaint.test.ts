@@ -1,9 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { forestLayout, moundLayout, rpgCell, type Piece } from "./autopaint";
+import { forestLayout, moundLayout, rpgCell, xpCell, xpCliffCell, type Piece } from "./autopaint";
 import { maskAt } from "./autotile";
-import { atlasWaterTemplate } from "../graphics/autotiles";
+import { atlasWaterTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "../graphics/autotiles";
 import { pieces } from "../graphics/pieces";
 import type { Canvas } from "../graphics/pen";
 import { encodePng } from "../gb/png";
@@ -85,6 +85,16 @@ describe("area auto-tiles, painted offline", () => {
       save(name, art);
       expect(strayOutlines(art, 16, filled), name).toBe(0);
     }
+  });
+
+  it("draws the XP ground and water with no lines inside, and the XP cliff", () => {
+    for (const [sheetName, sheet] of [["ground", xpGroundTemplate()], ["water", xpWaterTemplate()]] as const) for (const [name, { w, h, filled }] of [["L", L], ["blob", blob]] as const) {
+      const art = paint(sheet, w, h, 16, (x, y) => filled(x, y) ? xpCell(maskAt((cx, cy) => cx < 0 || cy < 0 || cx >= w || cy >= h ? false : filled(cx, cy), x, y)) : [null, null, null, null]);
+      save(`xp-${sheetName}-${name}`, art);
+      expect(strayOutlines(art, 16, filled), `${sheetName} ${name}`).toBe(0);
+    }
+    const hills = shape(["...........", "...##..###.", ".#####.###.", ".#####.###.", ".##.##..##.", "......#....", "..........."]);
+    save("xp-cliff", paint(xpCliffTemplate(), hills.w, hills.h, 16, (x, y) => xpCliffCell(hills.filled, x, y)));
   });
 
   it("draws the mound with no lines inside the plateau, a face under it and rock beside it", () => {

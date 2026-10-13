@@ -109,20 +109,20 @@ export function cornerTemplate(): Canvas {
   }, 0);
 }
 
-/** Wall face: floor, nothing; the upper and lower wall rows as middle, left end, right end, both ends. */
+/** Wall face: floor, nothing; then the wall's face, one tile tall, as middle, left end, right end, both ends (no top). */
 export function wallFaceTemplate(): Canvas {
-  const out = canvas(32, 24, 3), p = new Pen(out);
+  const out = canvas(32, 16, 3), p = new Pen(out);
   const floor = p.at(0, 0, 8); floor.fill(1); floor.dot(2, 5, 0); floor.dot(6, 2, 0);
   p.at(8, 0, 8).fill(3);
   // The two spare slots: a cross, so they never pass for nothing.
   for (const x of [16, 24]) { const t = p.at(x, 0, 8); t.fill(3); t.line(1, 1, 6, 6, 1); t.line(6, 1, 1, 6, 1); }
-  [1, 2].forEach((row) => [0, 1, 2, 3].forEach((end) => {
-    const t = p.at(end * 8, row * 8, 8);
+  [0, 1, 2, 3].forEach((end) => {
+    const t = p.at(end * 8, 8, 8);
     t.fill(2);
-    t.rect(0, row === 1 ? 0 : 7, 8, 1, 0);
+    t.rect(0, 7, 8, 1, 0); t.rect(1, 3, 6, 1, 1);
     if (end === 1 || end === 3) t.rect(0, 0, 1, 8, 0);
     if (end === 2 || end === 3) t.rect(7, 0, 1, 8, 0);
-  }));
+  });
   return out;
 }
 
@@ -228,3 +228,94 @@ export function atlasWaterTemplate(): Canvas {
   return out;
 }
 
+
+// ---- XP-layout templates (the author, 2026-10-12: XP style for everything; autopaint.ts xpCell / xpCliffCell) -------
+
+/** What a pixel is: `depth` pixels in from the nearest open edge (0 the outline), or null beyond a rounded corner. */
+type Shader = (depth: number, x: number, y: number) => number;
+
+/**
+ * A region of `w` × `h` at (x0, y0) whose open sides (n, e, s, w) are outlined, the corners between two open sides
+ * rounded with radius `r`; `notch` corners (0 TL, 1 TR, 2 BL, 3 BR) get an inner corner instead (the two edges of the
+ * neighbours meeting there). Textures use x and y modulo 8, so minitiles from anywhere in a sheet join seamlessly.
+ */
+function xpRegion(out: Canvas, x0: number, y0: number, w: number, h: number, open: { n?: boolean; e?: boolean; s?: boolean; w?: boolean }, shade: Shader, r = 6, notch: number[] = []) {
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    let depth = 99;
+    if (open.n) depth = Math.min(depth, y);
+    if (open.s) depth = Math.min(depth, h - 1 - y);
+    if (open.w) depth = Math.min(depth, x);
+    if (open.e) depth = Math.min(depth, w - 1 - x);
+    // Rounded outer corners: inside the r × r corner box, depth is measured from the arc.
+    const cx = x < r ? r - (x + 0.5) : x >= w - r ? x + 0.5 - (w - r) : 0, cy = y < r ? r - (y + 0.5) : y >= h - r ? y + 0.5 - (h - r) : 0;
+    const roundX = (x < r && open.w) || (x >= w - r && open.e), roundY = (y < r && open.n) || (y >= h - r && open.s);
+    if (roundX && roundY && cx > 0 && cy > 0) {
+      const d = r - Math.hypot(cx, cy);
+      if (d < 0) { out.pixels[(y0 + y) * out.width + x0 + x] = CLEAR; continue; }
+      depth = Math.min(depth, Math.floor(d));
+    }
+    for (const corner of notch) {
+      const nx = corner % 2 ? w - 1 - x : x, ny = corner >= 2 ? h - 1 - y : y;
+      depth = Math.min(depth, Math.round(Math.hypot(nx + 0.5, ny + 0.5) - 0.707));
+    }
+    out.pixels[(y0 + y) * out.width + x0 + x] = shade(depth, (x0 + x) % 8, (y0 + y) % 8);
+  }
+}
+
+/** An XP block (48 × 64) at x0: the lone tile, a plain sample, the inner corners, then the 3 × 3-tile block. */
+function xpBlock(out: Canvas, x0: number, shade: Shader) {
+  const all = { n: true, e: true, s: true, w: true };
+  xpRegion(out, x0, 0, 16, 16, all, shade);
+  xpRegion(out, x0 + 16, 0, 16, 16, {}, shade);
+  xpRegion(out, x0 + 32, 0, 16, 16, {}, shade, 6, [0, 1, 2, 3]);
+  xpRegion(out, x0, 16, 48, 48, all, shade);
+}
+
+/** XP ground (48 × 64): a dirt patch, outlined dark with a mid band inside, specks on the fill. */
+export function xpGroundTemplate(): Canvas {
+  const out = canvas(48, 64, CLEAR);
+  xpBlock(out, 0, (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 2 : (x === 2 && y === 2) || (x === 6 && y === 5) ? 2 : (x === 5 && y === 1) ? 0 : 1);
+  return out;
+}
+
+/** XP water (144 × 64): three frames of the block side by side, a dark outline with foam inside, crests drifting. */
+export function xpWaterTemplate(): Canvas {
+  const out = canvas(144, 64, CLEAR);
+  for (let frame = 0; frame < 3; frame += 1) xpBlock(out, frame * 48, (depth, x, y) => {
+    if (depth === 0) return 3;
+    if (depth === 1) return 0;
+    const crest = (x - frame * 3 + 16 + (y >= 4 ? 4 : 0)) % 8;
+    return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
+  });
+  return out;
+}
+
+/**
+ * XP cliff (48 × 80, read by autopaint.ts xpCliffCell): rows 0–3 the grassy plateau (top and sides outlined), rows
+ * 4–5 the rock face (a dark lip, cracks, its ends and rounded foot), (0, 6) / (3, 6) the plateau's top inside corners,
+ * (0, 8) / (3, 8) a side's rounded top beside a face, (4..5, 8..9) a lone mound. Unused minitiles stay see-through.
+ */
+export function xpCliffTemplate(): Canvas {
+  const out = canvas(48, 80, CLEAR);
+  const grass: Shader = (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 2 : (x === 1 && y === 2) || (x === 5 && y === 6) ? 2 : (x === 2 && y === 1) || (x === 6 && y === 5) ? 0 : 1;
+  const rock: Shader = (depth, x, y) => depth === 0 ? 3 : (y % 8 === 0) ? 3 : (x === 3 && y >= 2 && y <= 4) || (x === 4 && y === 5) ? 3 : (x === 6 && y === 3) ? 1 : 2;
+  xpRegion(out, 0, 0, 48, 32, { n: true, e: true, w: true }, grass);
+  xpRegion(out, 0, 32, 48, 16, { e: true, s: true, w: true }, (depth, x, y) => rock(depth, x, y), 4);
+  xpRegion(out, 0, 48, 8, 8, {}, grass, 6, [0]);
+  xpRegion(out, 24, 48, 8, 8, {}, grass, 6, [1]);
+  // A side's rounded top beside a face: the face's rock above the curve, the side's grass below it.
+  // Only the curve toward the face is outlined; the grass above runs on from the plateau.
+  for (const [x0, right] of [[0, false], [24, true]] as const) {
+    xpRegion(out, x0, 64, 8, 8, { [right ? "e" : "w"]: true }, grass);
+    for (let y = 0; y < 6; y += 1) for (let x = 0; x < 6; x += 1) {
+      const px = right ? x0 + 7 - x : x0 + x, d = 6 - Math.hypot(6 - (x + 0.5), 6 - (y + 0.5));
+      if (d < 0) out.pixels[(64 + y) * 48 + px] = rock(99, px % 8, y);
+      else if (d < 1) out.pixels[(64 + y) * 48 + px] = 3;
+      else if (d < 2 && out.pixels[(64 + y) * 48 + px] !== 3) out.pixels[(64 + y) * 48 + px] = 2;
+    }
+  }
+  // The lone mound: a grassy cap over a rock foot.
+  xpRegion(out, 32, 64, 16, 8, { n: true, e: true, w: true }, grass);
+  xpRegion(out, 32, 72, 16, 8, { e: true, s: true, w: true }, rock, 4);
+  return out;
+}

@@ -40,7 +40,7 @@ describe("auto-tiles", () => {
     expect(distinct(made.path, 16, 4)).toBe(16);
     expect(distinct(made.edges, 16, 4)).toBe(16);
     expect(distinct(made.corner, 16, 4)).toBe(16);
-    expect(distinct(made.wallface, 12, 4)).toBe(11);
+    expect(distinct(made.wallface, 8, 4)).toBe(7);
     expect(distinct(shoreTemplate(), 16, 4)).toBe(16);
     expect(distinct(roadTemplate(), 16, 4)).toBe(16);
     // Atlas blocks: no minitile is a plain single shade (painting tells a block's cells by their minitiles), and the
