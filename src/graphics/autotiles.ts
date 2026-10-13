@@ -232,7 +232,7 @@ export function atlasWaterTemplate(): Canvas {
 // ---- XP-layout templates (the author, 2026-10-12: XP style for everything; autopaint.ts xpCell / xpCliffCell) -------
 
 /** What a pixel is: `depth` pixels in from the nearest open edge (0 the outline), or null beyond a rounded corner. */
-type Shader = (depth: number, x: number, y: number) => number;
+export type Shader = (depth: number, x: number, y: number) => number;
 
 /**
  * A region of `w` × `h` at (x0, y0) whose open sides (n, e, s, w) are outlined, the corners between two open sides
@@ -266,10 +266,10 @@ function xpRegion(out: Canvas, x0: number, y0: number, w: number, h: number, ope
 }
 
 /** A shore that stops short of its cell's edge: `at(n)` pixels in at position n along the side, `corner` at corners. */
-interface Inset { at: (n: number) => number; corner: number }
+export interface Inset { at: (n: number) => number; corner: number }
 
 /** An XP block (48 × 64) at x0: the lone tile, a plain sample, the inner corners, then the 3 × 3-tile block. */
-function xpBlock(out: Canvas, x0: number, shade: Shader, inset?: Inset, r = 6) {
+export function xpBlock(out: Canvas, x0: number, shade: Shader, inset?: Inset, r = 6) {
   const all = { n: true, e: true, s: true, w: true };
   xpRegion(out, x0, 0, 16, 16, all, shade, r, [], inset);
   xpRegion(out, x0 + 16, 0, 16, 16, {}, shade, r, [], inset);
