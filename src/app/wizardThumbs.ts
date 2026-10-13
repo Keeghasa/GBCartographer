@@ -6,7 +6,7 @@ import library from "../palettes/library.json";
 import { Pen, canvas } from "../graphics/pen";
 import { drawCave, drawWorld, type Generated } from "./generators";
 
-export type WizardThumb = "picture" | "dns" | "paletteSet" | "newBackground" | "budget" | "cave" | "world" | "map" | "checkup";
+export type WizardThumb = "picture" | "dns" | "paletteSet" | "newBackground" | "budget" | "cave" | "world" | "checkup";
 
 const W = 160, H = 96, TILES_WIDE = W / 8;
 const palette = (name: string) => {
@@ -73,27 +73,26 @@ export function wizardThumb(id: WizardThumb): Generated {
     return out;
   }
   if (id === "budget") {
-    // Tiles, a few near-twins ringed and merged.
+    // GB Studio's tile meter over the limit, three near-twin tiles merged into one, the meter back under.
     const out = blank(["V14-5-Stone"]), p = new Pen(out);
     p.fill(0);
-    for (let ty = 0; ty < 12; ty += 1) for (let tx = 0; tx < 20; tx += 1) {
-      const kind = (tx * 7 + ty * 3) % 5, q = p.at(tx * 8, ty * 8, 8);
-      if (kind === 0) q.rect(1, 1, 6, 6, 1); else if (kind === 1) q.line(0, 7, 7, 0, 2); else if (kind === 2) q.oval(1, 1, 6, 6, null, 2); else if (kind === 3) q.rect(0, 3, 8, 2, 1);
-    }
-    for (const [tx, ty] of [[3, 2], [9, 5], [14, 8], [6, 9]]) p.box(tx * 8 - 1, ty * 8 - 1, 10, 10, 3);
-    p.line(3 * 8 + 9, 2 * 8 + 9, 9 * 8 - 1, 5 * 8 - 1, 3);
+    const brick = (x: number, y: number, chip: number) => {
+      const q = p.at(x, y, 16);
+      q.panel(0, 0, 16, 16, 1, 3); q.rect(0, 7, 16, 2, 3); q.rect(7, 0, 2, 7, 3); q.rect(3, 9, 2, 7, 3); q.rect(11, 9, 2, 7, 3);
+      if (chip >= 0) q.rect(2 + chip * 4, 2, 2, 2, 2);
+    };
+    brick(14, 18, 0); brick(36, 18, 1); brick(58, 18, 2);
+    p.line(82, 26, 100, 26, 3); p.line(96, 22, 100, 26, 3); p.line(96, 30, 100, 26, 3);
+    brick(114, 18, -1);
+    const meter = (y: number, full: number, over: boolean) => {
+      p.panel(14, y, 116, 10, 0, 3); p.rect(16, y + 2, full, 6, over ? 3 : 2); p.rect(110, y - 2, 2, 14, 3);
+    };
+    p.text(14, 46, "412/384", 3); meter(56, 112, true);
+    p.text(14, 72, "380/384", 2); meter(82, 90, false);
     return out;
   }
-  if (id === "cave") return crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 8, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone" }));
+  if (id === "cave") return crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone" }), 1, 24);
   if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: 5, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
-  if (id === "map") {
-    // A grid of screens: a small overworld, the screen edges drawn over it.
-    const out = crop(drawWorld({ columns: 2, rows: 2, seed: 9, water: 30, mountains: 15, forest: 30, towns: 3, scale: 3, island: false, roads: true, theme: "overworld" }), 2, 24);
-    const p = new Pen(out);
-    for (const x of [0, 80, 159]) p.rect(x, 0, 1, H, 3);
-    p.rect(0, 0, W, 1, 3); p.rect(0, 48, W, 1, 3); p.rect(0, 95, W, 1, 3);
-    return out;
-  }
   // checkup: a health report, ticked off one by one.
   const out = blank(["V20-8-UI"]), p = new Pen(out);
   p.fill(0);

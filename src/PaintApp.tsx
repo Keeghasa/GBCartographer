@@ -145,6 +145,8 @@ export default function PaintApp() {
   /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
   const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing these tabs, not the window. */ tabs?: Doc[] } | null>(null);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "newBackground" | "budget" | "checkup" | GeneratorMode | null>(null);
+  /** A wizard waiting for a project picture with palette slots to open (Dawn, sunset and night picked with none open). */
+  const [wizardAfterOpen, setWizardAfterOpen] = useState<"dns" | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
   const [showMapRoom, setShowMapRoom] = useState(false);
@@ -2142,6 +2144,9 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     };
   }, []);
 
+  const sceneOpen = Boolean(doc?.asset?.slots?.length);
+  useEffect(() => { if (wizardAfterOpen && sceneOpen) { setWizard(wizardAfterOpen); setWizardAfterOpen(null); } }, [wizardAfterOpen, sceneOpen]);
+
   // No project and nothing open: the start screen shows on its own, like a splash window (see the render).
   // Like GB Studio, a launch starts on the start screen (pick a project, or open pictures), even when the last session
   // left pictures open (the author, 2026-10-12); a reload with a project open goes straight back to it.
@@ -2613,17 +2618,19 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { label: "Delete…", icon: <Trash2 />, title: "Asks first: the files go to the backups", onSelect: () => void askDelete(assetMenu.asset) },
   ] : [];
   // The wizards (W1…W8, the author's picks 2026-10-10); the text tool (W5) is in the tool column.
-  const noProject = !project, sceneOpen = Boolean(doc?.asset?.slots?.length);
+  const noProject = !project;
   const needProject = noProject ? "Open a GB Studio project first" : null;
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
-    { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", blocked: sceneOpen ? null : "Open a project background or sprite sheet first", onStart: () => setWizard("dns") },
+    { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
+      blocked: sceneOpen || project ? null : "Open a project background or sprite sheet first",
+      needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
+      onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
     { thumb: "paletteSet", name: "A palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
     { thumb: "newBackground", name: "New background", icon: <FilePlus />, about: "A blank background sized in screens, with a palette set in its slots.", blocked: needProject, onStart: () => setWizard("newBackground") },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
-    { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms in placeholder art, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
+    { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms drawn with the catalog’s cliffs and floors, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
     { thumb: "world", name: "Overworld", icon: <Mountain />, about: "An RPG-style overworld: water, forest, mountains, towns and roads, in the palettes you pick.", blocked: null, onStart: () => setWizard("world") },
-    { thumb: "map", name: "New map", icon: <MapIcon />, about: "An adventure-style grid of screens, laid out in the Map Room with a live preview.", blocked: needProject, onStart: () => setShowMapRoom(true) },
     { thumb: "checkup", name: "Project check-up", icon: <PxHeart size={15} />, about: "The health report one issue at a time, each with its fix (old → new shown first).", blocked: needProject, onStart: () => setWizard("checkup") },
   ];
   const lookName = look === "dmg" ? "Game Boy screen" : look === "pocket" ? "Pocket screen" : "GBC screen";

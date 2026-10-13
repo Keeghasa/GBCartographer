@@ -15,6 +15,8 @@ export interface WizardCard {
   about: string;
   /** Why it can't start yet (null: it can). */
   blocked: string | null;
+  /** What starting it will ask for first, shown instead of `about` (it can still start). */
+  needs?: string;
   onStart: () => void;
 }
 
@@ -33,14 +35,14 @@ function Thumb({ id }: { id: WizardThumb }) {
 
 export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose: () => void }) {
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide tall title="Wizards" sub="Step-by-step helpers: pick one to start" icon={<PxRobotHappy size={18} />}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide title="Wizards" sub="Step-by-step helpers: pick one to start" icon={<PxRobotHappy size={18} />}>
       <div className="wg">
         {cards.map((card) => (
-          <button key={card.thumb} type="button" className="k-card wg-card" disabled={Boolean(card.blocked)} title={card.blocked ?? card.about}
+          <button key={card.thumb} type="button" className="k-card wg-card" disabled={Boolean(card.blocked)} title={card.blocked ?? card.needs ?? card.about}
             onClick={() => { onClose(); card.onStart(); }}>
             <Thumb id={card.thumb} />
             <span className="wg-name">{card.icon}{card.name}</span>
-            <span className="k-muted k-xs wg-about">{card.blocked ?? card.about}</span>
+            <span className="k-muted k-xs wg-about">{card.blocked ?? card.needs ?? card.about}</span>
           </button>
         ))}
       </div>
