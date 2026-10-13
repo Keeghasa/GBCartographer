@@ -10,7 +10,13 @@ import { xpCliffTemplate, xpWaterTemplate } from "./autotiles";
 import { CLEAR, type Canvas } from "./pen";
 import { pieces } from "./pieces";
 import { TEMP_ASSETS } from "./temp";
-import { GRAPHICS } from "./library";
+
+/**
+ * The catalog's own version of a sheet by id (the author's hand edits), handed in by library.ts once it is built:
+ * importing the library here would make a loop (the library's tile sheets draw from these painters).
+ */
+let catalogArt: (id: string) => Canvas | null = () => null;
+export function setCatalogArt(lookup: (id: string) => Canvas | null) { catalogArt = lookup; made.clear(); }
 
 type Filled = (x: number, y: number) => boolean;
 
@@ -21,8 +27,7 @@ export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" 
   if (!art) {
     // The catalog's version first (the author's hand edits from the Asset Catalog project), else the code's.
     const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees" } as Record<string, string>)[id] ?? id;
-    const listed = GRAPHICS.find((asset) => asset.id === catalogId);
-    art = listed ? listed.make() : id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : TEMP_ASSETS.find((asset) => asset.id === id)!.make();
+    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
     made.set(id, art);
   }
   return art;

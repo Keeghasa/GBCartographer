@@ -44,11 +44,15 @@ const carpet: Shader = (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 0 : dept
 const tiledFloor: Shader = edged((x, y) => ((x >> 2) + (y >> 2)) % 2 ? 2 : 0, 3);
 /** The old path tile's design (the path tile is now drawn from Dirt XP itself, so this keeps its own copy). */
 const oldPath = (p: Pen) => { p.fill(1); for (const [x, y] of [[3, 4], [10, 2], [12, 11], [5, 12]]) p.rect(x, y, 2, 1, 2); };
+/** The old grass and wood floor tiles' designs (the author preferred them; the tiles now draw from the XP sheets). */
+const oldGrass: Tile = { name: "Grass", draw: (p) => { p.fill(0); for (const [x, y] of [[3, 3], [11, 10]]) { p.dot(x, y + 1, 1); p.dot(x + 1, y, 1); p.dot(x + 2, y + 1, 1); } } };
+const oldWoodFloor: Tile = { name: "Wood floor", draw: (p) => { p.fill(1); for (let y = 3; y < 16; y += 4) p.rect(0, y, 16, 1, 2); for (const [x, y] of [[5, 0], [12, 4], [3, 8], [10, 12]]) p.rect(x, y, 1, 3, 2); } };
 /** Made on first use, so this module can load before the tiles do (tiles.ts draws some tiles from these sheets). */
 const lazyFill = (tile: () => Tile) => { let fill: ((gx: number, gy: number) => number) | null = null; return (gx: number, gy: number) => (fill ??= tileFill(tile()))(gx, gy); };
-const brickFill = lazyFill(() => OUTDOOR.houseWall), plankFill = lazyFill(() => INDOOR.woodFloor), wallpaperFill = lazyFill(() => OUTDOOR.grass);
+const brickFill = lazyFill(() => OUTDOOR.houseWall), plankFill = lazyFill(() => oldWoodFloor), wallpaperFill = lazyFill(() => oldGrass);
 /** The flower bed, inverted (the author's note): a dark bed with light flowers, the outline kept dark. */
-const flowerBed: Shader = (depth, x, y) => { if (depth === 0) return 3; const f = at([[2, 1], [1, 2], [3, 2], [2, 3], [6, 5], [5, 6], [7, 6], [6, 7]], x, y), c = at([[2, 2], [6, 6]], x, y); return 3 - (depth === 1 ? 1 : c ? 3 : f ? 2 : 0); };
+// The author's round-2 note: the bed dark gray (not black), its border black, light flowers with a dark gray heart.
+const flowerBed: Shader = (depth, x, y) => { if (depth <= 1) return 3; const f = at([[2, 1], [1, 2], [3, 2], [2, 3], [6, 5], [5, 6], [7, 6], [6, 7]], x, y), c = at([[2, 2], [6, 6]], x, y); return c ? 1 : f ? 0 : 2; };
 
 const XP: TempAsset[] = [
   { id: "xp-grass", name: "Grass XP", family: "xp", autotile: "xp", about: "A grass patch: tufts on light ground, a soft mid edge.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) },
@@ -60,7 +64,7 @@ const XP: TempAsset[] = [
   { id: "xp-snow", name: "Snow XP", family: "xp", autotile: "xp", about: "Snow banks: white with blue-ish shadow dots, a thick soft edge.",
     make: () => xp((depth, x, y) => depth === 0 ? 2 : depth <= 2 ? 1 : at([[2, 5], [6, 1]], x, y) ? 1 : 0) },
   { id: "xp-ice", name: "Floor tiles XP", family: "xp", autotile: "xp", about: "The ice sheet a shade darker all over, for a floorboard or tiled floor: diagonal glints and fine cracks.",
-    make: () => xp(edged((x, y) => (x + y) % 8 === 0 ? 1 : (x - y + 16) % 8 === 3 && y < 4 ? 3 : 2, 1)) },
+    make: () => xp(edged((x, y) => (x + y) % 8 === 0 ? 1 : (x - y + 16) % 8 === 7 && y >= 4 ? 3 : 2, 1)) },
   { id: "xp-lava", name: "Lava XP", family: "xp", autotile: "xpAnim", about: "Three frames: dark crust edge, bright bubbles that pop and move.",
     make: () => xpAnim((f) => edged((x, y) => { const bx = (2 + f * 2) % 8, by = (5 + f * 3) % 8; return (Math.abs(x - bx) + Math.abs(y - by) <= 1) ? 0 : ((x + y * 3 + f) % 7 === 0 ? 2 : 1); }, 2)) },
   { id: "xp-swamp", name: "Swamp XP", family: "xp", autotile: "xpAnim", about: "Three frames: murky water, lily pads, slow ripples.",
@@ -75,12 +79,12 @@ const XP: TempAsset[] = [
   { id: "xp-wood-floor-square", name: "Wood floor XP (square)", family: "xp", autotile: "xp", about: "The wood floor with square corners, to fill a room edge to edge.", make: () => xpSquare(woodFloor) },
   { id: "xp-carpet", name: "Carpet XP", family: "xp", autotile: "xp", about: "A rug: a light border band inside the outline, a diamond weave in the middle.", make: () => xp(carpet) },
   { id: "xp-carpet-square", name: "Carpet XP (square)", family: "xp", autotile: "xp", about: "The carpet with square corners: wall-to-wall.", make: () => xpSquare(carpet) },
-  { id: "xp-flowers", name: "Flower bed XP", family: "xp", autotile: "xp", about: "Inverted: a dark bed with light flowers, the outline dark.", before: { name: "Flowers tile", make: () => tileNow(OUTDOOR.flowers) }, make: () => xp(flowerBed) },
+  { id: "xp-flowers", name: "Flower bed XP", family: "xp", autotile: "xp", about: "A dark gray bed with light flowers, bordered in black.", before: { name: "Flowers tile", make: () => tileNow(OUTDOOR.flowers) }, make: () => xp(flowerBed) },
   { id: "xp-tile-floor", name: "Tiled floor XP", family: "xp", autotile: "xp", about: "Checkered tiles, a shop or diner floor, with a dark rim.", make: () => xp(tiledFloor) },
   { id: "xp-tile-floor-square", name: "Tiled floor XP (square)", family: "xp", autotile: "xp", about: "The checkered floor with square corners, to fill a room.", make: () => xpSquare(tiledFloor) },
   { id: "xp-brick-square", name: "Brick wall XP (square)", family: "xp", autotile: "xp", about: "The house wall's bricks as an area with a dark rim and square corners.", before: { name: "House wall tile", make: () => tileNow(OUTDOOR.houseWall) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : brickFill(gx, gy)) },
   { id: "xp-planks-square", name: "Wood planks XP (square)", family: "xp", autotile: "xp", about: "The wood floor tile's planks as an area with a dark rim and square corners.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : plankFill(gx, gy)) },
-  { id: "xp-grandmas-wallpaper-square", name: "Grandmas-Wallpaper XP (square)", family: "xp", autotile: "xp", about: "The old grass tile's tufts as a wallpaper area with a dark rim and square corners.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : wallpaperFill(gx, gy)) },
+  { id: "xp-grandmas-wallpaper-square", name: "Grandmas-Wallpaper XP (square)", family: "xp", autotile: "xp", about: "The old grass tile's tufts as a wallpaper area with a dark gray rim and square corners.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 2 : wallpaperFill(gx, gy)) },
 ];
 
 // ---- seamless patterns (32 × 32) ------------------------------------------------------------------------------------
@@ -92,14 +96,14 @@ const PATTERNS: TempAsset[] = [
   { id: "pat-brick", name: "Brick wall", family: "pattern", about: "The house wall tile's bricks (the author preferred them), repeated.", make: () => fromTile(OUTDOOR.houseWall) },
   { id: "pat-stone-wall", name: "Stone wall", family: "pattern", about: "Rough stone blocks of mixed sizes with light tops.",
     make: () => pattern((x, y) => { const row = y >> 3, off = [0, 5, 10, 3][row], w = [16, 8, 16, 8][row], bx = (x + off) % w; return y % 8 === 7 || bx === w - 1 ? 3 : y % 8 === 0 ? 1 : 2; }) },
-  { id: "pat-planks", name: "Wood planks", family: "pattern", about: "The wood floor tile's planks (the author preferred them), repeated.", make: () => fromTile(INDOOR.woodFloor) },
+  { id: "pat-planks", name: "Wood planks", family: "pattern", about: "The wood floor tile's planks (the author preferred them), repeated.", make: () => fromTile(oldWoodFloor) },
   { id: "pat-shingles", name: "Roof shingles", family: "pattern", about: "Overlapping rounded shingles.", before: { name: "Roof tile", make: () => tileNow(OUTDOOR.roof) },
     make: () => pattern((x, y) => { const row = y >> 2, ox = (x + (row % 2) * 2) % 4, oy = y % 4; return oy === 3 ? 3 : ox === 3 && oy > 0 ? 3 : oy === 0 ? 1 : 2; }) },
   { id: "pat-checker", name: "Checker floor", family: "pattern", about: "4 × 4 checks, light and dark.",
     make: () => pattern((x, y) => ((x >> 2) + (y >> 2)) % 2 ? 2 : 0) },
   { id: "pat-diamond", name: "Diamond tiles", family: "pattern", about: "Diamond floor tiles with a grout line.",
     make: () => pattern((x, y) => { const d = Math.abs((x % 8) - 3.5) + Math.abs((y % 8) - 3.5); return d > 3.5 && d < 4.6 ? 3 : d < 1.6 ? 0 : 1; }) },
-  { id: "pat-grandmas-wallpaper", name: "Grandmas-Wallpaper", family: "pattern", about: "The old grass tile's tufts, repeated: a quaint wallpaper.", make: () => fromTile(OUTDOOR.grass) },
+  { id: "pat-grandmas-wallpaper", name: "Grandmas-Wallpaper", family: "pattern", about: "The old grass tile's tufts, repeated: a quaint wallpaper.", make: () => fromTile(oldGrass) },
   { id: "pat-sand", name: "Sand dunes", family: "pattern", about: "Soft ripple lines across pale sand: gentle curves, broken into dashes.", before: { name: "Sand tile", make: () => tileNow(OUTDOOR.sand) },
     make: () => pattern((x, y) => { const line = (y + Math.round(Math.sin(x * Math.PI / 16) * 1.2) + 32) % 8; return line === 0 && (x % 8) < 6 ? 1 : 0; }) },
   { id: "pat-water", name: "Water ripples", family: "pattern", about: "Open water with staggered wave crests.", before: { name: "Water tile", make: () => tileNow(OUTDOOR.water) },
@@ -128,6 +132,10 @@ const PATTERNS: TempAsset[] = [
 export const TEMP_ASSETS: TempAsset[] = [...XP, ...PATTERNS];
 
 /** Approved in the author's swipe review (round 1, 2026-10-13): these are in the catalog; the rest await round 2. */
-export const APPROVED = new Set(["xp-grass", "xp-snow", "xp-lava", "xp-swamp", "xp-stone-floor", "xp-wood-floor", "xp-carpet", "xp-tile-floor",
+export const APPROVED = new Set([
+  // Round 2 (2026-10-13).
+  "xp-dirt", "xp-sand", "xp-ice", "xp-flowers", "xp-wood-floor-square", "xp-carpet-square", "xp-tile-floor-square", "xp-brick-square", "xp-planks-square", "xp-grandmas-wallpaper-square",
+  "pat-brick", "pat-planks", "pat-grandmas-wallpaper", "pat-sand", "xp-water-calm", "xp-water-2",
+  "xp-grass", "xp-snow", "xp-lava", "xp-swamp", "xp-stone-floor", "xp-wood-floor", "xp-carpet", "xp-tile-floor",
   "pat-stone-wall", "pat-shingles", "pat-checker", "pat-diamond", "pat-water", "pat-dirt", "pat-leaves", "pat-chainlink", "pat-stripes", "pat-dots",
   "pat-wallpaper", "pat-crosshatch", "pat-stars", "pat-clouds", "pat-scales"]);

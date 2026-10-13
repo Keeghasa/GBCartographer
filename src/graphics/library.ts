@@ -12,6 +12,7 @@ import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
 import { APPROVED, TEMP_ASSETS } from "./temp";
 import { AUTHORED } from "./authored";
+import { setCatalogArt } from "./areas";
 import { CLEAR, canvas, type Canvas } from "./pen";
 import { acrossTemplate, animTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
 
@@ -97,5 +98,8 @@ const ALL: WireAsset[] = [
 
 /** The catalog: the author's hand-edited versions (from the Asset Catalog project) in place of the code-drawn art. */
 export const GRAPHICS: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => fromAuthored(AUTHORED[asset.id]) } : asset);
+
+// The wizards, the village and the tile sheets draw with the catalog's versions (the author's edits) of the sheets.
+setCatalogArt((id) => GRAPHICS.find((asset) => asset.id === id)?.make() ?? null);
 
 export const GRAPHIC_GROUPS = [...new Set(GRAPHICS.map((asset) => asset.group))];
