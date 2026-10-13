@@ -1820,7 +1820,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const here = projectRef.current?.path;
     for (const item of docs.current.filter((entry) => entry.asset?.kind === asset.kind && entry.asset.file === asset.file && (!entry.asset.project || entry.asset.project === here))) dropDoc(item);
     await loadProject();
-    say(`Deleted ${asset.name}: ${result.files?.length === 1 ? "its file is" : `${result.files?.length ?? 0} files are`} in the backups (Backups… puts ${result.files?.length === 1 ? "it" : "them"} back).`);
+    say(`Deleted ${asset.name}: ${result.files?.length === 1 ? "its file is" : `${result.files?.length ?? 0} files are`} in the backups. Backups… puts ${result.files?.length === 1 ? "it" : "them"} back… up.`);
   }
 
   /** Closes a tab; one with unsaved changes asks first (Unsaved changes: save, discard or cancel). */
