@@ -303,6 +303,9 @@ export function xpCliffTemplate(): Canvas {
   const tile = (column: number, row: number, shade: (x: number, y: number) => number, right = false) => {
     for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) out.pixels[(row * 8 + y) * 48 + column * 8 + x] = shade(right ? 7 - x : x, y);
   };
+  // The plateau top's specks: an all-blank tile never reads as part of the cliff (usePainting sheetKeys), so every
+  // piece of the top carries two, and painted cells are still recognised when their neighbours are redrawn.
+  const speck = (x: number, y: number) => (x === 2 && y === 5) || (x === 5 && y === 2) ? 1 : 0;
   // The band, seen from its open side: x 0 the outer outline, x 7 the inner one. `cut` cuts its top (or bottom) at 45°.
   const band = (cut: "top" | "bottom" | null, beyond = CLEAR) => (x: number, y: number) => {
     const d = cut === "top" ? x + y : cut === "bottom" ? x + 7 - y : 99;
@@ -317,13 +320,13 @@ export function xpCliffTemplate(): Canvas {
     tile(column, 5, band("bottom"), right);
     // Where a band above ends into a wider plateau: its foot cut at 45° from the plateau's top edge (y 0, the outer
     // side) down to the band's inner outline, so the plateau's top outline runs into it.
-    tile(right ? 3 : 0, 6, (x, y) => x === y || (x === 7 && y < 7) ? 3 : x > y ? 2 : 0, right);
+    tile(right ? 3 : 0, 6, (x, y) => x === y || (x === 7 && y < 7) ? 3 : x > y ? 2 : speck(x, y), right);
     // A band's cut top beside a face: the face shows above the cut, its top outline running on to the band.
     tile(right ? 3 : 0, 8, band("top", 1), right);
   }
   for (let column = 1; column <= 4; column += 1) {
-    tile(column, 0, (_x, y) => y === 0 ? 3 : 0);
-    for (const row of [1, 2, 3]) tile(column, row, () => 0);
+    tile(column, 0, (x, y) => y === 0 ? 3 : speck(x, y));
+    for (const row of [1, 2, 3]) tile(column, row, speck);
     tile(column, 4, (_x, y) => y === 0 ? 3 : 1);
     tile(column, 5, (_x, y) => y === 7 ? 3 : 1);
   }

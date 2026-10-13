@@ -97,6 +97,51 @@ describe("area auto-tiles, painted offline", () => {
     save("xp-cliff", paint(xpCliffTemplate(), hills.w, hills.h, 16, (x, y) => xpCliffCell(hills.filled, x, y)));
   });
 
+  it("never uses an all-blank cliff piece (a blank tile doesn't read as cliff, so painted cells would be lost)", () => {
+    const sheet = xpCliffTemplate(), used = new Set<string>();
+    // Every neighbourhood of a cell: its 8 neighbours and the cells below them that decide faces.
+    for (let bits = 0; bits < 1 << 12; bits += 1) {
+      const cells = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1], [-1, 2], [0, 2], [1, 2], [0, 0]];
+      const filled = (x: number, y: number) => x === 0 && y === 0 ? true : cells.slice(0, 11).some(([cx, cy], i) => cx === x && cy === y && Boolean(bits & (1 << i)));
+      for (const piece of xpCliffCell(filled, 0, 0)) if (piece) used.add(piece.join());
+    }
+    for (const key of used) {
+      const [column, row] = key.split(",").map(Number);
+      let ink = 0;
+      for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) { const shade = sheet.pixels[(row * 8 + y) * sheet.width + column * 8 + x]; if (shade !== 0 && shade !== CLEAR) ink += 1; }
+      expect(ink, `piece ${key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("paints the XP cliff cell by cell the way the painter does (cells read back from the picture) as if all at once", () => {
+    const sheet = xpCliffTemplate();
+    const ring = shape(["#####", "#.#.#", "#####"]), w = ring.w, h = ring.h;
+    const art: Canvas = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
+    const tileKey = (pixels: Uint8Array, width: number, x0: number, y0: number) => { let key = ""; for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) key += pixels[(y0 + y) * width + x0 + x]; return key; };
+    const keys = new Set<string>();
+    for (let row = 0; row < 10; row += 1) for (let column = 0; column < 6; column += 1) {
+      const tile = new Uint8Array(64);
+      for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) { const v = sheet.pixels[(row * 8 + y) * 48 + column * 8 + x]; tile[y * 8 + x] = v === CLEAR ? 0 : v; }
+      const key = tileKey(tile, 8, 0, 0);
+      if (/[123]/.test(key)) keys.add(key);
+    }
+    const order: [number, number][] = [];
+    for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) if (ring.filled(x, y)) order.push([x, y]);
+    for (const [cx, cy] of order.reverse()) {
+      const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
+      const filled = (x: number, y: number) => inside(x, y) && ((x === cx && y === cy) || keys.has(tileKey(art.pixels, art.width, x * 16, y * 16)));
+      const cells: [number, number, Piece[]][] = [];
+      for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) if (filled(cx + dx, cy + dy)) cells.push([cx + dx, cy + dy, xpCliffCell(filled, cx + dx, cy + dy)]);
+      for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => {
+        if (!piece) return;
+        for (let py = 0; py < 8; py += 1) for (let px = 0; px < 8; px += 1) { const v = sheet.pixels[(piece[1] * 8 + py) * 48 + piece[0] * 8 + px]; art.pixels[(y * 16 + (quarter >> 1) * 8 + py) * art.width + x * 16 + (quarter % 2) * 8 + px] = v === CLEAR ? 0 : v; }
+      });
+    }
+    const whole = paint(sheet, w, h, 16, (x, y) => xpCliffCell((fx, fy) => fx >= 0 && fy >= 0 && fx < w && fy < h && ring.filled(fx, fy), x, y));
+    save("xp-cliff-ring", art);
+    expect([...art.pixels]).toEqual([...whole.pixels]);
+  });
+
   it("draws the mound with no lines inside the plateau, a face under it and rock beside it", () => {
     const sheet = pieces.moundSheet();
     const tall = shape(["..........", ".###..###.", ".###..###.", ".###.####.", ".###.####.", ".....#..#.", ".........."]);
