@@ -1,6 +1,6 @@
 /**
  * A project picture's unsaved changes as a file in the project (Cartographer/unsaved, server/own.ts; the author's
- * pick, 2026-10-12), so "Save to GB Cartographer only" travels with the project to another computer. The picture's
+ * pick, 2026-10-12), so "Save Draft" travels with the project to another computer. The picture's
  * pixels, tile palettes, priority flags, and collisions, typed arrays as base64. Undo history and which
  * tabs were open stay per computer (the browser's session).
  */

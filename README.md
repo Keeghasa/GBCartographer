@@ -209,7 +209,7 @@ The desktop app keeps its settings (`settings.json`: the open project and recent
 | Linux | `~/.config/GB Cartographer` |
 
 Backups, saved stamps, Map Room layouts, which pictures are hidden and pinned, the Time-of-day palettes switch and
-pictures kept with **Save to GB Cartographer only** are kept in the project itself, in its `Cartographer/` folder,
+pictures kept with **Save Draft** are kept in the project itself, in its `Cartographer/` folder,
 so they travel with it to another computer (open the project there and its unsaved pictures open again). The backups keep the last 10 versions of every file GB Cartographer changed, so
 the folder grows with the pictures you edit (leave it out of a copy if you don't need them). **Show backups folder**
 in the project menu opens them. Backups made before 2026-10-12 lived in the data folder (`backups/<project>-<id>/`,
