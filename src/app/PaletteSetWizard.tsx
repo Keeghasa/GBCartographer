@@ -77,7 +77,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
   const [base, setBase] = useState("");
   const [own, setOwn] = useState<string[]>([]);
   const [picked, setPicked] = useState<[number, number] | null>(null);
-  const [slots, setSlots] = useState(true);
+  const [slots, setSlots] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // What was added, so each button is pressed once per version of the set (an edit clears it).

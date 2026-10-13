@@ -213,8 +213,7 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
         <Fix hint="Merges tiles that differ by a few pixels, one step at a time; you choose how far, and undo brings them back.">
           <div className="k-row">
             <Button variant="primary" disabled={busy} onClick={() => openPicture(true)}>
-              Open the tile budget fixer
-              <span className="cw-ba"><span>{count.tiles}</span><ArrowRight /><span>{count.limit} or fewer</span></span>
+              Fix in the budget fixer
             </Button>
             <Button icon={<ExternalLink />} onClick={() => openPicture(false)}>Open</Button>
           </div>
