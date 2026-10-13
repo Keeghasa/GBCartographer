@@ -167,9 +167,11 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           <span className="k-row"><span className="k-label">Layout</span><span className="k-mono k-small k-muted">#{mode === "cave" ? cave.seed : world.seed}</span><span className="k-spacer" />{reroll}</span>
         </div>
         <div className="gw-stage">
-          <div className="gw-map" style={{ aspectRatio: `${picture.width} / ${picture.height}`, ["--gw-cols" as string]: columns, ["--gw-rows" as string]: rows }}>
-            <canvas ref={setTarget} aria-label="Generated map" />
-            <span className="gw-screens" aria-hidden />
+          <div className="gw-frame" style={{ ["--gw-ratio" as string]: picture.width / picture.height }}>
+            <div className="gw-map" style={{ ["--gw-cols" as string]: columns, ["--gw-rows" as string]: rows }}>
+              <canvas ref={setTarget} aria-label="Generated map" />
+              <span className="gw-screens" aria-hidden />
+            </div>
           </div>
           <span className="k-row">
             <Chip>{picture.width} × {picture.height} px</Chip>
