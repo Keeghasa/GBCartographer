@@ -20,7 +20,7 @@ export type { WireAsset };
 
 const PEOPLE: [string, string, Look][] = [
   ["hero", "Hero", { hat: "cap", shirt: 2 }],
-  ["villager", "Villager", { hair: 2, shirt: 1 }],
+  ["villager", "Townsfolk", { hair: 2, shirt: 1 }],
   ["traveler", "Traveler", { hat: "hood", shirt: 2 }],
 ];
 
@@ -32,7 +32,9 @@ const TWO = (a: string, b: string) => `Two frames: ${a}, ${b} (one animation; pi
 const DROPPED = new Set(["person-villager", "person-traveler", "thing-bullet", "thing-bush", "thing-coinStill", "thing-crate", "thing-potion", "anim-chest", "anim-checkbox",
   // Deleted by the author in the Asset Catalog project (2026-10-13).
   "scene-menu", "scene-house", "scene-shop", "scene-cave", "scene-overworld", "scene-battle", "scene-dialogue", "scene-village", "scene-room",
-  "village-0-0", "village-1-0", "village-2-0", "village-0-1", "village-1-1", "village-2-1"]);
+  "village-0-0", "village-1-0", "village-2-0", "village-0-1", "village-1-1", "village-2-1",
+  // Unticked in the shipped-art review (the author, 2026-10-13).
+  "piece-mound", "autotile-wallface", "pat-sand", "pat-water"]);
 
 /** A picture from the author's rows (src/graphics/authored.ts). */
 function fromAuthored(rows: readonly string[]): Canvas {

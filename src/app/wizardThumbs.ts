@@ -74,7 +74,7 @@ export function wizardThumb(id: WizardThumb): Generated {
   }
   if (id === "budget") {
     // GB Studio's tile meter over the limit, three near-twin tiles merged into one, the meter back under.
-    const out = blank(["V14-5-Stone"]), p = new Pen(out);
+    const out = blank(["Vibrant14-5-Stone"]), p = new Pen(out);
     p.fill(0);
     const brick = (x: number, y: number, chip: number) => {
       const q = p.at(x, y, 16);

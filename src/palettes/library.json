@@ -563,7 +563,7 @@
    "source": "https://spicygame.itch.io/palettes",
    "palettes": [
     {
-     "name": "V14-1-Warm",
+     "name": "Vibrant14-1-Warm",
      "colors": [
       "#FFEEE5",
       "#F77622",
@@ -572,7 +572,7 @@
      ]
     },
     {
-     "name": "V14-2-Fire",
+     "name": "Vibrant14-2-Fire",
      "colors": [
       "#FEE761",
       "#ECAB11",
@@ -581,7 +581,7 @@
      ]
     },
     {
-     "name": "V14-3-Foliage",
+     "name": "Vibrant14-3-Foliage",
      "colors": [
       "#07E5A0",
       "#43BD35",
@@ -590,7 +590,7 @@
      ]
     },
     {
-     "name": "V14-4-Water",
+     "name": "Vibrant14-4-Water",
      "colors": [
       "#FFEEE5",
       "#0099DB",
@@ -599,7 +599,7 @@
      ]
     },
     {
-     "name": "V14-5-Stone",
+     "name": "Vibrant14-5-Stone",
      "colors": [
       "#FFEEE5",
       "#5A7088",
@@ -608,7 +608,7 @@
      ]
     },
     {
-     "name": "V14-6-Berry",
+     "name": "Vibrant14-6-Berry",
      "colors": [
       "#FFEEE5",
       "#DA2424",
@@ -617,7 +617,7 @@
      ]
     },
     {
-     "name": "V14-7-Gold",
+     "name": "Vibrant14-7-Gold",
      "colors": [
       "#FFEEE5",
       "#FEE761",
@@ -718,7 +718,7 @@
    "source": "https://spicygame.itch.io/palettes",
    "palettes": [
     {
-     "name": "V21-1-Skin",
+     "name": "Vibe21-1-Skin",
      "colors": [
       "#FFEEE5",
       "#FFD09C",
@@ -727,7 +727,7 @@
      ]
     },
     {
-     "name": "V21-2-Fire",
+     "name": "Vibe21-2-Fire",
      "colors": [
       "#FEE761",
       "#FFB700",
@@ -736,7 +736,7 @@
      ]
     },
     {
-     "name": "V21-3-Foliage",
+     "name": "Vibe21-3-Foliage",
      "colors": [
       "#A7FF19",
       "#43BD35",
@@ -745,7 +745,7 @@
      ]
     },
     {
-     "name": "V21-4-Water",
+     "name": "Vibe21-4-Water",
      "colors": [
       "#FFEEE5",
       "#07E5A0",
@@ -754,7 +754,7 @@
      ]
     },
     {
-     "name": "V21-5-Stone",
+     "name": "Vibe21-5-Stone",
      "colors": [
       "#FFEEE5",
       "#96A3B0",
@@ -763,7 +763,7 @@
      ]
     },
     {
-     "name": "V21-6-Rose",
+     "name": "Vibe21-6-Rose",
      "colors": [
       "#FF7373",
       "#DA2424",
@@ -772,7 +772,7 @@
      ]
     },
     {
-     "name": "V21-7-Wood",
+     "name": "Vibe21-7-Wood",
      "colors": [
       "#FFD09C",
       "#B94F38",
@@ -781,7 +781,7 @@
      ]
     },
     {
-     "name": "V21-8-UI",
+     "name": "Vibe21-8-UI",
      "colors": [
       "#FFEEE5",
       "#FEE761",

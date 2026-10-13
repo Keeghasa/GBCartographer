@@ -43,7 +43,7 @@ export const WORLD_THEMES: MapTheme[] = [
 ];
 
 export const CAVE_THEMES: MapTheme[] = [
-  ["V20-5-Stone", "Stone (VIBE-20)", SPICY], ["V14-5-Stone", "Stone (Vibrant-14)", SPICY], ["SG-Winter Forest GB", "Winter Forest GB", SPICY],
+  ["V20-5-Stone", "Stone (VIBE-20)", SPICY], ["Vibrant14-5-Stone", "Stone (Vibrant-14)", SPICY], ["SG-Winter Forest GB", "Winter Forest GB", SPICY],
   ["SG-Campfire GB", "Campfire GB", SPICY], ["DWC-1-Cliffs", "Dustwatch cliffs (Chorbi)", "Keeghasa, CC0"], ["DWC-6-MauveBldg", "Dustwatch mauve (Chorbi)", "Keeghasa, CC0"],
 ].flatMap(([palette, name, credit]) => { const found = named(palette); return found ? [{ id: palette, name, credit, palettes: [found] }] : []; });
 
