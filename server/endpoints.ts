@@ -30,6 +30,10 @@
  *   POST /__cartographer/gbstudio-palette-remove { id } takes an unused palette out (to the backups folder; 409 when used)
  *   GET  /__cartographer/maps                 the project's Map Room layouts; POST { maps } saves them (in the project's
  *                                             Cartographer/maps.json; older ones move there from the data folder)
+ *   GET  /__cartographer/own-settings          the project's own choices in Cartographer/cartographer.json; POST sets some
+ *   GET  /__cartographer/panel                 hidden and pinned pictures (Cartographer/panel.json); POST { hidden, pinned }
+ *   GET  /__cartographer/unsaved               pictures' unsaved changes kept in Cartographer/unsaved/; POST ?kind=&file=
+ *                                             keeps one, DELETE ?kind=&file= takes it away (into the backups)
  *   GET  /__cartographer/dialogue-settings    { colorMode, uiPalette, defaultFont, fonts } for the dialogue preview (read only)
  *   GET  /__cartographer/project-health       { colorMode, issues: [{ level, kind, file?, title, detail }] } (read only)
  *   GET  /__cartographer/palette-usage        which scenes (and defaults) use each palette, and same-colored palettes
@@ -47,6 +51,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
+import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, writeOwnSettings, writePanel, writeUnsaved } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
@@ -249,6 +254,34 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
           reply(res, 400, { error: (error as Error).message });
         }
       } else reply(res, 200, { ok: true, maps: readMaps(dataDir, project) });
+      return true;
+    }
+    // What travels with the project in its Cartographer/ folder (server/own.ts).
+    if (url.pathname === "/__cartographer/own-settings") {
+      try {
+        reply(res, 200, { ok: true, settings: req.method === "POST" ? writeOwnSettings(project, JSON.parse((await readBody(req)).toString("utf8"))) : readOwnSettings(project) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/panel") {
+      try {
+        reply(res, 200, { ok: true, ...(req.method === "POST" ? { exists: true, ...writePanel(project, JSON.parse((await readBody(req)).toString("utf8"))) } : readPanel(project)) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/unsaved") {
+      const kind = url.searchParams.get("kind") ?? "", file = url.searchParams.get("file") ?? "";
+      try {
+        if (req.method === "POST") { writeUnsaved(project, kind, file, JSON.parse((await readBody(req)).toString("utf8"))); reply(res, 200, { ok: true }); }
+        else if (req.method === "DELETE") reply(res, 200, { ok: true, removed: removeUnsaved(project, kind, file, options.backupDir) });
+        else reply(res, 200, { ok: true, pictures: listUnsaved(project) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
       return true;
     }
     if (url.pathname === "/__cartographer/dialogue-settings") {

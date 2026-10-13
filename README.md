@@ -208,13 +208,14 @@ The desktop app keeps its settings (`settings.json`: the open project and recent
 | Windows | `%APPDATA%\GB Cartographer` |
 | Linux | `~/.config/GB Cartographer` |
 
-Backups, saved stamps and Map Room layouts are kept in the project itself, in its `Cartographer/` folder, so they
-travel with it to another computer. The backups keep the last 10 versions of every file GB Cartographer changed, so
+Backups, saved stamps, Map Room layouts, which pictures are hidden and pinned, the Time-of-day palettes switch and
+pictures kept with **Save to GB Cartographer only** are kept in the project itself, in its `Cartographer/` folder,
+so they travel with it to another computer (open the project there and its unsaved pictures open again). The backups keep the last 10 versions of every file GB Cartographer changed, so
 the folder grows with the pictures you edit (leave it out of a copy if you don't need them). **Show backups folder**
 in the project menu opens them. Backups made before 2026-10-12 lived in the data folder (`backups/<project>-<id>/`,
 or `backups/` in the checkout for the dev server); the first time a project is opened they are copied into it and
 the old folder is renamed `….moved-to-project`, never deleted. Open pictures and per-window choices (font, tint,
-panels) live in the app's own browser storage.
+panels), Mine palettes, recent projects and undo history stay on each computer.
 
 `npm run install-mac-app` puts a GB Cartographer app in /Applications that runs this checkout; `npm run install-shortcut`
 does the same on Windows.

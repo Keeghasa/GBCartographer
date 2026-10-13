@@ -8,7 +8,7 @@
  * New map opens the New map wizard (MapWizard.tsx) over it; this file writes what the wizard plans.
  */
 import { Download, Map as MapIcon, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { countUniqueTiles, gbStudioShade } from "../paint";
 import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, useConfirm } from "../ui/kit";
 import { PxSnake } from "../ui/setIcons";
@@ -84,6 +84,14 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   const backgrounds = useMemo(() => project.assets.filter((asset) => asset.kind === "backgrounds"), [project.assets]);
   const assetOf = (file: string) => backgrounds.find((asset) => asset.file === file);
   const map = maps?.find((item) => item.id === mapId) ?? maps?.[0] ?? null;
+  // Screens whose picture is gone (renamed or deleted outside GB Cartographer): said once when the map shows.
+  const missingSaid = useRef<string | null>(null);
+  useEffect(() => {
+    if (!map || missingSaid.current === map.id) return;
+    missingSaid.current = map.id;
+    const gone = map.cells.filter((cell) => !backgrounds.some((asset) => asset.file === cell.file));
+    if (gone.length) say(`${map.name}: ${gone.length === 1 ? "a screen points" : `${gone.length} screens point`} at ${gone.length === 1 ? "a picture" : "pictures"} no longer in the project (${gone.slice(0, 4).map((cell) => cell.file).join(", ")}${gone.length > 4 ? "…" : ""}). They're marked: swap their background or take them off the map.`);
+  }, [map?.id]);
   const overlap = map?.overlap === 2 ? 2 : 1;
   const cellAt = (x: number, y: number) => map?.cells.find((cell) => cell.x === x && cell.y === y);
 
@@ -263,7 +271,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
                   const isSelected = selected?.x === x && selected?.y === y;
                   return (
                     <button key={`${x},${y}`} type="button" className="mr-cell" aria-pressed={isSelected} onClick={() => { setSelected({ x, y }); setAdding(null); }} onDoubleClick={() => openCell(cell)}>
-                      {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" /> : <span className="k-muted k-small">{assetOf(cell.file) ? "…" : "missing"}</span>}
+                      {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" /> : assetOf(cell.file) ? <span className="k-muted k-small">…</span> : <span className="k-small mr-missing" title={`assets/backgrounds/${cell.file} isn't in the project any more (renamed or deleted outside GB Cartographer)`}>Missing<br />{cell.file}</span>}
                       <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file} · {x}, {y}</span>
                       {isSelected && edges.map(({ side, result }) => <i key={side} className={`mr-edge ${side} ${result && result.match === result.total ? "match" : "differ"}`} />)}
                     </button>
@@ -304,6 +312,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
             <div className="k-stack">
               <span className="k-eyebrow">Screen at {selectedCell.x}, {selectedCell.y}</span>
               {pictureOf(selectedCell.file) && <img className="mr-thumb" src={pictureOf(selectedCell.file)!.preview.src} alt="" />}
+              {!assetOf(selectedCell.file) && <p className="k-small mr-missing" role="note">assets/backgrounds/{selectedCell.file} isn't in the project any more: it was renamed or deleted outside GB Cartographer. Swap background below to point this screen at another picture, or remove it from the map. Nothing else changes.</p>}
               <div className="k-stack" style={{ gap: 2 }}>
                 <b>{assetOf(selectedCell.file)?.name ?? selectedCell.file}</b>
                 <span className="k-muted k-small k-mono mr-path">assets/backgrounds/{selectedCell.file}</span>

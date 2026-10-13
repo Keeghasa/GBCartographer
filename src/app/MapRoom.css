@@ -46,3 +46,6 @@
 .mr-edge-card { display: flex; flex-direction: column; gap: var(--k-2); padding: 10px; }
 .mr-edge-actions { flex-wrap: wrap; }
 .mr-side .k-select { width: 100%; }
+
+/* A screen whose picture is gone (renamed or deleted outside GB Cartographer): said, not hidden. */
+.mr-missing { color: var(--k-warn); text-align: center; overflow-wrap: anywhere; padding: 0 6px; }

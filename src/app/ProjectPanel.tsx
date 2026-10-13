@@ -6,7 +6,7 @@
  * Hidden pictures (the archive button on a card, the author 2026-10-10) go into one "Hidden" folder card at the top
  * of the grid (2026-10-12): hovering it cycles through what's inside, clicking it opens a window that brings them
  * back. Pinned pictures (the pin button) come right after it, before the rest. Which are hidden and pinned is kept
- * per project in this browser, not in the project.
+ * per project in the project itself (Cartographer/panel.json), so it travels with it.
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, type Project } from "./model";
@@ -15,7 +15,7 @@ import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
 import { Archive, FolderClosed, MessageSquareText, Pencil, Pin } from "lucide-react";
 import { HiddenWindow } from "./HiddenWindow";
-import { readStored, store } from "./storage";
+import { readStored } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
 import { AnimThumb } from "./AnimThumb";
 import { Chip, IconButton } from "../ui/kit";
@@ -49,30 +49,45 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   const [filter, setFilter] = useState("");
   const [sheet, setSheet] = useState<{ kind: AssetKind; image: HTMLImageElement; cells: Map<string, SheetCell> } | null>(null);
   const [sheetFailed, setSheetFailed] = useState(false);
-  const hiddenKey = `gbc-hidden:${project.path}`;
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set(readStored<string[]>(hiddenKey, [])));
-  useEffect(() => setHidden(new Set(readStored<string[]>(hiddenKey, []))), [hiddenKey]);
+  // Hidden and pinned pictures live in the project (Cartographer/panel.json, the author's pick 2026-10-12), so they
+  // travel with it; this browser's old lists for the project move in the first time it has none.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [pinned, setPinned] = useState<Set<string>>(new Set());
+  const panelFor = useRef<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    panelFor.current = null;
+    void fetch("./__cartographer/panel", { cache: "no-cache" }).then((response) => response.json() as Promise<{ exists?: boolean; hidden?: string[]; pinned?: string[] }>).then((panel) => {
+      if (!live) return;
+      if (panel.exists) { setHidden(new Set(panel.hidden ?? [])); setPinned(new Set(panel.pinned ?? [])); }
+      else {
+        const old = { hidden: readStored<string[]>(`gbc-hidden:${project.path}`, []), pinned: readStored<string[]>(`gbc-pinned:${project.path}`, []) };
+        setHidden(new Set(old.hidden)); setPinned(new Set(old.pinned));
+        if (old.hidden.length || old.pinned.length) void fetch("./__cartographer/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(old) }).catch(() => null);
+      }
+      panelFor.current = project.path;
+    }).catch(() => { panelFor.current = project.path; });
+    return () => { live = false; };
+  }, [project.path]);
+  const savePanel = (nextHidden: Set<string>, nextPinned: Set<string>) => {
+    setHidden(nextHidden); setPinned(nextPinned);
+    if (panelFor.current === project.path) void fetch("./__cartographer/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hidden: [...nextHidden], pinned: [...nextPinned] }) }).catch(() => null);
+  };
   const hideKey = (asset: Asset) => `${asset.kind}/${asset.file}`;
   const toggleHidden = (asset: Asset) => {
     const next = new Set(hidden);
     if (next.has(hideKey(asset))) next.delete(hideKey(asset)); else next.add(hideKey(asset));
-    setHidden(next);
-    store(hiddenKey, [...next]);
+    savePanel(next, pinned);
   };
   const showAgain = (assets: Asset[]) => {
     const next = new Set(hidden);
     for (const asset of assets) next.delete(hideKey(asset));
-    setHidden(next);
-    store(hiddenKey, [...next]);
+    savePanel(next, pinned);
   };
-  const pinnedKey = `gbc-pinned:${project.path}`;
-  const [pinned, setPinned] = useState<Set<string>>(() => new Set(readStored<string[]>(pinnedKey, [])));
-  useEffect(() => setPinned(new Set(readStored<string[]>(pinnedKey, []))), [pinnedKey]);
   const togglePinned = (asset: Asset) => {
     const next = new Set(pinned);
     if (next.has(hideKey(asset))) next.delete(hideKey(asset)); else next.add(hideKey(asset));
-    setPinned(next);
-    store(pinnedKey, [...next]);
+    savePanel(hidden, next);
   };
   const [hiddenOpen, setHiddenOpen] = useState(false);
   // Hovering the Hidden folder cycles through its pictures.

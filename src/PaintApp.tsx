@@ -65,6 +65,7 @@ import { ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/au
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
+import { applyUnsaved, fingerprint, unsavedOf, type UnsavedPicture } from "./app/unsaved";
 
 /** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
 const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
@@ -270,14 +271,90 @@ export default function PaintApp() {
     window.clearTimeout(sessionTimer.current);
     const value = {
       active: docs.current.findIndex((item) => item.id === activeId),
-      docs: docs.current.map(({ name, width, height, pixels, cells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, float, collision }) => {
+      docs: docs.current.map(({ name, width, height, pixels, cells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, float, collision, draft }) => {
         // A floating piece is kept dropped in place, with its tile palettes.
         const flat = pixels.slice(), flatCells = cells.slice();
         if (float) { drop(flat, width, height, float); dropCells(flatCells, width, height, float); }
-        return { name, width, height, pixels: flat, cells: flatCells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, collision };
+        return { name, width, height, pixels: flat, cells: flatCells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, collision, draft };
       }),
     };
+    void syncUnsaved();
     return sessionStore("readwrite", (objects) => objects.put(value, "open")).then(() => true);
+  }
+
+  // ---- what travels with the project (Cartographer/, server/own.ts; the author's picks 2026-10-12) ---------------
+
+  /** Unsaved project pictures written to Cartographer/unsaved: "kind/file" → fingerprint of what was written. */
+  const unsavedKept = useRef<{ project: string; kept: Map<string, string> } | null>(null);
+  const unsavedBusy = useRef(false);
+  const ownLoadedFor = useRef<string | null>(null);
+  const sessionLoaded = useRef<Promise<void>>(Promise.resolve());
+
+  /** Writes each unsaved project picture that changed since last time, and takes away the ones no longer unsaved. */
+  async function syncUnsaved() {
+    const here = projectRef.current?.path;
+    if (!here || unsavedBusy.current || unsavedKept.current?.project !== here) return;
+    unsavedBusy.current = true;
+    try {
+      const kept = unsavedKept.current.kept, live = new Set<string>();
+      for (const item of docs.current) {
+        if (!item.asset || (item.asset.project && item.asset.project !== here) || !item.dirty) continue;
+        const key = `${item.asset.kind}/${item.asset.file}`;
+        live.add(key);
+        const print = fingerprint(item);
+        if (kept.get(key) === print) continue;
+        const flat = item.float ? { ...item, pixels: item.pixels.slice(), cells: item.cells.slice() } : item;
+        if (item.float) { drop(flat.pixels, item.width, item.height, item.float); dropCells(flat.cells, item.width, item.height, item.float); }
+        const response = await fetch(`./__cartographer/unsaved?${assetQuery(item.asset)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(unsavedOf(flat)) }).catch(() => null);
+        if (response?.ok) kept.set(key, print);
+      }
+      for (const key of [...kept.keys()]) {
+        if (live.has(key)) continue;
+        const [kind, ...rest] = key.split("/");
+        const response = await fetch(`./__cartographer/unsaved?${new URLSearchParams({ kind, file: rest.join("/") })}`, { method: "DELETE" }).catch(() => null);
+        if (response?.ok) kept.delete(key);
+      }
+    } finally {
+      unsavedBusy.current = false;
+    }
+  }
+
+  /**
+   * A project just opened: its own choices (the Time-of-day switch; this browser's old setting moves in the first
+   * time) and its pictures' unsaved changes from Cartographer/unsaved, opened as unsaved pictures (a picture already
+   * open here with its own unsaved changes keeps them).
+   */
+  async function loadOwn(path: string) {
+    const own = await fetch("./__cartographer/own-settings", { cache: "no-cache" }).then((response) => response.json() as Promise<{ settings?: { timeOfDay?: boolean } }>).catch(() => null);
+    if (projectRef.current?.path !== path) return;
+    if (typeof own?.settings?.timeOfDay === "boolean") setNamedSlots(own.settings.timeOfDay);
+    else void fetch("./__cartographer/own-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ timeOfDay: readStored(NAMED_SLOTS_KEY, false) }) }).catch(() => null);
+    await sessionLoaded.current;
+    const listed = await fetch("./__cartographer/unsaved", { cache: "no-cache" }).then((response) => response.json() as Promise<{ pictures?: { kind: string; file: string; data: UnsavedPicture }[] }>).catch(() => null);
+    if (projectRef.current?.path !== path) return;
+    const kept = new Map<string, string>();
+    unsavedKept.current = { project: path, kept };
+    let opened = 0;
+    for (const { kind, file, data } of listed?.pictures ?? []) {
+      const key = `${kind}/${file}`;
+      kept.set(key, "");
+      const mine = (item: Doc) => item.asset?.kind === kind && item.asset.file === file && (!item.asset.project || item.asset.project === path);
+      let target = docs.current.find(mine);
+      if (target?.dirty) continue;
+      const asset = projectRef.current?.assets.find((item) => item.kind === kind && item.file === file);
+      if (!asset) continue;
+      if (!target) { await openAsset(asset); target = docs.current.find(mine); }
+      if (target && applyUnsaved(target, data)) { opened += 1; if (target.asset && data.assetMtime && target.asset.mtime > data.assetMtime + 1) target.changedOnDisk = { mtime: target.asset.mtime, metaMtime: target.asset.metaMtime ?? null }; }
+    }
+    if (opened) { say(`${opened} picture${opened === 1 ? "" : "s"} with unsaved changes kept in this project opened again.`); bump(); }
+    void syncUnsaved();
+  }
+
+  /** The Time-of-day palettes switch, kept in the project (it changes what Save writes). */
+  function setTimeOfDay(on: boolean) {
+    setNamedSlots(on);
+    if (projectRef.current) void fetch("./__cartographer/own-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ timeOfDay: on }) }).catch(() => null);
+    else store(NAMED_SLOTS_KEY, on);
   }
 
   function scheduleSession() {
@@ -526,7 +603,9 @@ export default function PaintApp() {
       palettesRef.current = opened.palettes.filter((palette) => palette.colors?.length === 4);
       projectRef.current = { name: opened.name, path: opened.path, assets: opened.assets, palettes: opened.palettes };
       setProject(projectRef.current);
+      if (ownLoadedFor.current !== opened.path) { ownLoadedFor.current = opened.path; void loadOwn(opened.path); }
     } else {
+      ownLoadedFor.current = null;
       palettesRef.current = [];
       projectRef.current = null;
       setProject(null);
@@ -1347,7 +1426,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       setStamp(firstFrame({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags }, auto.flags.auto));
       heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
-      say(`Stamp: ${asset.name} (${bitmap.width} × ${bitmap.height}).${auto.note}`);
+      // A palette the stamp's tiles were saved with that the project no longer has: those tiles show in the greens.
+      const known = new Set(picture.palettes.map((palette) => palette.id).filter(Boolean));
+      const gone = info.slots.map((id, slot) => ({ id, slot, tiles: info.tileColors.filter((value) => value === slot).length })).filter(({ id, tiles }) => id && tiles && !known.has(id));
+      const missing = gone.length ? ` ${gone.reduce((sum, item) => sum + item.tiles, 0)} of its tiles were saved with ${gone.length === 1 ? "a palette" : `${gone.length} palettes`} this project no longer has (slot ${gone.map((item) => item.slot + 1).join(", ")}), so they show in the GB greens. Paint them a palette and save the stamp to fix it.` : "";
+      say(`Stamp: ${asset.name} (${bitmap.width} × ${bitmap.height}).${auto.note}${missing}`);
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
     }
@@ -1981,8 +2064,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   useEffect(() => {
     // The project's palettes come first: reading a picture needs them to recognise colored tiles.
     palettesReady.current = loadProject();
+    let sessionDone = () => {};
+    sessionLoaded.current = new Promise((resolve) => { sessionDone = resolve; });
     void palettesReady.current
       .then(() => sessionStore<{ active: number; docs: Omit<Doc, "id" | "undo" | "redo" | "sel" | "float">[] }>("readonly", (objects) => objects.get("open")))
+      .finally(() => window.setTimeout(sessionDone, 0))
       .then((session) => {
         if (!session?.docs?.length || docs.current.length) return;
         docs.current = session.docs.map((saved, index) => ({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: index + 1, undo: [], redo: [], sel: null, float: null }));
@@ -2636,7 +2722,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             <TabList label="Inspector" tabs={[{ value: "palettes", label: "Palettes" }, { value: "picture", label: "Picture" }]} />
             <Tabs.Content value="palettes" className="app-side-body">
               <PalettesPane doc={doc} palettes={docPalettes} sceneSlots={sceneSlots} slotPalettes={slotPalettes} slotWhere={slotWhere} activePalette={activePalette} onPick={pickPalette}
-                namedSlots={namedSlots} onNamedSlots={(on) => { setNamedSlots(on); store(NAMED_SLOTS_KEY, on); }} filter={paletteFilter} onFilter={setPaletteFilter} onSlotMenu={(x, y, palette, slot) => { setSlotQuery(""); setSlotMenu({ x, y, palette, slot }); }} onCopySlots={doc?.asset?.kind === "backgrounds" && project && (!doc.asset.project || doc.asset.project === project.path) ? (x, y) => { setSlotQuery(""); setCopyMenu({ x, y }); } : undefined}
+                namedSlots={namedSlots} onNamedSlots={setTimeOfDay} filter={paletteFilter} onFilter={setPaletteFilter} onSlotMenu={(x, y, palette, slot) => { setSlotQuery(""); setSlotMenu({ x, y, palette, slot }); }} onCopySlots={doc?.asset?.kind === "backgrounds" && project && (!doc.asset.project || doc.asset.project === project.path) ? (x, y) => { setSlotQuery(""); setCopyMenu({ x, y }); } : undefined}
                 libraryColors={libraryColors} onSaveToProject={project && picked?.id ? () => void (async () => { if (await okToWriteProjectJson() && await writeProjectPalette({ id: picked.id!, name: picked.name, colors: [...picked.colors] })) say(`${picked.name} written to the project`); })() : undefined}
                 onRecolor={recolorPalette} say={say} copiedColors={copiedColors} onCopy={(colors) => { setCopiedColors(colors); say(`Copied the colors of ${picked?.name}`); }} />
             </Tabs.Content>
