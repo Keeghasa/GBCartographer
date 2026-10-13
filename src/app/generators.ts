@@ -90,9 +90,25 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
     if (settings.connected) joinAreas(grid, w, h);
   } else {
     carveRooms(grid, w, h, settings, random);
+    // Thickening can cut a corridor and the tunnel that rejoins it can leave a new thin wall: a few rounds settle it.
+    for (let round = 0; round < 4 && thickenWalls(grid, w, h); round += 1) joinAreas(grid, w, h);
+    // A thin wall that keeps coming back (the rejoining tunnel needs it) is opened instead: the two spaces become one.
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) grid[y * w + x] = 0;
   }
   if (settings.stairs) placeStairs(grid, w, h);
   return { w, h, grid };
+}
+
+/**
+ * Walls at least two cells tall: a wall with floor right above and right below (a room under a corridor, say) takes
+ * the floor cell above it too, so it is drawn with its top and its face, not a face alone. What that cuts off is
+ * joined up again afterwards (joinAreas).
+ */
+function thickenWalls(grid: Uint8Array, w: number, h: number): boolean {
+  const thin: number[] = [];
+  for (let y = 1; y < h - 1; y += 1) for (let x = 0; x < w; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) thin.push((y - 1) * w + x);
+  for (const at of thin) grid[at] = 1;
+  return thin.length > 0;
 }
 
 /** Rooms that don't touch, each joined to the nearest room already joined by an L-shaped corridor. */
@@ -102,7 +118,8 @@ function carveRooms(grid: Uint8Array, w: number, h: number, settings: CaveSettin
     const rw = Math.max(2, Math.round(settings.roomSize * (0.6 + random() * 0.8))), rh = Math.max(2, Math.round(settings.roomSize * (0.5 + random() * 0.7)));
     if (rw > w - 2 || rh > h - 2) continue;
     const room = { x: 1 + Math.floor(random() * (w - 1 - rw)), y: 1 + Math.floor(random() * (h - 1 - rh)), w: rw, h: rh };
-    if (rooms.some((other) => room.x <= other.x + other.w && other.x <= room.x + room.w && room.y <= other.y + other.h && other.y <= room.y + room.h)) continue;
+    // At least two cells of wall between rooms (the author, 2026-10-13: one is too thin to show a wall's top and face).
+    if (rooms.some((other) => room.x <= other.x + other.w + 1 && other.x <= room.x + room.w + 1 && room.y <= other.y + other.h + 1 && other.y <= room.y + room.h + 1)) continue;
     rooms.push(room);
   }
   for (const room of rooms) for (let y = room.y; y < room.y + room.h; y += 1) for (let x = room.x; x < room.x + room.w; x += 1) grid[y * w + x] = 0;
