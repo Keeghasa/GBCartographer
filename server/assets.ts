@@ -38,7 +38,7 @@ const sidecarOf = (path: string, kind: AssetKind) => kind === "stamps" ? `${path
 /** Where backups go: the backups folder and the project the written file belongs to (see backups.ts). */
 export interface Backup { dir: string; project: string }
 
-export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[]; /** A stamp drawn as an auto-tile (its own sidecar; src/app/autotile.ts). */ autotile?: AutotileName }
+export interface AssetEntry { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (its own sidecar). */ tags?: string[]; /** A stamp drawn as an auto-tile (its own sidecar; src/app/autotile.ts). */ autotile?: AutotileName; /** Not taken into GB Studio yet (no .gbsres) or a stamp: GB Cartographer may rename it. */ renamable?: boolean }
 export interface ProjectPalette { id: string; name: string; colors: string[]; /** The palette file's modification time (for the changed-on-disk check). */ mtime: number }
 /**
  * What GB Cartographer needs besides the pixels. `tileColors`: one attribute per 8 × 8 cell whose low three bits are the
@@ -180,7 +180,7 @@ export function listAssets(project: string): AssetEntry[] {
       const name = typeof sidecar?.name === "string" && sidecar.name ? sidecar.name : file.replace(/\.png$/i, "");
       const meta = kind === "stamps" ? readJson(`${path}.json`) : null;
       const tags = kind === "stamps" ? stampTags(meta) : undefined;
-      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}), ...(isAutotile(meta?.autotile) ? { autotile: meta!.autotile as AutotileName } : {}) });
+      entries.push({ kind, file, name, width: size.width, height: size.height, mtime: statSync(path).mtimeMs, ...(tags?.length ? { tags } : {}), ...(isAutotile(meta?.autotile) ? { autotile: meta!.autotile as AutotileName } : {}), ...(kind === "stamps" || !sidecar ? { renamable: true } : {}) });
     }
   }
   return entries;
@@ -430,6 +430,29 @@ export function deleteAsset(project: string, kind: AssetKind, path: string, back
   return { files };
 }
 
+
+/**
+ * Whether a picture can still be renamed (the author, 2026-10-12): only while GB Studio hasn't taken it in, that is,
+ * it has no .gbsres beside it (GB Studio writes one, with an id that scenes and events then use, when it reads the
+ * project). Stamps are GB Cartographer's own and GB Studio never reads them, so they can always be renamed.
+ */
+export function canRename(kind: AssetKind, path: string): boolean {
+  return kind === "stamps" || !existsSync(`${path}.gbsres`);
+}
+
+/** Renames a picture's PNG (and a stamp's own .json); refused once GB Studio has read it, or when the name is taken. */
+export function renameAsset(project: string, kind: AssetKind, path: string, name: string): { file: string } {
+  if (!canRename(kind, path)) throw new AssetWriteError("GB Studio has already taken this picture in (it has a .gbsres file): rename it in GB Studio instead.", 409);
+  const base = name.trim().replace(/\.png$/i, "");
+  if (!base || !/^[\w ()\-.]+$/.test(base) || base.startsWith(".")) throw new AssetWriteError("Use a plain name: letters, digits, spaces, - _ ( ) and dots.", 400);
+  const file = `${base}.png`, target = join(dirname(path), file);
+  if (target === path) return { file };
+  // A case-only change is the same file on macOS and Windows: allowed, the rename goes through.
+  if (existsSync(target) && target.toLowerCase() !== path.toLowerCase()) throw new AssetWriteError(`${relative(project, target).split(sep).join("/")} already exists.`, 409);
+  renameSync(path, target);
+  if (kind === "stamps" && existsSync(`${path}.json`)) renameSync(`${path}.json`, `${target}.json`);
+  return { file };
+}
 
 // ---- scene collisions (the author's pick 2026-10-11; written only the `collisions` field, backed up first) ----
 

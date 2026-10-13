@@ -64,7 +64,7 @@ export const PNG_TYPES = [{ description: "PNG image", accept: { "image/png": [".
 export const OPEN_TYPES = [{ description: "PNG or Aseprite", accept: { "image/png": [".png"], "application/octet-stream": [".aseprite", ".ase"] } }];
 
 /** One PNG under the GB Studio project's assets folder. */
-export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: AutotileKind }
+export interface Asset { kind: AssetKind; file: string; name: string; width: number; height: number; mtime: number; /** A stamp's tags (Cartographer/stamps/<name>.png.json). */ tags?: string[]; /** A stamp drawn as an auto-tile (same sidecar): 9 box, W Wang (autotile.ts). */ autotile?: AutotileKind; /** Not taken into GB Studio yet (no .gbsres) or a stamp: it can be renamed here. */ renamable?: boolean }
 /** A project palette also carries its file's modification time, sent back with a rewrite (changed-on-disk check). */
 export interface Project { name: string; path: string; assets: Asset[]; palettes: (Palette & { mtime?: number })[] }
 /** A sprite sheet's frames: 8 × 16 slices placed at frame-local x, y (see server/assets.ts). */

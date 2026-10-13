@@ -171,6 +171,8 @@ GB Cartographer is careful with your game files. It only ever writes:
   its format. GB Studio doesn't read this folder; it travels with your project.
 
 And when you **Delete** a picture (it asks every time), its PNG and sidecar move into GB Cartographer's backups.
+**Rename** changes a picture's file name only while GB Studio hasn't taken it in yet (no `.gbsres` beside it, so
+nothing in GB Studio refers to it), and a stamp's any time; after that, rename it in GB Studio.
 
 Every other field of those files, and every other file in the project, is left untouched. Before each write the
 old file is copied to the project's `Cartographer/backups/` (the last 10 versions of each file; **Backups…** in the project menu shows them and puts one back), and a file that changed on disk

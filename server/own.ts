@@ -99,6 +99,19 @@ export function writeUnsaved(project: string, kind: string, file: string, data: 
   writeJson(path, data);
 }
 
+/** A picture was renamed: its hidden / pinned keys and its kept unsaved changes follow it. */
+export function renameOwn(project: string, kind: string, from: string, to: string): void {
+  const panel = readPanel(project);
+  const key = (file: string) => `${kind}/${file}`, swap = (keys: string[]) => keys.map((item) => item === key(from) ? key(to) : item);
+  if (panel.exists && [...panel.hidden, ...panel.pinned].includes(key(from))) writePanel(project, { hidden: swap(panel.hidden), pinned: swap(panel.pinned) });
+  const old = unsavedFile(project, kind, from), next = unsavedFile(project, kind, to);
+  if (old && next && existsSync(old)) {
+    const data = readJson(old);
+    if (data) { data.name = to; writeJson(next, data); }
+    unlinkSync(old);
+  }
+}
+
 /** The changes were saved or discarded: the file goes to the backups (so a slip can still be undone), then away. */
 export function removeUnsaved(project: string, kind: string, file: string, backupDir: string): boolean {
   const path = unsavedFile(project, kind, file);

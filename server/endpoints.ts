@@ -49,9 +49,9 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
-import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, writeOwnSettings, writePanel, writeUnsaved } from "./own";
+import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, renameOwn, writeOwnSettings, writePanel, writeUnsaved } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
@@ -426,6 +426,33 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
       }
       if (req.method === "POST") reply(res, 200, { ok: true, ...deleteAsset(project, kind as AssetKind, path, backup) });
       else reply(res, 200, { ok: true, ...assetDeleteCheck(project, kind as AssetKind, path) });
+      return true;
+    }
+    if (url.pathname === "/__cartographer/gbstudio-asset-rename" && req.method === "POST") {
+      // Renames a picture GB Studio hasn't taken in yet (no .gbsres), or a stamp; what GB Cartographer keeps about it
+      // (Map Room screens, hidden / pinned, kept unsaved changes) follows the new name.
+      const kind = url.searchParams.get("kind") ?? "";
+      const old = url.searchParams.get("file") ?? "";
+      const path = (ASSET_KINDS as readonly string[]).includes(kind) ? assetPath(project, kind, old) : null;
+      if (!path) {
+        reply(res, 404, { error: "No such picture" });
+        return true;
+      }
+      const body = JSON.parse((await readBody(req)).toString("utf8")) as { name?: unknown };
+      try {
+        const { file } = renameAsset(project, kind as AssetKind, path, typeof body.name === "string" ? body.name : "");
+        if (file !== old) {
+          if (kind === "backgrounds") {
+            const maps = readMaps(dirname(options.settingsFile), project);
+            if (maps.some((map) => map.cells.some((cell) => cell.file === old))) writeMaps(project, maps.map((map) => ({ ...map, cells: map.cells.map((cell) => cell.file === old ? { ...cell, file } : cell) })), backup);
+          }
+          renameOwn(project, kind, old, file);
+        }
+        reply(res, 200, { ok: true, file });
+      } catch (error) {
+        if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message });
+        else throw error;
+      }
       return true;
     }
     if (url.pathname === "/__cartographer/stamp-autotile" && req.method === "POST") {

@@ -1768,6 +1768,41 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     say(`Duplicated ${asset.name} as ${result.file}${asset.kind !== "stamps" && hasSlots(asset.kind) ? " (GB Studio adds its settings; the tile palettes stay with the original)" : ""}.`);
   }
 
+  /**
+   * Rename… (the author, 2026-10-12): a picture GB Studio hasn't taken in yet (no .gbsres, so nothing in GB Studio
+   * refers to it) or a stamp gets a new file name; its open tab, Map Room screens, hidden / pinned and kept unsaved
+   * changes follow (the server moves them). Once GB Studio has read it, renaming belongs in GB Studio.
+   */
+  async function renameAsset(asset: Asset) {
+    if (!asset.renamable) return say(`${asset.name} is already in GB Studio (it has a .gbsres file): rename it in GB Studio, so its scenes keep finding it.`);
+    const base = asset.file.replace(/\.png$/i, "");
+    const name = await askText({ title: `Rename ${asset.name}`, label: "Name", initial: base, confirm: "Rename", hint: asset.kind === "stamps" ? "Stamps are GB Cartographer's own: GB Studio never reads them." : "GB Studio hasn't taken this picture in yet, so nothing refers to it: renaming is safe until it does." });
+    if (!name || name.trim().replace(/\.png$/i, "") === base) return;
+    const response = await fetch(`./__cartographer/gbstudio-asset-rename?${assetQuery(asset)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).catch(() => null);
+    const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;
+    if (!response?.ok || !result?.ok || !result.file) return say(`Could not rename ${asset.name}: ${result?.error ?? response?.statusText ?? "no answer"}`);
+    const file = result.file, here = projectRef.current?.path;
+    for (const item of docs.current.filter((entry) => entry.asset?.kind === asset.kind && entry.asset.file === asset.file && (!entry.asset.project || entry.asset.project === here))) {
+      item.asset!.file = file;
+      item.asset!.name = item.name = file.replace(/\.png$/i, "");
+    }
+    await loadProject();
+    bump();
+    say(`Renamed ${asset.name} to ${file}.`);
+  }
+
+  /** Rename… on a tab: a project picture as above; a picture that isn't a project file only changes its tab's name. */
+  async function renameTab(target: Doc) {
+    if (target.asset) {
+      const listed = projectRef.current?.assets.find((item) => item.kind === target.asset!.kind && item.file === target.asset!.file);
+      return listed ? renameAsset(listed) : say(`${target.name} isn't in the open project.`);
+    }
+    const name = await askText({ title: `Rename ${target.name}`, label: "Name", initial: target.name.replace(/\.png$/i, ""), confirm: "Rename", hint: "Only this tab's name: the picture isn't a project file yet, so Save asks where it goes." });
+    if (!name?.trim()) return;
+    target.name = `${name.trim().replace(/\.png$/i, "")}.png`;
+    bump();
+  }
+
   async function askDelete(asset: Asset) {
     const check = await fetch(`./__cartographer/gbstudio-asset-delete?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.json() as Promise<{ ok?: boolean; files?: string[]; uses?: string[]; error?: string }>).catch(() => null);
     if (!check?.ok) return say(`Could not check ${asset.name}: ${check?.error ?? "no answer"}`);
@@ -2500,6 +2535,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { label: "Copy file path", icon: <Copy />, onSelect: () => void navigator.clipboard?.writeText(`${project?.path ?? ""}/${assetFolder(assetMenu.asset)}/${assetMenu.asset.file}`).then(() => say("Copied the file path")) },
     { label: "Earlier versions…", icon: <History />, onSelect: () => setBackups({ file: `${assetFolder(assetMenu.asset)}/${assetMenu.asset.file}` }) },
     { label: "Duplicate", icon: <CopyPlus />, title: "A new PNG beside it, to make a variant (never replaces a file)", onSelect: () => void duplicateAsset(assetMenu.asset) },
+    { label: "Rename…", icon: <Pencil />, disabled: !assetMenu.asset.renamable, title: assetMenu.asset.renamable ? (assetMenu.asset.kind === "stamps" ? "A new file name for this stamp" : "GB Studio hasn't taken it in yet (no .gbsres), so it can still be renamed here") : "GB Studio has taken it in (it has a .gbsres): rename it in GB Studio", onSelect: () => void renameAsset(assetMenu.asset) },
     { separator: true },
     { label: "Show project folder", icon: <FolderTree />, onSelect: () => void fetch("./__cartographer/reveal", { method: "POST" }) },
     { separator: true },
@@ -2704,6 +2740,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       {deleting && <DeleteAssetDialog name={deleting.asset.name} files={deleting.files} uses={deleting.uses} busy={deleting.busy} onDelete={() => void confirmDelete()} onCancel={() => setDeleting(null)} />}
       {closing && <CloseWindow changes={closing.changes} busy={closing.busy} tabs={closing.tabs?.map((item) => item.name)} onSave={() => void saveAndClose()} onKeep={closing.tabs ? undefined : () => void finishClose()} onDiscard={() => void discardAndClose()} onCancel={() => { const tabs = closing.tabs; setClosing(null); if (!tabs) (window as PickerWindow).gbc?.cancelClose?.(); }} />}
       {tabMenu && <MenuAt x={tabMenu.x} y={tabMenu.y} label={tabMenu.doc.name} onClose={() => setTabMenu(null)} items={[
+        { label: "Rename…", icon: <Pencil />, disabled: Boolean(tabMenu.doc.asset && !projectRef.current?.assets.find((item) => item.kind === tabMenu.doc.asset!.kind && item.file === tabMenu.doc.asset!.file)?.renamable), title: tabMenu.doc.asset ? "Project pictures can be renamed until GB Studio takes them in (no .gbsres yet); stamps always" : "This tab's name (not a project file yet)", onSelect: () => void renameTab(tabMenu.doc) },
+        { separator: true },
         { label: "Close", icon: <X />, keys: "Alt+W", onSelect: () => closeDoc(tabMenu.doc) },
         { label: "Close others", icon: <CopyX />, disabled: docs.current.length < 2, onSelect: () => closeDocs(docs.current.filter((item) => item !== tabMenu.doc)) },
         { label: "Close all", icon: <SquareX />, onSelect: () => closeDocs([...docs.current]) },
