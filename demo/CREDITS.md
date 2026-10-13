@@ -26,10 +26,16 @@ Ashlynn), MIT license; the repository asks that each asset's maker be credited.
 - `assets/tilesets/Free Furniture (yoanqwp).png`: by **yoanqwp**.
 - `assets/sprites/Cat (krumel).png`, `Fox (krumel).png`, `Kangaroo (krumel).png`, `Trout (krumel).png`: by **krümel** (GB Studio Discord), from
   the Animated Sprites package.
-- `assets/fonts/DotGothic8 (Paige Ashlynn).png`: by **Paige Ashlynn**, a slim font adapted from Fontworks Inc.'s DotGothic16
-  (SIL Open Font License).
-- `assets/fonts/thinrpg (Anima).png`: by **Anima / Animaloser / SodoDev**.
-- `assets/fonts/ascii_thick_italic (KizulEmeraldfire).png`, `ascii_thick_italic_inverted (KizulEmeraldfire).png`: by **KizulEmeraldfire**.
+
+## Fonts
+
+Both CC0 1.0 (public domain), credited anyway; each has its license beside it in `assets/fonts/`.
+
+- `assets/fonts/Public Pixel (GGBotNet).png`: Public Pixel by **GGBotNet** (https://ggbot.itch.io), as a GB Studio
+  sheet by **Santiago Crespo** (https://santiagocrespo.itch.io/public-pixel-for-gbs).
+- `assets/fonts/monogram (datagoblin).png`: monogram by **datagoblin** (https://datagoblin.itch.io/monogram), converted
+  to GB Studio's 8 × 8 sheet by GB Cartographer's author: moved to the cell's top, one-row descenders, and variable
+  width (magenta marks each glyph's unused columns). Characters 32–126.
 
 ## Palettes
 

@@ -1,0 +1,7 @@
+monogram, a GB Studio font sheet.
+
+monogram is by datagoblin (https://datagoblin.itch.io/monogram), released under CC0 1.0 Universal (no attribution required; credited anyway).
+GB Cartographer's author converted its bitmap to GB Studio's 8 x 8 sheet (2026-10-13): glyphs moved up to the cell's top, descenders on g, j, p, q, y
+shortened to one row, and each glyph trimmed to its width with magenta, so it reads as a variable-width font. Characters 32-126 only. This sheet is CC0 1.0 too.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/legalcode

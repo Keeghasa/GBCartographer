@@ -1,0 +1,6 @@
+Public Pixel, a GB Studio font sheet.
+
+The font Public-Pixel.ttf is by GGBotNet (https://ggbot.itch.io), released under CC0 1.0 Universal.
+This sheet is Santiago Crespo's adaptation of it for GB Studio (https://santiagocrespo.itch.io/public-pixel-for-gbs), also CC0 1.0.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/legalcode
