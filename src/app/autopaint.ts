@@ -67,9 +67,9 @@ export function xpCliffCell(filled: Filled, x: number, y: number): Piece[] {
   }
   const quarter = (right: boolean, bottom: boolean): Piece => {
     const dx = right ? 1 : -1, dy = bottom ? 1 : -1, side = filled(x + dx, y), vertical = filled(x, y + dy);
+    // Beside a face: the side starts level with the face's top (its rounded end), then runs down past it.
+    if (side && face(x + dx, y)) return bottom ? [right ? 5 : 0, 1] : [right ? 3 : 0, 8];
     if (bottom) {
-      // Beside the lower half of a face: the face's end turning into the side that runs down past it.
-      if (side && face(x + dx, y)) return [right ? 3 : 0, 8];
       return side ? [right ? 2 : 1, 2] : [right ? 5 : 0, 2];
     }
     if (!vertical) return side ? [right ? 4 : 1, 0] : [right ? 5 : 0, 0];
