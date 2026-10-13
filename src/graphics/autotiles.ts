@@ -232,7 +232,8 @@ export function atlasWaterTemplate(): Canvas {
 // ---- XP-layout templates (the author, 2026-10-12: XP style for everything; autopaint.ts xpCell / xpCliffCell) -------
 
 /** What a pixel is: `depth` pixels in from the nearest open edge (0 the outline), or null beyond a rounded corner. */
-export type Shader = (depth: number, x: number, y: number) => number;
+/** A pixel's shade from its depth in from the edge and its place (x, y modulo 8; gx, gy on the sheet, for 16 px designs). */
+export type Shader = (depth: number, x: number, y: number, gx: number, gy: number) => number;
 
 /**
  * A region of `w` × `h` at (x0, y0) whose open sides (n, e, s, w) are outlined, the corners between two open sides
@@ -261,7 +262,7 @@ function xpRegion(out: Canvas, x0: number, y0: number, w: number, h: number, ope
       depth = Math.min(depth, Math.round(Math.hypot(nx + 0.5, ny + 0.5) - 0.707) - cornerIn);
     }
     if (depth < 0) { out.pixels[(y0 + y) * out.width + x0 + x] = CLEAR; continue; }
-    out.pixels[(y0 + y) * out.width + x0 + x] = shade(depth, (x0 + x) % 8, (y0 + y) % 8);
+    out.pixels[(y0 + y) * out.width + x0 + x] = shade(depth, (x0 + x) % 8, (y0 + y) % 8, x0 + x, y0 + y);
   }
 }
 

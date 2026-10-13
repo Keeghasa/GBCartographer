@@ -10,6 +10,7 @@ import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
+import { APPROVED, TEMP_ASSETS } from "./temp";
 import { acrossTemplate, animTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
 
 export type { WireAsset };
@@ -75,6 +76,8 @@ export const GRAPHICS: WireAsset[] = [
   { id: "scene-village", name: "Village (whole)", group: "Map screens", kind: "backgrounds", about: "The whole village, 480 × 288, before it is cut into screens.", make: villageMap },
   ...[0, 1].flatMap((row) => [0, 1, 2].map((column): WireAsset => ({ id: `village-${column}-${row}`, name: `Village ${column + 1}-${row + 1}`, group: "Map screens", kind: "backgrounds", about: `Screen ${column + 1} of 3 across, ${row + 1} of 2 down. Neighbours share their edge tiles, so they join in the Map Room.`, make: () => villageScreen(column, row) }))),
   { id: "scene-room", name: "Point-and-click room", group: "Scenes", kind: "backgrounds", make: scenes.room },
+  // The temp assets the author approved (swipe review, 2026-10-13): XP area auto-tiles and seamless patterns.
+  ...TEMP_ASSETS.filter((asset) => APPROVED.has(asset.id)).map((asset): WireAsset => ({ id: asset.id, name: asset.name, group: asset.family === "xp" ? "XP auto-tiles" : "Patterns", kind: "stamps", about: asset.about, make: asset.make, ...(asset.autotile ? { autotile: asset.autotile } : {}) })),
 ];
 
 export const GRAPHIC_GROUPS = [...new Set(GRAPHICS.map((asset) => asset.group))];
