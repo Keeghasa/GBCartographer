@@ -144,7 +144,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           {mode === "cave" && <>
             <div className="k-stack k-stack--tight">
               <span className="k-label">Cells</span>
-              <Segmented fill size="sm" label="Cell size" value={String(cave.cell)} onChange={(value) => { const cell = Number(value) as 8 | 16 | 32; setC({ cell, roomSize: Math.min(10, Math.max(3, Math.round(cave.roomSize * cave.cell / cell))) }); }} options={[{ value: "32", label: "32 px", title: "4 × 4 tiles a cell: big rooms and halls" }, { value: "16", label: "16 px", title: "2 × 2 tiles a cell: broad passages" }, { value: "8", label: "8 px", title: "One tile a cell: twisty passages" }]} />
+              <Segmented fill size="sm" label="Cell size" value={String(cave.cell)} onChange={(value) => { const cell = Number(value) as 16 | 32; setC({ cell, roomSize: Math.min(10, Math.max(3, Math.round(cave.roomSize * cave.cell / cell))) }); }} options={[{ value: "32", label: "32 px", title: "4 × 4 tiles a cell: big rooms and halls" }, { value: "16", label: "16 px", title: "2 × 2 tiles a cell: broad passages" }] } />
             </div>
             {cave.style === "cave" ? <>
               <Setting label="Rock" value={cave.fill} unit="%" min={30} max={62} onChange={(fill) => setC({ fill })} title="How much starts as rock: more is tighter" />

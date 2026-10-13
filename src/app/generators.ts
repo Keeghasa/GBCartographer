@@ -43,8 +43,8 @@ export interface CaveSettings {
   style: "cave" | "dungeon";
   /** Size in GB screens (160 × 144 each). */
   columns: number; rows: number;
-  /** Pixels per map cell: 32 (4 × 4 tiles), 16 (2 × 2 tiles) or 8 (one tile). */
-  cell: 8 | 16 | 32;
+  /** Pixels per map cell: 32 (4 × 4 tiles) or 16 (2 × 2 tiles); 8 went (the author, 2026-10-13: the catalog walls need 16). */
+  cell: 16 | 32;
   seed: number;
   /** Cave: how much starts as rock (percent). */
   fill: number;
@@ -299,10 +299,10 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
   // Stairs: a box of steps on their cell.
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     if (grid[y * w + x] !== 2) continue;
-    const pen = new Pen(out, x * size, y * size, size), inset = size === 8 ? 1 : size / 8;
+    const pen = new Pen(out, x * size, y * size, size), inset = size / 8;
     pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
     pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
-    for (let step = inset + 2; step < size - inset - 1; step += size === 8 ? 2 : size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+    for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
   }
   return cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
 }

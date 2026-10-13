@@ -879,7 +879,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
         tiles = -1;
       }
     }
-    if (tiles > limit) issues.push({ level: "problem", ...where, title: `${tiles} tiles, over ${limit}`, detail: `GB Studio allows ${limit} different tiles per background in ${colorOnly ? "Color only" : colorMode === "mixed" ? "GB + Color" : "monochrome"} mode; this one has ${tiles - limit} too many.` });
+    if (tiles > limit) issues.push({ level: "problem", ...where, title: `${tiles} tiles, over ${limit}`, detail: `GB Studio allows ${limit} different tiles per background in ${colorOnly ? "Color only" : colorMode === "mixed" ? "GB + Color" : "monochrome"} mode; this one has ${tiles - limit} too many.${asset.width === 160 && asset.height === 144 && tiles <= 360 ? " As a Logo scene (static: no text, menus or actors) it could use up to 360." : ""}` });
     else if (tiles > limit * 0.9) issues.push({ level: "note", ...where, title: `${tiles} of ${limit} tiles`, detail: "Close to the tile budget." });
     const sidecar = readJson(`${path}.gbsres`);
     if (colorMode !== "mono" && typeof sidecar?.tileColors === "string" && sidecar.tileColors) {

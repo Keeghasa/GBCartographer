@@ -3,6 +3,7 @@
  * time. A copy of the picture is worked on: pick the merges (all checked at first), see each one before and after,
  * merge, undo inside the window, and only "Apply to picture" hands the pixels back (the parent makes it one undo step).
  */
+import { LOGO_TILES, logoHelps } from "../gb/limits";
 import { ArrowRight, CircleCheck, Sparkles, Undo2 } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
@@ -140,6 +141,7 @@ export function BudgetFixer({ picture, limit, flips, onClose, onApply }: BudgetF
       <div className="k-stack">
         <Meter label="Now" value={now} of={limit} tone={now > limit ? "bad" : undefined} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
         <Meter label="After" value={after} of={limit} tone={after > limit ? "bad" : undefined} title="If the checked merges are made" />
+        {logoHelps(picture.width, picture.height, limit) && <Meter label="Logo" value={now} of={LOGO_TILES} tone={now > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
         <Field label={`Merge tiles that differ by at most ${plural(maxDiff, "pixel")}`}
           hint={busy ? "Comparing tiles…" : steps.length ? `${plural(steps.length, "tile")} used once ${steps.length === 1 ? "is" : "are"} this close to another; undo brings them back` : `No tile used once is within ${plural(maxDiff, "pixel")} of another`}>
           <Slider label="Pixels that may differ" value={maxDiff} onChange={setMaxDiff} min={1} max={16} />

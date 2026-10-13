@@ -5,6 +5,7 @@
  * screen and the result re-fits as a control changes. The parent opens the result as a picture or writes it into the
  * project as a new background with its palettes in the slots.
  */
+import { LOGO_TILES, logoHelps } from "../gb/limits";
 import { Crop, ImagePlus, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
@@ -169,6 +170,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {result && <>
             <Meter label="Tiles" value={result.tiles} of={result.limit} tone={tone} title={result.merged ? `${result.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
+            {logoHelps(result.width, result.height, result.limit) && <Meter label="Logo" value={result.tiles} of={LOGO_TILES} tone={result.tiles > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
             <p className="pw-report">{result.merged ? `${result.tilesBefore} → ${result.tiles} tiles after merging ${result.merged} near ones. ` : ""}{result.report.after} palette{result.report.after === 1 ? "" : "s"} · {result.report.overfull.length} tile{result.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{result.tiles > result.limit ? ` Still ${result.tiles - result.limit} over GB Studio's ${result.limit}: keep fewer colors, or turn dithering off.` : ""}</p>
             <div className="pw-palettes" aria-label="Palettes">{result.palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>
           </>}

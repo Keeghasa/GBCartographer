@@ -21,7 +21,7 @@ describe("map generators", () => {
   });
 
   it("keeps a connected cave's floor in one piece, rock all round, with two stairs", () => {
-    const { w, h, grid } = caveGrid({ ...CAVE_DEFAULTS, cell: 8, seed: 5 });
+    const { w, h, grid } = caveGrid({ ...CAVE_DEFAULTS, cell: 16, seed: 5 });
     const floor = grid.filter((cell) => cell !== 1).length;
     expect(floor).toBeGreaterThan(0);
     expect(reachable(grid, w, (cell) => cell !== 1)).toBe(floor);
