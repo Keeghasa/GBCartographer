@@ -14,7 +14,7 @@ import { APPROVED, TEMP_ASSETS } from "./temp";
 import { AUTHORED } from "./authored";
 import { setCatalogArt } from "./areas";
 import { CLEAR, canvas, type Canvas } from "./pen";
-import { acrossTemplate, animTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
+import { acrossTemplate, animTemplate, flowerTileTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
 
 export type { WireAsset };
 
@@ -79,7 +79,8 @@ const ALL: WireAsset[] = [
   { id: "piece-round-trees", name: "Round forest", group: "Outdoor pieces", kind: "stamps", autotile: "forest", about: "64 × 32: a clump of three round trees and one on its own. Paint in 32 px tree units: the clump inside, single trees along the edge.", make: pieces.roundTrees },
   { id: "piece-water", name: "Water", group: "Outdoor pieces", kind: "stamps", autotile: "atlasAnim", about: "96 × 48: a 2 × 3 water block in three animation frames, in the ledge's style (rounded corners, a dark outline with foam inside). Paint 16 px cells: shores fit; the picture plays the frames while it is in hand. Save writes frame 1.", make: atlasWaterTemplate },
   { id: "piece-mound", name: "Mound ledge", group: "Outdoor pieces", kind: "stamps", autotile: "mound", about: "48 × 64: the ledge as an auto-tile. Paint 16 px cells: a plateau with a rounded top plate; the rock face grows under its bottom edge and a rock column up its sides.", make: pieces.moundSheet },
-  { id: "autotile-anim", name: "Animated tile", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "Water in four 8 × 8 frames side by side: stamps the first frame; the card plays them. Repaint as flowers, torches or lava.", make: animTemplate },
+  { id: "autotile-anim", name: "Animated tile", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "Flowers swaying in four 16 × 16 frames side by side: stamps the first frame; the card plays them. Repaint as torches or lava.", make: animTemplate },
+  { id: "autotile-anim-flower", name: "Animated flower", group: "Auto-tiles", kind: "stamps", autotile: "anim", about: "One flower in one 8 × 8 tile, swaying over four frames side by side.", make: flowerTileTemplate },
   { id: "scene-title", name: "Title screen", group: "Scenes", kind: "backgrounds", make: scenes.title },
   { id: "scene-logo", name: "Logo splash", group: "Scenes", kind: "backgrounds", make: scenes.logo },
   { id: "scene-menu", name: "Menu", group: "Scenes", kind: "backgrounds", make: scenes.menu },
@@ -99,7 +100,16 @@ const ALL: WireAsset[] = [
 ];
 
 /** The catalog: the author's hand-edited versions (from the Asset Catalog project) in place of the code-drawn art. */
-export const GRAPHICS: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => fromAuthored(AUTHORED[asset.id]) } : asset);
+const CATALOG: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => fromAuthored(AUTHORED[asset.id]) } : asset);
+/**
+ * The window frames as 9-slice auto-tiles too (the author, 2026-10-13): GB Studio's frame is the Box (9) layout, 24 × 24
+ * in 8 × 8 corners, edges and middle, so each frame (the author's edits included) doubles as a box stamp.
+ */
+const FRAME_BOXES: WireAsset[] = CATALOG.filter((asset) => asset.id.startsWith("ui-frame-")).map((frame) => ({
+  id: `box-${frame.id.slice(3)}`, name: `${frame.name} 9-slice`, group: "Auto-tiles", kind: "stamps", autotile: "box",
+  about: `${frame.name} as a 9-slice box: drag it to any size, the corners stay, the edges and middle repeat.`, make: frame.make,
+}));
+export const GRAPHICS: WireAsset[] = [...CATALOG, ...FRAME_BOXES];
 
 // The wizards, the village and the tile sheets draw with the catalog's versions (the author's edits) of the sheets.
 setCatalogArt((id) => GRAPHICS.find((asset) => asset.id === id)?.make() ?? null);

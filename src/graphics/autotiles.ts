@@ -2,8 +2,8 @@
  * Auto-tile templates (the author, 2026-10-10): placeholder sheets laid out the way GB Cartographer's 9 and W
  * stamps read them (src/app/autotile.ts), to try the auto-tiles and to repaint as real art later.
  * - Box (9): 3 × 3 tiles, corners, edges and middle.
- * - Wang (W): the 47-tile blob sheet, 8 × 6 tiles, one tile per neighbour shape in mask order; drawn as the cave
- *   style: a dark wall (shade 2) with a white outline (shade 0) where it meets open ground, the 48th slot black.
+ * - Wang (W): the 47-tile blob sheet, 8 × 6 tiles, one tile per neighbour shape in mask order; drawn in wireframe
+ *   (wireTile): a light area outlined dark where it meets open ground, the 48th slot black.
  * - 3-slice across (↔) and down (↕), Path (P), Wang edges (E), Corner Wang (C), Wall face (F), Animated tile (▶):
  *   laid out as src/app/autotile.ts reads them. Every tile of a sheet that painting recognises is different.
  */
@@ -14,22 +14,31 @@ export function wangTemplate(): Canvas {
   const out = canvas(WANG_COLUMNS * 8, WANG_ROWS * 8, 3), p = new Pen(out);
   WANG_MASKS.forEach((mask, index) => {
     const t = p.at((index % WANG_COLUMNS) * 8, Math.floor(index / WANG_COLUMNS) * 8, 8);
-    t.fill(2);
-    // Open sides: a white outline.
-    if (!(mask & N)) t.rect(0, 0, 8, 1, 0);
-    if (!(mask & S)) t.rect(0, 7, 8, 1, 0);
-    if (!(mask & W)) t.rect(0, 0, 1, 8, 0);
-    if (!(mask & E)) t.rect(7, 0, 1, 8, 0);
-    // Inside corners: both sides filled, the corner open.
-    if (mask & N && mask & E && !(mask & NE)) t.dot(7, 0, 0);
-    if (mask & S && mask & E && !(mask & SE)) t.dot(7, 7, 0);
-    if (mask & S && mask & W && !(mask & SW)) t.dot(0, 7, 0);
-    if (mask & N && mask & W && !(mask & NW)) t.dot(0, 0, 0);
-    // A mark in the middle tells the tiles apart while testing: the count of filled sides.
-    const sides = [N, E, S, W].filter((bit) => mask & bit).length;
-    for (let i = 0; i < sides; i += 1) t.dot(2 + i, 4, 1);
+    wireTile(t, { n: !(mask & N), e: !(mask & E), s: !(mask & S), w: !(mask & W) },
+      { ne: Boolean(mask & N && mask & E && !(mask & NE)), se: Boolean(mask & S && mask & E && !(mask & SE)), sw: Boolean(mask & S && mask & W && !(mask & SW)), nw: Boolean(mask & N && mask & W && !(mask & NW)) });
   });
   return out;
+}
+
+/**
+ * One tile of a wireframe area (the author, 2026-10-13: Wang sheets "nicer and more templatey"): a light inside
+ * (shade 0), and on each open side a dark line (3) with a mid band (1) inside it; two open sides meeting round their
+ * corner off; an inside corner (both sides joined, the diagonal open) a dark notch with the band turning round it.
+ */
+function wireTile(t: Pen, open: { n: boolean; e: boolean; s: boolean; w: boolean }, inner: { ne?: boolean; se?: boolean; sw?: boolean; nw?: boolean } = {}) {
+  t.fill(0);
+  if (open.n) { t.rect(0, 1, 8, 1, 1); t.rect(0, 0, 8, 1, 3); }
+  if (open.s) { t.rect(0, 6, 8, 1, 1); t.rect(0, 7, 8, 1, 3); }
+  if (open.w) { t.rect(1, 0, 1, 8, 1); t.rect(0, 0, 1, 8, 3); }
+  if (open.e) { t.rect(6, 0, 1, 8, 1); t.rect(7, 0, 1, 8, 3); }
+  if (open.n && open.w) { t.dot(0, 0, 1); t.dot(1, 1, 3); }
+  if (open.n && open.e) { t.dot(7, 0, 1); t.dot(6, 1, 3); }
+  if (open.s && open.w) { t.dot(0, 7, 1); t.dot(1, 6, 3); }
+  if (open.s && open.e) { t.dot(7, 7, 1); t.dot(6, 6, 3); }
+  for (const [on, x, y, dx, dy] of [[inner.nw, 0, 0, 1, 1], [inner.ne, 7, 0, -1, 1], [inner.sw, 0, 7, 1, -1], [inner.se, 7, 7, -1, -1]] as const) {
+    if (!on) continue;
+    t.dot(x, y, 3); t.dot(x + dx, y, 1); t.dot(x, y + dy, 1); t.dot(x + dx, y + dy, 1);
+  }
 }
 
 export function boxTemplate(): Canvas {
@@ -85,27 +94,29 @@ export function pathTemplate(): Canvas {
   }, 0);
 }
 
-/** Wang edges: the cave wall (shade 2) outlined in white (0) on every side that isn't more wall. */
+/** Wang edges: the wireframe area (wireTile) outlined on every side that isn't more of it; no inner corners. */
 export function edgesTemplate(): Canvas {
-  return sheet16((t, mask) => {
-    t.fill(2);
-    if (!(mask & EDGE_N)) t.rect(0, 0, 8, 1, 0);
-    if (!(mask & EDGE_S)) t.rect(0, 7, 8, 1, 0);
-    if (!(mask & EDGE_W)) t.rect(0, 0, 1, 8, 0);
-    if (!(mask & EDGE_E)) t.rect(7, 0, 1, 8, 0);
-    t.dot(3, 3, 1);
-  }, 2);
+  return sheet16((t, mask) => wireTile(t, { n: !(mask & EDGE_N), e: !(mask & EDGE_E), s: !(mask & EDGE_S), w: !(mask & EDGE_W) }), 0);
 }
 
-/** Corner Wang: grass (0, dotted) and water (2, rippled), each 4 × 4 quarter the ground of its corner. */
+/**
+ * Corner Wang, wireframe (the author, 2026-10-13): two grounds, the light one plain (0), the other mid (1) with a
+ * light hatch, a dark line (3) where they meet. Each pixel takes the ground its four corners blend to, so the line
+ * curves round a lone corner, runs straight along a side and carries on into the next tile.
+ */
 export function cornerTemplate(): Canvas {
   return sheet16((t, mask) => {
-    const quarter = (x: number, y: number, water: boolean) => {
-      t.rect(x, y, 4, 4, water ? 2 : 0);
-      if (water) t.rect(x + 1, y + 2, 2, 1, 1); else t.dot(x + 1, y + 1, 1);
+    const nw = mask & CORNER_NW ? 1 : 0, ne = mask & CORNER_NE ? 1 : 0, sw = mask & CORNER_SW ? 1 : 0, se = mask & CORNER_SE ? 1 : 0;
+    const other = (x: number, y: number) => {
+      const u = Math.min(1, Math.max(0, (x + 0.5) / 8)), v = Math.min(1, Math.max(0, (y + 0.5) / 8));
+      return (nw * (1 - u) + ne * u) * (1 - v) + (sw * (1 - u) + se * u) * v > 0.5;
     };
-    quarter(0, 0, Boolean(mask & CORNER_NW)); quarter(4, 0, Boolean(mask & CORNER_NE));
-    quarter(0, 4, Boolean(mask & CORNER_SW)); quarter(4, 4, Boolean(mask & CORNER_SE));
+    for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
+      if (!other(x, y)) { t.dot(x, y, 0); continue; }
+      // Across the tile's edge too: the blend there is the next tile's own (its corners are this tile's), so lines join.
+      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !other(x + dx, y + dy));
+      t.dot(x, y, edge ? 3 : (x + y) % 4 === 0 ? 0 : 1);
+    }
   }, 0);
 }
 
@@ -126,19 +137,34 @@ export function wallFaceTemplate(): Canvas {
   return out;
 }
 
-/** Animated tile: water in four frames of 16 × 16 side by side, the wave crests drifting along. */
+/**
+ * A flower swaying in the wind (the author, 2026-10-13: "make it flowers"): a stem (2) from the ground up, a head of
+ * four petals (1) round a dark heart (3) that leans -1, 0, +1, 0 px over the frames, a leaf on the stem.
+ */
+function flower(t: Pen, x: number, ground: number, height: number, frame: number) {
+  const lean = [-1, 0, 1, 0][frame], top = ground - height;
+  for (let y = top + 2; y <= ground; y += 1) t.dot(x + (y < top + 4 ? lean : 0), y, 2);
+  t.dot(x + 1, ground - 2, 2); t.dot(x + 2, ground - 3, 2);
+  const hx = x + lean, hy = top;
+  t.dot(hx, hy, 3); t.dot(hx - 1, hy, 1); t.dot(hx + 1, hy, 1); t.dot(hx, hy - 1, 1); t.dot(hx, hy + 1, 1);
+}
+
+/** Animated tile: flowers in four 16 × 16 frames side by side, three of them swaying out of step on light grass. */
 export function animTemplate(): Canvas {
-  const out = canvas(64, 16, 1), p = new Pen(out);
+  const out = canvas(64, 16, 0), p = new Pen(out);
   for (let frame = 0; frame < 4; frame += 1) {
     const t = p.at(frame * 16, 0, 16);
-    t.fill(1);
-    // Two rows of wave crests drifting right a step each frame (wrapping round the tile), a glint on each.
-    for (const [y, shift] of [[4, 0], [11, 8]] as const) for (let k = 0; k < 2; k += 1) {
-      const x = (frame * 2 + shift + k * 8) % 16;
-      for (let i = 0; i < 4; i += 1) t.dot((x + i) % 16, y, 2);
-      t.dot((x + 1) % 16, y - 1, 0); t.dot((x + 2) % 16, y - 1, 0);
-    }
+    t.fill(0);
+    for (const [x, y] of [[1, 15], [7, 14], [13, 15]]) t.dot(x, y, 1);
+    flower(t, 3, 15, 9, frame); flower(t, 8, 13, 7, (frame + 1) % 4); flower(t, 12, 15, 10, (frame + 2) % 4);
   }
+  return out;
+}
+
+/** One flower in one tile (the author, 2026-10-13): four 8 × 8 frames side by side, swaying. */
+export function flowerTileTemplate(): Canvas {
+  const out = canvas(32, 8, 0), p = new Pen(out);
+  for (let frame = 0; frame < 4; frame += 1) { const t = p.at(frame * 8, 0, 8); t.fill(0); t.dot(1, 7, 1); flower(t, 3, 7, 5, frame); }
   return out;
 }
 
@@ -292,15 +318,24 @@ export function xpGroundTemplate(): Canvas {
  * corners rounded 3 px in.
  */
 export function xpWaterTemplate(frames = 3): Canvas {
-  const out = canvas(48 * frames, 64, CLEAR);
-  for (let frame = 0; frame < frames; frame += 1) {
-  const shift = frames === 2 ? 4 : 3, shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * shift) * Math.PI / 4)), corner: 3 };
-  const water: Shader = (depth, x, y) => {
+  const shift = frames === 2 ? 4 : 3;
+  return xpShoreTemplate(frames, (frame) => (depth, x, y) => {
     if (depth === 0) return 3;
     if (depth === 1) return 0;
     const crest = (x - frame * shift + 16 + (y >= 4 ? 4 : 0)) % 8;
     return (y === 2 || y === 6) && crest < 3 ? 0 : (y === 3 || y === 7) && crest < 3 ? 2 : 1;
-  };
+  });
+}
+
+/**
+ * Water XP's shape with any fill (Lava XP too, the author 2026-10-13: "the same wavy borders that the water has"): the
+ * wavy shore moving along each frame, a round lone pool, and the outline turning where the shore steps.
+ */
+export function xpShoreTemplate(frames: number, fill: (frame: number) => Shader): Canvas {
+  const out = canvas(48 * frames, 64, CLEAR);
+  for (let frame = 0; frame < frames; frame += 1) {
+  const shift = frames === 2 ? 4 : 3, shore: Inset = { at: (n) => 3 + Math.round(Math.sin((n + frame * shift) * Math.PI / 4)), corner: 3 };
+  const water = fill(frame);
   xpBlock(out, frame * 48, water, shore, 7);
   // The lone pond (one cell on its own): a round pool about 6 px across the middle, its rim wobbling a little as the
   // frames play, like the shore.
