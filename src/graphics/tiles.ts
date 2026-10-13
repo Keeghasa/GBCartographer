@@ -18,7 +18,6 @@ const middle = (id: Parameters<typeof sheet>[0]) => from(() => pieceOf(sheet(id)
 
 // ---- shared bits ----------------------------------------------------------------------------------------------------
 
-const tufts = (p: Pen, shade = 1) => { for (const [x, y] of [[3, 3], [11, 10]]) { p.dot(x, y + 1, shade); p.dot(x + 1, y, shade); p.dot(x + 2, y + 1, shade); } };
 const bricks = (p: Pen, mortar: number) => {
   for (let y = 3; y < 16; y += 4) p.rect(0, y, 16, 1, mortar);
   for (let row = 0; row < 4; row += 1) for (const x of row % 2 ? [3, 11] : [7, 15]) p.rect(x, row * 4, 1, 3, mortar);
