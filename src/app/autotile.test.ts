@@ -34,7 +34,7 @@ describe("auto-tiles", () => {
   });
 
   it("draws a template for every auto-tile that fits it, its painted tiles all different", () => {
-    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate(), atlas: atlasBlank(32, 48), atlasAnim: atlasWaterTemplate(), atlasWall: atlasBlank(32, 80), mound: pieces.moundSheet(), forest: pieces.pines() };
+    const made = { box: boxTemplate(), wang: wangTemplate(), across: acrossTemplate(), down: downTemplate(), path: pathTemplate(), edges: edgesTemplate(), corner: cornerTemplate(), wallface: wallFaceTemplate(), anim: animTemplate(), atlas: atlasBlank(32, 48), atlasAnim: atlasWaterTemplate(), atlasWall: atlasBlank(32, 80), mound: pieces.moundSheet(), forest: pieces.pines(), xp: atlasBlank(48, 64), xpAnim: atlasBlank(144, 64), xpCliff: atlasBlank(48, 80) };
     for (const kind of AUTOTILES) expect(kind.fits(made[kind.id].width, made[kind.id].height), kind.id).toBe(true);
     const distinct = (sheet: { width: number; pixels: Uint8Array }, count: number, columns: number) => new Set(Array.from({ length: count }, (_, index) => { const x = (index % columns) * 8, y = Math.floor(index / columns) * 8; return Array.from({ length: 64 }, (_, at) => sheet.pixels[(y + (at >> 3)) * sheet.width + x + (at & 7)]).join(""); })).size;
     expect(distinct(made.path, 16, 4)).toBe(16);

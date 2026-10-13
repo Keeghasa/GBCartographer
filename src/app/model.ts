@@ -138,6 +138,7 @@ export type Drag =
   | { kind: "auto"; last: Point; erase: boolean }
   | { kind: "atlas"; last: Point; erase: boolean }
   | { kind: "mound"; last: Point; erase: boolean }
+  | { kind: "xp"; last: Point; erase: boolean }
   | { kind: "forest"; last: Point; erase: boolean }
   /** A corner-Wang stamp painted at grid corners (`last` is a corner, in tiles). */
   | { kind: "corner"; last: Point; erase: boolean }

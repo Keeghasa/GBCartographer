@@ -31,6 +31,53 @@ export function rpgCell(mask: number): [number, number][] {
 }
 
 /**
+ * RPG Maker XP's autotile layout (Axul's sheets are drawn in it, 2026-10-12), at Game Boy size: 3 × 4 tiles of 16 px
+ * (6 × 8 minitiles of 8 px). Top row: a lone tile (columns 0–1), then the inner corners (columns 4–5), each minitile
+ * notched at ITS OWN corner. Rows 2–7: a 3 × 3-tile block, its outer corners rounded, its edges along the sides and
+ * its fill in the middle. Unlike VX (rpgQuarter), a quarter takes the inner-corner minitile in the same position.
+ */
+export function xpQuarter(quarter: number, sideA: boolean, sideB: boolean, diagonal: boolean): [number, number] {
+  // sideA: across the quarter's vertical side (W for TL / BL, E for TR / BR); sideB: across its horizontal side (N or S).
+  const right = quarter === 1 || quarter === 3, bottom = quarter >= 2;
+  if (sideA && sideB) return diagonal ? [right ? 3 : 2, bottom ? 5 : 4] : [right ? 5 : 4, bottom ? 1 : 0];
+  if (sideA) return [right ? 3 : 2, bottom ? 7 : 2];
+  if (sideB) return [right ? 5 : 0, bottom ? 5 : 4];
+  return [right ? 5 : 0, bottom ? 7 : 2];
+}
+
+/** A filled cell's four minitiles in an RPG Maker XP block, from its 8-bit neighbour mask. */
+export function xpCell(mask: number): [number, number][] {
+  const has = (bit: number) => Boolean(mask & bit);
+  return [xpQuarter(0, has(W), has(N), has(NW)), xpQuarter(1, has(E), has(N), has(NE)), xpQuarter(2, has(W), has(S), has(SW)), xpQuarter(3, has(E), has(S), has(SE))];
+}
+
+/**
+ * A cliff in the XP style (Axul's cliff sheet, 48 × 80, 6 × 10 minitiles): rows 0–3 the plateau (row 0 its top
+ * edge, rows 1–3 its sides and fill), rows 4–5 the cliff face with its sides and rounded foot; rows 6 and 8, columns
+ * 0 and 3: where a face meets the plateau beside it (the face's top end, and the side running down past it);
+ * columns 4–5 of rows 8–9: a lone mound. A filled cell is face when the cell below it isn't filled, else plateau.
+ */
+export function xpCliffCell(filled: Filled, x: number, y: number): Piece[] {
+  if (!filled(x, y)) return [null, null, null, null];
+  if (!filled(x - 1, y) && !filled(x + 1, y) && !filled(x, y - 1) && !filled(x, y + 1)) return [[4, 8], [5, 8], [4, 9], [5, 9]];
+  const face = (cx: number, cy: number) => filled(cx, cy) && !filled(cx, cy + 1);
+  if (face(x, y)) {
+    const west = filled(x - 1, y), east = filled(x + 1, y);
+    return [west ? [1, 4] : [0, 4], east ? [2, 4] : [5, 4], west ? [1, 5] : [0, 5], east ? [2, 5] : [5, 5]];
+  }
+  const quarter = (right: boolean, bottom: boolean): Piece => {
+    const dx = right ? 1 : -1, dy = bottom ? 1 : -1, side = filled(x + dx, y), vertical = filled(x, y + dy);
+    // Beside a face: its top end (upper quarter) and the side running down past it (lower quarter).
+    if (side && face(x + dx, y)) return [right ? 3 : 0, bottom ? 8 : 6];
+    if (bottom) return side ? [right ? 2 : 1, 2] : [right ? 5 : 0, 2];
+    if (!vertical) return side ? [right ? 4 : 1, 0] : [right ? 5 : 0, 0];
+    // A raised part's side runs on down into a wider plateau (the top inside corner).
+    return side && filled(x + dx, y + dy) ? [right ? 2 : 1, 1] : [right ? 5 : 0, 1];
+  };
+  return [quarter(false, false), quarter(true, false), quarter(false, true), quarter(true, true)];
+}
+
+/**
  * The mound ledge sheet (src/graphics/pieces.ts, 48 × 80, 6 × 10 minitiles): columns 1–4 rows 0–3 the plateau
  * (row 0 its top border, rows 1–2 the plate inside, row 3 its bottom border; columns 1 and 4 its left and right
  * borders, the corners rounded); columns 0 and 5 the rock that flanks it; rows 4–5 the rock face, rows 6–7 its

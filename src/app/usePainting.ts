@@ -4,7 +4,7 @@
  * app's current state; it owns only the state of a drag in progress.
  */
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
-import { forestLayout, moundLayout, rpgCell, type Piece } from "./autopaint";
+import { forestLayout, moundLayout, rpgCell, xpCell, xpCliffCell, type Piece } from "./autopaint";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
 import { paintCollision } from "../gb/collisions";
@@ -274,6 +274,33 @@ export function usePainting(app: Painting) {
   }
 
   /**
+   * RPG Maker XP-layout auto-tiles (autopaint.ts xpCell / xpCliffCell; Axul's sheets are drawn in it): 16 px cells.
+   * Cell (cx, cy) joins (or, `erase`, leaves) the area; it and the cells around it are drawn again from the sheet
+   * (frame 1's, for water). A cell belongs when its top-left tile is one of the sheet's tiles. For ground and water,
+   * off the picture counts as more of the area; a cliff stops at the edge (so it shows its face there).
+   */
+  function paintXp(target: Doc, cx: number, cy: number, erase: boolean) {
+    const auto = stamp.current?.auto;
+    const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
+    if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
+    const cliff = auto === "xpCliff", blank = app.blank(target);
+    const keys = sheetKeys(6, cliff ? 60 : 48, blank);
+    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
+    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
+    const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
+    const filled = (x: number, y: number) => !inside(x, y) ? !cliff : marked.get(`${x},${y}`) ?? keys.has(keyAt(x, y));
+    // Every cell around is decided before anything is drawn (drawing changes what the neighbours read as).
+    const cells: [number, number, Piece[]][] = [];
+    for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+      const x = cx + dx, y = cy + dy;
+      if (!inside(x, y) || !filled(x, y)) continue;
+      cells.push([x, y, cliff ? xpCliffCell((fx, fy) => inside(fx, fy) && filled(fx, fy), x, y) : xpCell(maskAt(filled, x, y))]);
+    }
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
+    for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => { if (piece) putSheetTile(target, x * 2 + (quarter % 2), y * 2 + (quarter >> 1), piece[0], piece[1], true); });
+  }
+
+  /**
    * The mound ledge (autopaint.ts moundLayout): cell (cx, cy) joins (or leaves) the plateau; the cells around it are
    * drawn again: plateau by its neighbours, the rock face under a bottom edge, the rock beside a plateau or face
    * (only over blank picture or the sheet's own tiles, so neighbouring art stays).
@@ -416,7 +443,7 @@ export function usePainting(app: Painting) {
       // An area auto-tile paints one cell a click (a 32 px tree unit, a 16 px block cell, an 8 px tile): the outline
       // shows that cell where it lands, not the whole sheet. Other stamps show their whole size.
       const auto = stamp.current?.auto;
-      const unit = auto === "forest" ? 32 : auto === "mound" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
+      const unit = auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
       const corner = auto === "corner";
       const left = corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
       const top = corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.y / unit) * unit : point.y & ~7;
@@ -505,6 +532,10 @@ export function usePainting(app: Painting) {
         const erase = event.altKey;
         paintAuto(doc, point.x >> 3, point.y >> 3, erase);
         drag.current = { kind: "auto", last: point, erase };
+      } else if (auto === "xp" || auto === "xpAnim" || auto === "xpCliff") {
+        const erase = event.altKey;
+        paintXp(doc, point.x >> 4, point.y >> 4, erase);
+        drag.current = { kind: "xp", last: point, erase };
       } else if (auto === "mound") {
         const erase = event.altKey;
         paintMound(doc, point.x >> 4, point.y >> 4, erase);
@@ -608,6 +639,9 @@ export function usePainting(app: Painting) {
     } else if (state.kind === "auto") {
       for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintAuto(doc, x, y, state.erase);
       state.last = point;
+    } else if (state.kind === "xp") {
+      for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintXp(doc, x, y, state.erase);
+      state.last = point;
     } else if (state.kind === "mound") {
       for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintMound(doc, x, y, state.erase);
       state.last = point;
@@ -641,7 +675,7 @@ export function usePainting(app: Painting) {
       const step = (distance: number) => snap ? Math.round(distance / CELL) * CELL : distance;
       app.moveFloat(doc, state.ox + step(point.x - state.start.x), state.oy + step(point.y - state.start.y));
     }
-    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "auto" || state.kind === "atlas" || state.kind === "mound" || state.kind === "forest" || state.kind === "corner") followLinks(doc);
+    if (state.kind === "stroke" || state.kind === "spray" || state.kind === "shape" || state.kind === "stamp" || state.kind === "box" || state.kind === "auto" || state.kind === "atlas" || state.kind === "xp" || state.kind === "mound" || state.kind === "forest" || state.kind === "corner") followLinks(doc);
     app.bump();
   }
 

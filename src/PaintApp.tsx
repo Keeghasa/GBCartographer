@@ -1372,7 +1372,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const kind = autotileKind(asset.autotile);
     if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
     if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
-    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest"].includes(kind.id) ? " Alt clears." : ""}` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
@@ -2202,12 +2202,12 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   // 1's tiles shows the other frames in turn over it, 2 steps a second (the author: slower); frame 1 shows the
   // picture itself. Nothing is written: Save keeps frame 1.
   const held = tool === "stamp" ? stampInHand() : null;
-  const atlasHeld = held?.auto === "atlasAnim" || (held?.auto === "anim" && held.animSheet) ? held : null;
+  const atlasHeld = held?.auto === "atlasAnim" || held?.auto === "xpAnim" || (held?.auto === "anim" && held.animSheet) ? held : null;
   useEffect(() => { setAtlasPlaying(Boolean(atlasHeld && doc)); }, [atlasHeld, doc]);
   useEffect(() => {
     const canvas = atlasAnimCanvas.current;
     if (!atlasPlaying || !atlasHeld || !doc || !canvas) return;
-    const source = atlasHeld.animSheet ?? atlasHeld, frameWidth = atlasHeld.auto === "atlasAnim" ? ATLAS_W : source.h;
+    const source = atlasHeld.animSheet ?? atlasHeld, frameWidth = atlasHeld.auto === "atlasAnim" ? ATLAS_W : atlasHeld.auto === "xpAnim" ? 48 : source.h;
     const frameColumns = frameWidth / CELL, frameCount = Math.max(1, Math.floor(source.w / frameWidth));
     // The block in the picture's colors, once.
     const sheet = document.createElement("canvas");
