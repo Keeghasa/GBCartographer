@@ -48,7 +48,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Brush size" keys={["[", "]"]}>Smaller or bigger: pixels, or tiles with the palette brush.</Row>
           <Row name="Mirror" keys={["Shift+M"]}>Paint both halves at once: off, left-right, top-bottom, both.</Row>
           <Row name="Linked tiles" keys={["K"]}>Painting a tile paints every identical copy of it too (one-color tiles aren't linked). One undo step per stroke.</Row>
-          <Row name="Draft layer" keys={["Shift+D"]}>A scratch layer over the picture: paint with any tool, the changes show tinted orange; Commit keeps them (one undo takes them back), Wipe puts the picture back, Off closes it. Save writes the picture with the draft on it.</Row>
+          <Row name="Draft layer" keys={["Shift+D"]}>A scratch layer over the picture: paint with any tool, the changes show tinted orange; Commit keeps them (one undo takes them back), Wipe puts the picture back, Off closes it; the Old slider fades the picture underneath (what the draft hasn't changed) so the new pixels stand out. Save writes the picture with the draft on it.</Row>
           <Row name="Seamless view">The tile under the pointer (or the selection) repeated 3 × 3 above the picture, to check that it tiles cleanly.</Row>
         </Section>
         <Section title="Selection">

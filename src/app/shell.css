@@ -85,7 +85,7 @@
 .app-stage > :not(.gbp-stage) { flex: none; }
 .app-strip { position: sticky; top: var(--k-3); left: var(--k-3); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--k-3); width: max-content; max-width: calc(100% - 24px); margin: var(--k-3); padding: var(--k-2) var(--k-3); background: var(--k-panel); }
 .app-strip + .app-strip { margin-top: 0; }
-.app-draft { border-color: rgba(255, 150, 40, .5); } .app-draft .app-strip-label { display: inline-flex; align-items: center; gap: 6px; }
+.app-draft { border-color: rgba(255, 150, 40, .5); } .app-draft-old { display: inline-flex; align-items: center; gap: 6px; } .app-draft-old .k-slider { width: 90px; } .app-draft .app-strip-label { display: inline-flex; align-items: center; gap: 6px; }
 .app-strip-label { color: var(--k-ink-2); font-size: var(--k-text-sm); white-space: nowrap; }
 .app-strip canvas { image-rendering: pixelated; border-radius: 6px; box-shadow: 0 0 0 1px var(--k-edge); }
 .app-strip--alert { border-color: rgba(230, 162, 60, .5); background: #1b1710; }

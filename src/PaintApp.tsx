@@ -38,7 +38,7 @@ import type { FitResult } from "./app/pictureFit";
 /** A finished picture from a wizard: shades, each tile's palette (1-based, 0 none) and those palettes. */
 type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[] };
 import { NewPictureWindow, ResizeWindow, type NewPicture } from "./app/NewPictureWindow";
-import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
+import { Button, Chip, IconButton, Kbd, Menu, MenuAt, Slider, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
 import "./app/shell.css";
 import { StartScreen } from "./app/StartScreen";
 import { ProjectPanel } from "./app/ProjectPanel";
@@ -94,6 +94,8 @@ export default function PaintApp() {
   const [linked, setLinked] = useState(false);
   /** Seamless view: the tile under the pointer (or the selection) repeated 3 × 3 above the picture. */
   const [seamless, setSeamless] = useState(false);
+  /** The draft layer's slider: how much the old picture (pixels the draft hasn't changed) shows, 10–100 %. */
+  const [draftOld, setDraftOld] = useState(100);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const seamlessCanvas = useRef<HTMLCanvasElement>(null);
   /** The fill pattern for Flood fill and Filled rectangle (D cycles it). */
@@ -2251,7 +2253,9 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const context = canvas.getContext("2d")!;
     context.clearRect(0, 0, doc.width, doc.height);
     const image = context.createImageData(doc.width, doc.height);
-    for (let at = 0; at < doc.pixels.length; at += 1) if (doc.pixels[at] !== base.pixels[at]) image.data.set([255, 150, 40, 110], at * 4);
+    // Unchanged pixels are washed out as the slider lowers the old picture, so what's new stands out.
+    const wash = Math.round((1 - draftOld / 100) * 255);
+    for (let at = 0; at < doc.pixels.length; at += 1) if (doc.pixels[at] !== base.pixels[at]) image.data.set([255, 150, 40, 110], at * 4); else if (wash) image.data.set([255, 255, 255, wash], at * 4);
     context.putImageData(image, 0, 0);
     const cw = cellsWide(doc.width);
     context.strokeStyle = "rgba(255, 150, 40, .9)";
@@ -2664,6 +2668,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
               <Button size="sm" variant="primary" icon={<Check />} disabled={!changed} title="Keep the draft as part of the picture (one undo takes it back)" onClick={() => commitDraft(doc)}>Commit</Button>
               <Button size="sm" icon={<Eraser />} disabled={!changed} title="Put the picture back as it was when the draft began; the draft layer stays on" onClick={() => wipeDraft(doc)}>Wipe</Button>
               <Button size="sm" variant="ghost" icon={<X />} disabled={changed > 0} title={changed ? "Commit or wipe the draft first" : "Turn the draft layer off"} onClick={() => { delete doc.draft; bump(); }}>Off</Button>
+              <span className="k-muted k-xs app-draft-old" title="How much the old picture shows (pixels the draft hasn't changed)">Old <Slider label="Old picture's opacity" value={draftOld} min={10} max={100} step={5} onChange={setDraftOld} /> {draftOld}%</span>
               <span className="k-muted k-xs">Save writes the picture with the draft on it.</span>
             </div>
           ); })()}
