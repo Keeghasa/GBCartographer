@@ -1,8 +1,11 @@
 /** The paint tools: one button per tool, the view and painting toggles, and the brush size for the tool in hand. */
-import { Contrast, Dna, FlipHorizontal, Grid2x2, Minus, Plus } from "lucide-react";
+import { Contrast, Dna, FlipHorizontal, FlipVertical, Grid2x2, Minus, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { PATTERNS, inPattern, type Mirror, type Pattern } from "../paint";
-import { MIRRORS, MIRROR_LABEL, type ToolId } from "./model";
+import { type ToolId } from "./model";
+
+/** One mirror axis switched on or off, the other kept. */
+const toggleMirror = (mirror: Mirror, axis: "x" | "y"): Mirror => { const x = mirror === "x" || mirror === "xy", y = mirror === "y" || mirror === "xy"; const nx = axis === "x" ? !x : x, ny = axis === "y" ? !y : y; return nx && ny ? "xy" : nx ? "x" : ny ? "y" : "off"; };
 import { TOOLS } from "./tools";
 import { IconButton } from "../ui/kit";
 import { PhCheckerboard } from "../ui/setIcons";
@@ -51,7 +54,9 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
       <hr />
       <IconButton label="Seamless view: the tile under the pointer (or the selection) repeated 3 × 3" aria-label="Seamless view" pressed={seamless} onClick={() => onSeamless(!seamless)}><Grid2x2 size={17} /></IconButton>
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>
-      <IconButton label={`${MIRROR_LABEL[mirror]}: paint both halves at once`} keys="Shift+M" aria-label={MIRROR_LABEL[mirror]} pressed={mirror !== "off"} onClick={() => onMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length])}><FlipHorizontal size={17} /></IconButton>
+      {/* Mirror as two toggles (the author, 2026-10-13): left-right and top-bottom, both on for all four quarters. */}
+      <IconButton label="Mirror left-right: paint both halves at once (Shift+M steps through off, ↔, ↕, both)" keys="Shift+M" aria-label="Mirror left-right" pressed={mirror === "x" || mirror === "xy"} onClick={() => onMirror(toggleMirror(mirror, "x"))}><FlipHorizontal size={17} /></IconButton>
+      <IconButton label="Mirror top-bottom: paint the top and bottom halves at once" aria-label="Mirror top-bottom" pressed={mirror === "y" || mirror === "xy"} onClick={() => onMirror(toggleMirror(mirror, "y"))}><FlipVertical size={17} /></IconButton>
       <IconButton label="Invert: the selection's shades turned over (lightest ↔ darkest), or the whole picture's" keys="Ctrl+I" aria-label="Invert" onClick={onInvert}><Contrast size={17} /></IconButton>
       {tool === "patternFill" && <IconButton label={`Fill pattern: ${patternLabel}`} keys="D" aria-label={`Fill pattern: ${patternLabel}`} pressed={pattern !== "solid"} onClick={onPattern}><PhCheckerboard size={17} /></IconButton>}
       <hr />
