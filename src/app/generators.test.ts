@@ -40,6 +40,17 @@ describe("map generators", () => {
     expect(themed.cells?.length).toBe(Math.ceil(themed.width / 8) * Math.ceil(themed.height / 8));
   });
 
+  it("leaves no cave rock one cell thin (a spur or a ledge would be a sliver of wall)", () => {
+    for (let seed = 1; seed <= 20; seed += 1) for (const [columns, rows] of [[1, 1], [2, 2], [3, 2]]) {
+      const { w, h, grid } = caveGrid({ ...CAVE_DEFAULTS, seed, columns, rows });
+      for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
+        const at = y * w + x;
+        const open = (i: number) => grid[i] !== 1;
+        expect(grid[at] === 1 && ((open(at - 1) && open(at + 1)) || (open(at - w) && open(at + w))), `seed ${seed} at ${x}, ${y}`).toBe(false);
+      }
+    }
+  });
+
   it("builds dungeon walls at least two cells tall, so each shows its top and its face", () => {
     for (let seed = 1; seed <= 20; seed += 1) for (const [columns, rows] of [[1, 1], [2, 2], [3, 2]]) {
       const { w, h, grid } = caveGrid({ ...CAVE_DEFAULTS, style: "dungeon", seed, columns, rows });

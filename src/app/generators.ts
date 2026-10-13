@@ -87,7 +87,10 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
       }
       grid = next;
     }
-    if (settings.connected) joinAreas(grid, w, h);
+    // No rock one cell thin (the author, 2026-10-13): a spur with floor on both sides, or a ledge with floor above and
+    // below, can only be drawn as a sliver of wall, so it wears away into floor (again, until none is left).
+    wearThinRock(grid, w, h);
+    if (settings.connected) { joinAreas(grid, w, h); wearThinRock(grid, w, h); }
   } else {
     carveRooms(grid, w, h, settings, random);
     // Thickening can cut a corridor and the tunnel that rejoins it can leave a new thin wall: a few rounds settle it.
@@ -109,6 +112,18 @@ function thickenWalls(grid: Uint8Array, w: number, h: number): boolean {
   for (let y = 1; y < h - 1; y += 1) for (let x = 0; x < w; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) thin.push((y - 1) * w + x);
   for (const at of thin) grid[at] = 1;
   return thin.length > 0;
+}
+
+/** Rock one cell thin (floor on both sides, or above and below) wears away into floor, until none is left. */
+function wearThinRock(grid: Uint8Array, w: number, h: number) {
+  const open = (at: number) => grid[at] !== 1;
+  for (let changed = true, round = 0; changed && round < 16; round += 1) {
+    changed = false;
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
+      const at = y * w + x;
+      if (grid[at] === 1 && ((open(at - 1) && open(at + 1)) || (open(at - w) && open(at + w)))) { grid[at] = 0; changed = true; }
+    }
+  }
 }
 
 /** Rooms that don't touch, each joined to the nearest room already joined by an L-shaped corridor. */
