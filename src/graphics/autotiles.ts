@@ -306,7 +306,7 @@ export function xpCliffTemplate(): Canvas {
   // The band, seen from its open side: x 0 the outer outline, x 7 the inner one. `cut` cuts its top (or bottom) at 45°.
   const band = (cut: "top" | "bottom" | null, beyond = CLEAR) => (x: number, y: number) => {
     const d = cut === "top" ? x + y : cut === "bottom" ? x + 7 - y : 99;
-    if (d < 7) return beyond;
+    if (d < 7) return beyond === CLEAR ? CLEAR : y === 0 ? 3 : beyond;
     if (d === 7 || x === 0 || x === 7) return 3;
     return 2;
   };
@@ -315,9 +315,10 @@ export function xpCliffTemplate(): Canvas {
     tile(column, 0, band("top"), right);
     for (const row of [1, 2, 3, 4]) tile(column, row, band(null), right);
     tile(column, 5, band("bottom"), right);
-    // Where a band above ends into a wider plateau: the band's foot cut at 45° onto the plateau's top.
-    tile(right ? 3 : 0, 6, (x, y) => x + y < 7 ? (x === 0 && y === 0 ? 3 : 2) : x + y === 7 ? 3 : 0, right);
-    // A band's cut top beside a face: the face shows above the cut.
+    // Where a band above ends into a wider plateau: its foot cut at 45° from the plateau's top edge (y 0, the outer
+    // side) down to the band's inner outline, so the plateau's top outline runs into it.
+    tile(right ? 3 : 0, 6, (x, y) => x === y || (x === 7 && y < 7) ? 3 : x > y ? 2 : 0, right);
+    // A band's cut top beside a face: the face shows above the cut, its top outline running on to the band.
     tile(right ? 3 : 0, 8, band("top", 1), right);
   }
   for (let column = 1; column <= 4; column += 1) {
