@@ -61,7 +61,7 @@ import { DeleteAssetDialog } from "./app/DeleteAssetDialog";
 import { MessagesWindow, Toasts, useMessages } from "./app/Messages";
 import { ForeignWindow, type ForeignPicture } from "./app/ForeignWindow";
 import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTimeOfDay";
-import { ATLAS_FRAMES, ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
+import { ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
@@ -1302,7 +1302,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     for (let y = 0; y < size; y += 1) pixels.set(stamp.pixels.subarray(y * stamp.w, y * stamp.w + size), y * size);
     const cw = stamp.w / 8, fw = size / 8;
     const cells = stamp.cells ? Uint8Array.from({ length: fw * fw }, (_, at) => stamp.cells![Math.floor(at / fw) * cw + (at % fw)]) : undefined;
-    return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}) };
+    // The whole strip goes along, so its frames can play over the picture while the stamp is held.
+    return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}), animSheet: { pixels: stamp.pixels, w: stamp.w, h: stamp.h, ...(stamp.cells ? { cells: stamp.cells } : {}) } };
   };
 
   /** Sets a saved stamp's auto-tile (9 box, W Wang, or none) in its own sidecar; the stamp in hand follows. */
@@ -2111,19 +2112,21 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     });
   });
 
-  // Atlas water (atlasAnim) in hand: every tile of the picture that is one of frame 1's minitiles shows frames 2 and
-  // 3 in turn over it, 4 steps a second; frame 1 shows the picture itself. Nothing is written: Save keeps frame 1.
+  // An animated stamp in hand (RPG Maker water, or an animated tile): every tile of the picture that is one of frame
+  // 1's tiles shows the other frames in turn over it, 2 steps a second (the author: slower); frame 1 shows the
+  // picture itself. Nothing is written: Save keeps frame 1.
   const held = tool === "stamp" ? stampInHand() : null;
-  const atlasHeld = held?.auto === "atlasAnim" ? held : null;
+  const atlasHeld = held?.auto === "atlasAnim" || (held?.auto === "anim" && held.animSheet) ? held : null;
   useEffect(() => { setAtlasPlaying(Boolean(atlasHeld && doc)); }, [atlasHeld, doc]);
   useEffect(() => {
     const canvas = atlasAnimCanvas.current;
     if (!atlasPlaying || !atlasHeld || !doc || !canvas) return;
-    const source = atlasHeld, frameColumns = ATLAS_W / CELL;
+    const source = atlasHeld.animSheet ?? atlasHeld, frameWidth = atlasHeld.auto === "atlasAnim" ? ATLAS_W : source.h;
+    const frameColumns = frameWidth / CELL, frameCount = Math.max(1, Math.floor(source.w / frameWidth));
     // The block in the picture's colors, once.
     const sheet = document.createElement("canvas");
     Object.assign(sheet, { width: source.w, height: source.h });
-    sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint8Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, source.palettes), source.w, source.h), 0, 0);
+    sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint8Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, atlasHeld.palettes), source.w, source.h), 0, 0);
     const key = (pixels: Uint8Array, width: number, x: number, y: number) => { let out = ""; for (let row = 0; row < CELL; row += 1) out += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";"; return out; };
     // See-through pixels land as the picture's blank, so the sheet's tiles are matched that way (a tile that is all blank never counts).
     const blankShade = blank(doc), flat = source.pixels.map((shade) => shade === CLEAR ? blankShade : shade), empty = key(new Uint8Array(CELL * CELL).fill(blankShade), CELL, 0, 0);
@@ -2134,7 +2137,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const context = canvas.getContext("2d")!;
     let frame = 0;
     const draw = () => {
-      frame = (frame + 1) % ATLAS_FRAMES;
+      frame = (frame + 1) % frameCount;
       context.clearRect(0, 0, canvas.width, canvas.height);
       if (!frame) return;
       for (let ty = 0; ty < ch; ty += 1) for (let tx = 0; tx < cw; tx += 1) {
@@ -2142,7 +2145,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         if (at) context.drawImage(sheet, (at[0] + frame * frameColumns) * CELL, at[1] * CELL, CELL, CELL, tx * CELL, ty * CELL, CELL, CELL);
       }
     };
-    const timer = window.setInterval(draw, 250);
+    const timer = window.setInterval(draw, 500);
     return () => { window.clearInterval(timer); context.clearRect(0, 0, canvas.width, canvas.height); };
   }, [atlasPlaying, atlasHeld, doc]);
 

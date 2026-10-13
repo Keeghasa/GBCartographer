@@ -60,7 +60,7 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
   { id: "anim", glyph: "▶", name: "Animated tile", about: "frames side by side: stamps the first frame, the card plays them all", size: "square frames side by side, at least 2", fits: (w, h) => h % 8 === 0 && h > 0 && w % h === 0 && w / h >= 2 },
   { id: "atlas", glyph: "A", name: "RPG Maker ground (2 × 3)", about: "paint 16 px cells: a 2 × 3 block of 16 × 16 tiles in RPG Maker's layout fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
   { id: "atlasAnim", glyph: "~", name: "Water (3 frames)", about: "a 2 × 3 block in three frames side by side (RPG Maker's water layout): paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
-  { id: "mound", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 8-minitile sheet, 48 × 64", fits: (w, h) => w === 48 && h === 64 },
+  { id: "mound", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 9-minitile sheet, 48 × 72", fits: (w, h) => w === 48 && h === 72 },
   { id: "forest", glyph: "T", name: "Forest (trees)", about: "paint 32 px tree units: a clump of trees inside, single trees along the edge (the author's trees)", size: "a clump and a single tree side by side, 64 × 32", fits: (w, h) => w === 64 && h === 32 },
   { id: "atlasWall", glyph: "A▣", name: "RPG Maker wall (roof + face)", about: "paint an area: its roof fits like RPG Maker ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
 ];
@@ -78,43 +78,8 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
  */
 export const ATLAS_W = 32, ATLAS_H = 48, ATLAS_FRAMES = 3, ATLAS_WALL_H = 32;
 
-/**
- * The mound ledge (the author's piece, 2026-10-12), a 48 × 64 sheet of 6 × 8 minitiles: columns 1–4 are the plateau
- * (row 0 its rounded top border, rows 1–2 the light plate between orange borders, row 3 the bottom border); columns
- * 0 and 5 are the rock that flanks it; rows 4–5 the rock face under it and rows 6–7 the foot with its rounded ends.
- * A painted cell is plateau; the cell below its bottom edge grows the face, and the cells beside grow a rock column.
- */
-export function moundCell(mask: number): [number, number][] {
-  const has = (bit: number) => Boolean(mask & bit);
-  const quarter = (right: boolean, bottom: boolean, side: boolean, up: boolean, diagonal: boolean): [number, number] => {
-    if (side && up) return diagonal ? [right ? 3 : 2, bottom ? 2 : 1] : [right ? 4 : 1, bottom ? 2 : 1];
-    if (side) return [right ? 3 : 2, bottom ? 3 : 0];
-    if (up) return [right ? 4 : 1, bottom ? 2 : 1];
-    return [right ? 4 : 1, bottom ? 3 : 0];
-  };
-  return [quarter(false, false, has(W), has(N), has(NW)), quarter(true, false, has(E), has(N), has(NE)), quarter(false, true, has(W), has(S), has(SW)), quarter(true, true, has(E), has(S), has(SE))];
-}
 
-/** The minitile (column, row in 8 px units) of a 2 × 3 block for one quarter of a cell. `quarter`: 0 TL, 1 TR, 2 BL, 3 BR. */
-export function atlasMinitile(quarter: number, sideA: boolean, sideB: boolean, diagonal: boolean): [number, number] {
-  // sideA: the neighbour across the quarter's vertical side (W for TL / BL, E for TR / BR); sideB: across the horizontal side (N or S).
-  const right = quarter === 1 || quarter === 3, bottom = quarter >= 2;
-  if (sideA && sideB) return diagonal ? [right ? 2 : 1, bottom ? 4 : 3] : [right ? 1 : 0, bottom ? 1 : 0];
-  if (sideA) return [right ? 2 : 1, bottom ? 5 : 2];
-  if (sideB) return [right ? 3 : 0, bottom ? 4 : 3];
-  return [right ? 3 : 0, bottom ? 5 : 2];
-}
 
-/** The four minitiles (TL, TR, BL, BR) of a cell with the 8-bit neighbour `mask` (N 1 … NW 128, as maskAt gives). */
-export function atlasCell(mask: number): [number, number][] {
-  const has = (bit: number) => Boolean(mask & bit);
-  return [
-    atlasMinitile(0, has(W), has(N), has(NW)),
-    atlasMinitile(1, has(E), has(N), has(NE)),
-    atlasMinitile(2, has(W), has(S), has(SW)),
-    atlasMinitile(3, has(E), has(S), has(SE)),
-  ];
-}
 
 /**
  * A wall face's four minitiles from a 2 × 2-tile region (4 × 4 minitiles at `top`): only the left and right ends

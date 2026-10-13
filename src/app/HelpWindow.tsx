@@ -56,7 +56,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Select all" keys={["Ctrl+A"]}>Selects the whole picture.</Row>
           <Row name="Drop it" keys={["Esc"]}>Drops the selection.</Row>
           <Row name="Flip, turn" keys={["F", "Shift+F", "T"]}>Flip the selection (or the whole picture) left-right or top-bottom; turn the selection clockwise.</Row>
-          <Row name="Outdoor pieces">Asset Catalog → Outdoor pieces, painted as auto-tiles: the mound ledge (M) wraps any plateau of 16 px cells with its rock face; a forest (T) paints 32 px tree units, the clump inside and single trees round the edge; water (~) fits its shores and plays its three frames while in hand (Save writes frame 1). Alt clears.</Row>
+          <Row name="Outdoor pieces">Asset Catalog → Outdoor pieces, painted as auto-tiles: the mound ledge (M) wraps any plateau of 16 px cells with its rock face; a forest (T) paints 32 px tree units, the clump inside and single trees round the edge; water (~) fits its shores the RPG Maker way and plays its three frames while in hand, as does the Animated tile (Save writes frame 1). Off the picture counts as more of the area, so an area running off the edge shows no border there. Alt clears.</Row>
           <Row name="Saved stamps" keys={["Right-click"]}>Right-click inside a selection to use it as the stamp, or to save it as a stamp in the project's Cartographer/stamps folder (with its tile palettes, on whole tiles). The Stamp tool shows the saved ones above the picture; the Stamps folder in the project panel opens one to edit.</Row>
         </Section>
         <Section title="Files and undo">

@@ -232,14 +232,20 @@ const ROUNDTREES = [
 ];
 
 /**
- * The mound ledge as an auto-tile sheet (autotile.ts moundCell), 48 × 64 cut from the tall mound so every part sits
- * on the 8 px grid: the rounded top border, the plate (twice, so a wide plateau's inside repeats), the bottom border,
- * the face and the foot with its rounded ends.
+ * The mound ledge as an auto-tile sheet (autopaint.ts moundLayout), 48 × 72: cut from the tall mound so every part
+ * sits on the 8 px grid (the rounded top border, the plate twice so a wide plateau's inside repeats, the bottom
+ * border, the face and the foot with its rounded ends), and a row of inner corners.
  */
 const MOUND_SHEET = [...LEDGETALL.slice(0, 8), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(8, 16), ...LEDGETALL.slice(32, 40), ...LEDGETALL.slice(40, 56), ...LEDGETALL.slice(48, 64)]
   // A faint dot at the top left of each plate minitile: a plain lightest tile would pass for blank picture, and the
   // painter tells a plateau's cells by their tiles.
-  .map((row, y) => y % 8 === 0 && y >= 8 && y < 24 ? `${row.slice(0, 16)}1${row.slice(17, 24)}1${row.slice(25)}` : row);
+  .map((row, y) => y % 8 === 0 && y >= 8 && y < 24 ? `${row.slice(0, 16)}1${row.slice(17, 24)}1${row.slice(25)}` : row)
+  // Row 8: the inner corners (where a plateau bends round an outside corner): the border's colour with its outline
+  // turning at one corner, notched top left, top right, bottom left, bottom right (autopaint.ts moundPlateau).
+  .concat(Array.from({ length: 8 }, (_, y) => [0, 1, 2, 3].map((notch) => Array.from({ length: 8 }, (_, x) => {
+    const cx = notch % 2 ? 7 : 0, cy = notch >= 2 ? 7 : 0;
+    return x === cx && y === cy ? "3" : "1";
+  }).join("")).join("") + "................"));
 
 export const pieces = {
   moundSheet: () => fromRows(MOUND_SHEET),

@@ -1,6 +1,6 @@
 import { pieces } from "../graphics/pieces";
 import { describe, expect, it } from "vitest";
-import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasCell, atlasWallCell, moundCell, SE, SW } from "./autotile";
+import { canBox, canWang, E, maskAt, N, NE, reduceMask, S, W, WANG_MASKS, wangSlot , atlasWallCell } from "./autotile";
 import { acrossTemplate, animTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, atlasWaterTemplate } from "../graphics/autotiles";
 import { canvas as atlasBlank } from "../graphics/pen";
 import { AUTOTILES } from "./autotile";
@@ -52,20 +52,9 @@ describe("auto-tiles", () => {
     }
   });
 
-  it("puts an Atlas cell together from a 2 × 3 block the RPG Maker way", () => {
-    // Alone: four outer corners. Surrounded: the fill. N and W filled but not NW: the inner corner at top left.
-    expect(atlasCell(0)).toEqual([[0, 2], [3, 2], [0, 5], [3, 5]]);
-    expect(atlasCell(255)).toEqual([[1, 3], [2, 3], [1, 4], [2, 4]]);
-    expect(atlasCell(N | W | E | S | NE | SE | SW)[0]).toEqual([0, 0]);
-    // Only N filled: the left and right edges top and bottom... the top quarters are side edges, the bottom ones corners.
-    expect(atlasCell(N)).toEqual([[0, 3], [3, 3], [0, 5], [3, 5]]);
-    expect(atlasCell(E | W)).toEqual([[1, 2], [2, 2], [1, 5], [2, 5]]);
+  it("puts an RPG Maker wall face together", () => {
     // A wall face: a lone cell is all ends; one with faces either side and above uses the middle of the region.
     expect(atlasWallCell(false, false, false, false, 6)).toEqual([[0, 6], [3, 6], [0, 9], [3, 9]]);
     expect(atlasWallCell(true, true, true, false, 6)).toEqual([[1, 7], [2, 7], [1, 9], [2, 9]]);
-    // The mound: alone, the rounded top corners and the bottom border corners; inside a plateau, the light plate.
-    expect(moundCell(0)).toEqual([[1, 0], [4, 0], [1, 3], [4, 3]]);
-    expect(moundCell(255)).toEqual([[2, 1], [3, 1], [2, 2], [3, 2]]);
-    expect(moundCell(E | W)).toEqual([[2, 0], [3, 0], [2, 3], [3, 3]]);
   });
 });

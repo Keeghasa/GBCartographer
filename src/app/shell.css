@@ -101,6 +101,8 @@
 .app-frame[aria-pressed="true"] { outline: 2px solid var(--k-acc-hi); outline-offset: 1px; box-shadow: 0 0 12px rgba(var(--k-acc-rgb), .4); }
 .app-frame canvas { image-rendering: pixelated; transform: scale(2.5); box-shadow: none; }
 .app-frame img { max-width: 44px; max-height: 38px; image-rendering: pixelated; margin-bottom: 10px; }
+/* An animated stamp plays in its card at the same size as a picture card, not the frames strip's zoom. */
+.app-frame canvas.app-frame-anim { transform: none; height: 38px; width: auto; max-width: 44px; margin-bottom: 10px; }
 .app-frame small { position: absolute; left: 3px; top: 2px; color: var(--k-ink-3); font: 9px var(--k-font); }
 .app-frame.named small { top: auto; bottom: 2px; right: 3px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

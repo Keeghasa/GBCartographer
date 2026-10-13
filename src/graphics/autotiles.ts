@@ -126,14 +126,18 @@ export function wallFaceTemplate(): Canvas {
   return out;
 }
 
-/** Animated tile: water in four frames of 8 × 8, the ripple moving along. */
+/** Animated tile: water in four frames of 16 × 16 side by side, the wave crests drifting along. */
 export function animTemplate(): Canvas {
-  const out = canvas(32, 8, 1), p = new Pen(out);
+  const out = canvas(64, 16, 1), p = new Pen(out);
   for (let frame = 0; frame < 4; frame += 1) {
-    const t = p.at(frame * 8, 0, 8);
+    const t = p.at(frame * 16, 0, 16);
     t.fill(1);
-    t.rect((frame * 2) % 8, 2, 3, 1, 2); t.rect((frame * 2 + 4) % 8, 5, 3, 1, 2);
-    t.dot((frame * 2 + 1) % 8, 1, 0);
+    // Two rows of wave crests drifting right a step each frame (wrapping round the tile), a glint on each.
+    for (const [y, shift] of [[4, 0], [11, 8]] as const) for (let k = 0; k < 2; k += 1) {
+      const x = (frame * 2 + shift + k * 8) % 16;
+      for (let i = 0; i < 4; i += 1) t.dot((x + i) % 16, y, 2);
+      t.dot((x + 1) % 16, y - 1, 0); t.dot((x + 2) % 16, y - 1, 0);
+    }
   }
   return out;
 }
@@ -181,19 +185,16 @@ export function roadTemplate(): Canvas {
  * 2 bottom, 3 left) along a box's side. Rows 1–2: a 32 × 32 region with all four edges; row 0 left: the inner-corner
  * tile (each minitile with the two edges that meet at its outer corner); row 0 right: the plain sample.
  */
-function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number) => void, mark = 3) {
+function atlasBlock(p: Pen, fill: (t: Pen) => void, side: (t: Pen, side: number) => void, notch: (t: Pen, x: number, y: number, dx: number, dy: number) => void) {
   fill(p.at(16, 0, 16));
   const region = p.at(0, 16, 32);
   fill(region);
   for (let s = 0; s < 4; s += 1) side(region, s);
+  // RPG Maker's inner-corner tile: the fill with a small hole in the middle, so each minitile is notched at the
+  // corner facing the centre (a quarter of a cell takes the opposite minitile, autopaint.ts rpgQuarter).
   const inner = p.at(0, 0, 16);
   fill(inner);
-  side(inner.at(0, 0, 8), 0); side(inner.at(0, 0, 8), 3);
-  side(inner.at(8, 0, 8), 0); side(inner.at(8, 0, 8), 1);
-  side(inner.at(0, 8, 8), 2); side(inner.at(0, 8, 8), 3);
-  side(inner.at(8, 8, 8), 2); side(inner.at(8, 8, 8), 1);
-  // A dot just inside each inner corner tells it from the outer corner (the same two edges meet there).
-  inner.dot(2, 2, mark); inner.dot(13, 2, mark); inner.dot(2, 13, mark); inner.dot(13, 13, mark);
+  notch(inner, 7, 7, -1, -1); notch(inner, 8, 7, 1, -1); notch(inner, 7, 8, -1, 1); notch(inner, 8, 8, 1, 1);
 }
 
 
@@ -213,7 +214,7 @@ export function atlasWaterTemplate(): Canvas {
     atlasBlock(block, (t) => {
       t.fill(1);
       for (let y = 3; y < t.h; y += 6) for (let x = ((y / 6) % 2 ? 4 : 0) + frame * 3 - 8; x < t.w + 8; x += 8) { t.dot(x, y, 0); t.rect(x + 1, y - 1, 3, 1, 0); t.dot(x + 4, y, 0); t.rect(x + 1, y + 1, 3, 1, 2); }
-    }, (t, s) => { t.side(s, 3); t.side(s, 0, 1); }, 0);
+    }, (t, s) => { t.side(s, 3); t.side(s, 0, 1); }, (t, x, y, dx, dy) => { t.dot(x, y, 3); t.dot(x + dx, y, 0); t.dot(x, y + dy, 0); t.dot(x + dx, y + dy, 0); });
     // Rounded outer corners: beyond a quarter circle of radius 8 the corner is see-through, the curve outlined.
     const corners: [number, number, number, number][] = [[0, 16, 1, 1], [24, 16, -1, 1], [0, 40, 1, -1], [24, 40, -1, -1]];
     for (const [x0, y0, dx, dy] of corners) for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {

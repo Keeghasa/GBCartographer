@@ -4,10 +4,11 @@
  * app's current state; it owns only the state of a drag in progress.
  */
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
+import { forestLayout, moundLayout, rpgCell, type Piece } from "./autopaint";
 import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
 import { paintCollision } from "../gb/collisions";
-import { ATLAS_H, ATLAS_W, atlasCell, atlasWallCell, moundCell, CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
+import { ATLAS_H, ATLAS_W, atlasWallCell, CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
 
 interface Painting {
   doc: Doc | null;
@@ -53,12 +54,18 @@ interface Painting {
   paletteBlocked: () => string | null;
 }
 
+/**
+ * The stamp in hand: a picture to stamp, how it paints as an auto-tile, and for an animated tile its whole sheet of
+ * frames (the stamp itself is frame 1; the frames play over the picture while it's held).
+ */
+export type HeldStamp = Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind; animSheet?: { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array } };
+
 export function usePainting(app: Painting) {
   const { doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, activePalette } = app;
   const drag = useRef<Drag | null>(null);
   const lastPoint = useRef<Point | null>(null);
   /** The stamp tool's block: pixels, tile palettes when whole tiles, and the palettes they refer to. */
-  const stamp = useRef<(Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind }) | null>(null);
+  const stamp = useRef<HeldStamp | null>(null);
   /** During a stroke with linked tiles: the groups, the pixels before the stroke, and after the last step. */
   const linkStroke = useRef<{ link: ReturnType<typeof linkGroups>; base: Uint8Array; previous: Uint8Array } | null>(null);
   /** Where the pointer last was over the picture, so the brush outline follows size and tool changes ([ and ]) at once. */
@@ -164,9 +171,13 @@ export function usePainting(app: Painting) {
     }
     return keys;
   }
-  /** Draws the sheet's tile at (column, row) on tile (tx, ty), with its tile palette when the sheet has them. */
-  function putSheetTile(target: Doc, tx: number, ty: number, column: number, row: number) {
+  /**
+   * Draws the sheet's tile at (column, row) on tile (tx, ty), with its tile palette when the sheet has them. With
+   * `replace`, the tile is cleared to blank first, so a see-through part of the sheet doesn't keep what was there.
+   */
+  function putSheetTile(target: Doc, tx: number, ty: number, column: number, row: number, replace = false) {
     const source = stamp.current!;
+    if (replace) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, app.blank(target));
     const pixels = new Uint8Array(CELL * CELL);
     for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((row * CELL + y) * source.w + column * CELL, (row * CELL + y) * source.w + column * CELL + CELL), y * CELL);
     const cells = source.cells ? new Uint8Array([source.cells[row * cellsWide(source.w) + column]]) : undefined;
@@ -226,7 +237,7 @@ export function usePainting(app: Painting) {
   }
 
   /**
-   * Atlas auto-tiles (autotile.ts, RPG Maker's layout; 16 px cells of 2 × 2 tiles): cell (cx, cy) joins (or, `erase`,
+   * RPG Maker-layout blocks (autopaint.ts rpgCell; 16 px cells of 2 × 2 tiles): cell (cx, cy) joins (or, `erase`,
    * leaves) the area, then it and the cells around it are put together from the block's minitiles, each by its
    * neighbours. A cell belongs when its top-left tile is one of the block's minitiles (frame 1's, for water). Off the
    * picture counts as more of the area. A wall's roof is the area; the two cells below its bottom edge grow a face.
@@ -235,21 +246,22 @@ export function usePainting(app: Painting) {
     const auto = stamp.current?.auto;
     const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
     if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
-    const wall = auto === "atlasWall";
+    const wall = auto === "atlasWall", blank = app.blank(target);
     // The block's tiles are indexed across one block (water has three side by side; painting uses the first).
     const columns = ATLAS_W / CELL, roofTiles = columns * (ATLAS_H / CELL);
-    const keys = sheetKeys(columns, wall ? roofTiles + 16 : roofTiles, app.blank(target));
+    const keys = sheetKeys(columns, wall ? roofTiles + 16 : roofTiles, blank);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
     const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
     const roof = (x: number, y: number) => !inside(x, y) ? true : marked.get(`${x},${y}`) ?? (() => { const index = keys.get(keyAt(x, y)); return index !== undefined && index < roofTiles; })();
     const face = (x: number, y: number) => inside(x, y) && !roof(x, y) && (roof(x, y - 1) || (roof(x, y - 2) && !roof(x, y - 1)));
-    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + (quarter % 2), y * 2 + Math.floor(quarter / 2), column, row));
-    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, app.blank(target));
-    for (let dy = wall ? -1 : -1; dy <= (wall ? 3 : 1); dy += 1) for (let dx = wall ? -2 : -1; dx <= (wall ? 2 : 1); dx += 1) {
+    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + (quarter % 2), y * 2 + Math.floor(quarter / 2), column, row, true));
+    const clear = (x: number, y: number) => fillRect(target.pixels, target.width, target.height, { x: x * 2 * CELL, y: y * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
+    if (erase) clear(cx, cy);
+    for (let dy = -1; dy <= (wall ? 3 : 1); dy += 1) for (let dx = wall ? -2 : -1; dx <= (wall ? 2 : 1); dx += 1) {
       const x = cx + dx, y = cy + dy;
       if (!inside(x, y)) continue;
-      if (roof(x, y)) { if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) put(x, y, atlasCell(maskAt(roof, x, y))); continue; }
+      if (roof(x, y)) { if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) put(x, y, rpgCell(maskAt(roof, x, y))); continue; }
       if (!wall) continue;
       if (face(x, y)) {
         const first = roof(x, y - 1);
@@ -257,74 +269,84 @@ export function usePainting(app: Painting) {
         continue;
       }
       // Not roof or face any more: the sheet's own tiles become nothing (other art stays).
-      const index = keys.get(keyAt(x, y));
-      if (index !== undefined) fillRect(target.pixels, target.width, target.height, { x: x * 2 * CELL, y: y * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, app.blank(target));
+      if (keys.has(keyAt(x, y))) clear(x, y);
     }
   }
 
   /**
-   * The mound ledge (autotile.ts moundCell): cell (cx, cy) joins (or leaves) the plateau; the plateau cells around it
-   * redraw by their neighbours, the cell under a bottom edge becomes the rock face and foot, and the cells beside a
-   * plateau or face get a rock column on their near half (only where the picture is blank or already the sheet's).
+   * The mound ledge (autopaint.ts moundLayout): cell (cx, cy) joins (or leaves) the plateau; the cells around it are
+   * drawn again: plateau by its neighbours, the rock face under a bottom edge, the rock beside a plateau or face
+   * (only over blank picture or the sheet's own tiles, so neighbouring art stays).
    */
   function paintMound(target: Doc, cx: number, cy: number, erase: boolean) {
     const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
     if (cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const blank = app.blank(target);
-    const keys = sheetKeys(6, 48, blank);
+    const keys = sheetKeys(6, 54, blank);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
-    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
+    const keyAt = (tx: number, ty: number) => tileKey(target.pixels, target.width, tx * CELL, ty * CELL);
+    const empty = tileKey(new Uint8Array(CELL * CELL).fill(blank), CELL, 0, 0);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
-    // Plateau: its top-left tile is a plateau minitile (columns 1–4, rows 0–3). Off the picture: more plateau.
-    const plateau = (x: number, y: number) => !inside(x, y) ? true : marked.get(`${x},${y}`) ?? (() => { const index = keys.get(keyAt(x, y)); return index !== undefined && index % 6 >= 1 && index % 6 <= 4 && index < 24; })();
-    const face = (x: number, y: number) => inside(x, y) && !plateau(x, y) && plateau(x, y - 1);
-    const ours = (tx: number, ty: number) => { const key = tileKey(target.pixels, target.width, tx * CELL, ty * CELL); return keys.has(key) || key === tileKey(new Uint8Array(CELL * CELL).fill(blank), CELL, 0, 0); };
-    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + (quarter % 2), y * 2 + Math.floor(quarter / 2), column, row));
-    const clear = (x: number, y: number) => fillRect(target.pixels, target.width, target.height, { x: x * 2 * CELL, y: y * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
-    if (erase) clear(cx, cy);
+    // Plateau: the cell's top-left tile is a plateau piece (columns 1–4 of rows 0–3, or an inner corner in row 8).
+    const isPlateau = (index: number | undefined) => index !== undefined && ((index < 24 && index % 6 >= 1 && index % 6 <= 4) || (index >= 48 && index <= 51));
+    const plateau = (x: number, y: number) => inside(x, y) && (marked.get(`${x},${y}`) ?? isPlateau(keys.get(keyAt(x * 2, y * 2))));
+    const continues = (x: number, y: number) => !inside(x, y) || plateau(x, y);
+    const ours = (tx: number, ty: number) => { const key = keyAt(tx, ty); return keys.has(key) || key === empty; };
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
     for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) {
       const x = cx + dx, y = cy + dy;
       if (!inside(x, y)) continue;
-      if (plateau(x, y)) { put(x, y, moundCell(maskAt(plateau, x, y))); continue; }
-      const index = keys.get(keyAt(x, y));
-      if (face(x, y)) {
-        const left = plateau(x - 1, y - 1), right = plateau(x + 1, y - 1);
-        put(x, y, [[left ? 2 : 1, 4], [right ? 3 : 4, 4], [left ? 2 : 1, 6], [right ? 3 : 4, 6]]);
-        continue;
-      }
-      // Neither: the sheet's own tiles go blank, then a rock column where a plateau or face is beside this cell.
-      if (index !== undefined) clear(x, y);
-      const column = (right: boolean) => {
-        const nx = right ? x + 1 : x - 1, col = right ? 0 : 5, tx = x * 2 + (right ? 1 : 0);
-        const top = plateau(nx, y) && !plateau(nx, y - 1), mid = plateau(nx, y) && plateau(nx, y - 1), foot = face(nx, y);
-        if (!top && !mid && !foot) return;
-        const rows: [number, number] = foot ? [4, 6] : top ? [0, 1] : [1, 2];
-        if (ours(tx, y * 2)) putSheetTile(target, tx, y * 2, col, rows[0]);
-        if (ours(tx, y * 2 + 1)) putSheetTile(target, tx, y * 2 + 1, col, rows[1]);
-      };
-      column(true); column(false);
+      const { kind, pieces } = moundLayout(plateau, x, y, continues);
+      const tiles = [[x * 2, y * 2], [x * 2 + 1, y * 2], [x * 2, y * 2 + 1], [x * 2 + 1, y * 2 + 1]];
+      // A cell that is none of the mound's any more: the sheet's own tiles go blank.
+      if (kind !== "plateau" && kind !== "face") tiles.forEach(([tx, ty]) => { if (keys.has(keyAt(tx, ty))) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, blank); });
+      pieces.forEach((piece, quarter) => {
+        if (!piece) return;
+        const [tx, ty] = tiles[quarter];
+        if (kind === "beside" && !ours(tx, ty)) return;
+        putSheetTile(target, tx, ty, piece[0], piece[1], true);
+      });
     }
   }
 
   /**
-   * Forest (the author's trees): 32 px tree units. A painted unit with all eight neighbours painted shows the clump
-   * (the sheet's left half); one on the edge shows the single tree (the right half). Off the picture counts as forest.
+   * Forest (the author's trees, autopaint.ts forestLayout): 32 px tree units drawn quarter by quarter, the clump's
+   * quarter where the three units around that corner are forest too, else the lone tree's. A unit is forest when
+   * every tile in it is blank or one of the sheet's (so a forest of other trees beside it isn't taken for this one).
+   * Off the picture counts as forest.
    */
   function paintForest(target: Doc, ux: number, uy: number, erase: boolean) {
     const UNIT = 4;
     const uw = Math.floor(cellsWide(target.width) / UNIT), uh = Math.floor(Math.ceil(target.height / CELL) / UNIT);
     if (ux < 0 || uy < 0 || ux >= uw || uy >= uh) return;
-    const keys = sheetKeys(8, 32, app.blank(target));
+    const blank = app.blank(target);
+    const keys = sheetKeys(8, 32, blank);
+    const empty = tileKey(new Uint8Array(CELL * CELL).fill(blank), CELL, 0, 0);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < uw && y < uh;
     const marked = new Map<string, boolean>([[`${ux},${uy}`, !erase]]);
-    const painted = (x: number, y: number) => !inside(x, y) ? true : marked.get(`${x},${y}`) ?? [0, 1, 2, 3].some((ty) => [0, 1, 2, 3].some((tx) => keys.has(tileKey(target.pixels, target.width, (x * UNIT + tx) * CELL, (y * UNIT + ty) * CELL))));
-    if (erase) fillRect(target.pixels, target.width, target.height, { x: ux * UNIT * CELL, y: uy * UNIT * CELL, w: UNIT * CELL, h: UNIT * CELL }, app.blank(target));
+    const painted = (x: number, y: number) => {
+      if (!inside(x, y)) return true;
+      const mark = marked.get(`${x},${y}`);
+      if (mark !== undefined) return mark;
+      let ours = 0;
+      for (let ty = 0; ty < UNIT; ty += 1) for (let tx = 0; tx < UNIT; tx += 1) {
+        const key = tileKey(target.pixels, target.width, (x * UNIT + tx) * CELL, (y * UNIT + ty) * CELL);
+        if (keys.has(key)) ours += 1; else if (key !== empty) return false;
+      }
+      return ours >= 4;
+    };
+    // Every unit around is decided before anything is drawn (drawing changes what the neighbours read as).
+    const units: [number, number, Piece[]][] = [];
     for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
       const x = ux + dx, y = uy + dy;
-      if (!inside(x, y) || !painted(x, y)) continue;
-      const clump = maskAt(painted, x, y) === 255;
-      for (let ty = 0; ty < UNIT; ty += 1) for (let tx = 0; tx < UNIT; tx += 1) putSheetTile(target, x * UNIT + tx, y * UNIT + ty, (clump ? 0 : UNIT) + tx, ty);
+      if (inside(x, y) && painted(x, y)) units.push([x, y, forestLayout(painted, x, y)]);
     }
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: ux * UNIT * CELL, y: uy * UNIT * CELL, w: UNIT * CELL, h: UNIT * CELL }, blank);
+    for (const [x, y, pieces] of units) pieces.forEach((piece, quarter) => {
+      if (!piece) return;
+      const qx = quarter % 2, qy = quarter >> 1;
+      for (let ty = 0; ty < 2; ty += 1) for (let tx = 0; tx < 2; tx += 1) putSheetTile(target, x * UNIT + qx * 2 + tx, y * UNIT + qy * 2 + ty, piece[0] + tx, piece[1] + ty, true);
+    });
   }
 
   /** Corner Wang: sets (or clears) the second terrain at grid corner (vx, vy); the four tiles meeting there redraw. */
@@ -626,7 +648,7 @@ export function usePainting(app: Painting) {
   }
 
   /** Picks up a saved stamp (pixels, tile palettes when whole tiles, and the palettes they refer to). */
-  function setStamp(value: Floating & { palettes: Palette[]; auto?: AutotileKind }) {
+  function setStamp(value: HeldStamp) {
     stamp.current = value;
   }
 
