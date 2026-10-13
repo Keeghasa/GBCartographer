@@ -134,6 +134,31 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
       reply(res, 200, { ok: true, running: gbStudioRunning() });
       return true;
     }
+    if (url.pathname === "/__cartographer/recent-backgrounds" || url.pathname === "/__cartographer/recent-picture") {
+      // The start screen's rows (the author's C2e, 2026-10-12): a recent project's backgrounds, last edited first, and
+      // each one's picture (raw, or ?color=1 as GB Studio shows it). Read only, and only for projects in the recents.
+      const folder = url.searchParams.get("path") ?? "";
+      if (!recentProjects(options.settingsFile).includes(folder)) {
+        reply(res, 404, { error: "Not a recent project" });
+        return true;
+      }
+      if (url.pathname === "/__cartographer/recent-backgrounds") {
+        const backgrounds = listAssets(folder).filter((asset) => asset.kind === "backgrounds").sort((a, b) => b.mtime - a.mtime).slice(0, 8);
+        reply(res, 200, { ok: true, backgrounds: backgrounds.map(({ file, name, mtime, width, height }) => ({ file, name, mtime, width, height })) });
+        return true;
+      }
+      const path = assetPath(folder, "backgrounds", url.searchParams.get("file") ?? "");
+      if (!path) {
+        reply(res, 404, { error: "No such background" });
+        return true;
+      }
+      const png = url.searchParams.get("color") === "1" ? Buffer.from(renderPreview(folder, "backgrounds", path)) : readFileSync(path);
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Length", String(png.length));
+      res.setHeader("Cache-Control", "private, max-age=60");
+      res.end(req.method === "HEAD" ? undefined : png);
+      return true;
+    }
     if (url.pathname === "/__cartographer/ping") {
       reply(res, 200, { ok: true, demo: demoAvailable(options.root), project: project ? { name: projectName(project), path: project, version: projectVersion(project), versionNote: versionNote(project) } : null, recent: recentProjects(options.settingsFile).map((path) => ({ name: projectName(path), path })) });
       return true;
