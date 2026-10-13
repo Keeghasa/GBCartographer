@@ -413,7 +413,15 @@ export function usePainting(app: Painting) {
     if (tool === "stamp") {
       // The stamp's footprint where it would land.
       const visible = inside(doc, point) && Boolean(stamp.current);
-      Object.assign(outline.style, { display: visible ? "block" : "none", left: `${(point.x & ~7) * doc.zoom}px`, top: `${(point.y & ~7) * doc.zoom}px`, width: `${(stamp.current?.w ?? CELL) * doc.zoom}px`, height: `${(stamp.current?.h ?? CELL) * doc.zoom}px` });
+      // An area auto-tile paints one cell a click (a 32 px tree unit, a 16 px block cell, an 8 px tile): the outline
+      // shows that cell where it lands, not the whole sheet. Other stamps show their whole size.
+      const auto = stamp.current?.auto;
+      const unit = auto === "forest" ? 32 : auto === "mound" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
+      const corner = auto === "corner";
+      const left = corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
+      const top = corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.y / unit) * unit : point.y & ~7;
+      const width = corner ? CELL : unit || (stamp.current?.w ?? CELL), height = corner ? CELL : unit || (stamp.current?.h ?? CELL);
+      Object.assign(outline.style, { display: visible ? "block" : "none", left: `${left * doc.zoom}px`, top: `${top * doc.zoom}px`, width: `${width * doc.zoom}px`, height: `${height * doc.zoom}px` });
     } else {
       const cells = tool === "palette" || tool === "priority" || tool === "collision", tall = tool === "palette" && doc.keyGreen;
       const cellH = tall ? 2 * CELL : CELL, cellOffset = Math.floor((cellBrush - 1) / 2);
