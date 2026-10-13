@@ -291,31 +291,45 @@ export function xpWaterTemplate(): Canvas {
 }
 
 /**
- * XP cliff (48 × 80, read by autopaint.ts xpCliffCell): rows 0–3 the grassy plateau (top and sides outlined), rows
- * 4–5 the rock face (a dark lip, cracks, its ends and rounded foot), (0, 6) / (3, 6) the plateau's top inside corners,
- * (0, 8) / (3, 8) a side's rounded top beside a face, (4..5, 8..9) a lone mound. Unused minitiles stay see-through.
+ * XP cliff (48 × 80, read by autopaint.ts xpCliffCell), in the author's wireframe (2026-10-12): a light plateau top
+ * (shade 0) outlined dark, a mid face (shade 1) under it, and a dark-green band (shade 2, 8 px, outlined on both
+ * sides) down the open sides, its ends cut at 45°. Rows 0–3 the plateau (column 0 / 5 the band, columns 1–4 the top),
+ * rows 4–5 the face, (0, 6) / (3, 6) where a band above ends into a wider plateau, (0, 8) / (3, 8) a band's cut top
+ * beside a face, (4..5, 8..9) a lone mound. Unused minitiles stay see-through.
  */
 export function xpCliffTemplate(): Canvas {
   const out = canvas(48, 80, CLEAR);
-  const grass: Shader = (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 2 : (x === 1 && y === 2) || (x === 5 && y === 6) ? 2 : (x === 2 && y === 1) || (x === 6 && y === 5) ? 0 : 1;
-  const rock: Shader = (depth, x, y) => depth === 0 ? 3 : (y % 8 === 0) ? 3 : (x === 3 && y >= 2 && y <= 4) || (x === 4 && y === 5) ? 3 : (x === 6 && y === 3) ? 1 : 2;
-  xpRegion(out, 0, 0, 48, 32, { n: true, e: true, w: true }, grass);
-  xpRegion(out, 0, 32, 48, 16, { e: true, s: true, w: true }, (depth, x, y) => rock(depth, x, y), 4);
-  xpRegion(out, 0, 48, 8, 8, {}, grass, 6, [0]);
-  xpRegion(out, 24, 48, 8, 8, {}, grass, 6, [1]);
-  // A side's rounded top beside a face: the face's rock above the curve, the side's grass below it.
-  // Only the curve toward the face is outlined; the grass above runs on from the plateau.
-  for (const [x0, right] of [[0, false], [24, true]] as const) {
-    xpRegion(out, x0, 64, 8, 8, { [right ? "e" : "w"]: true }, grass);
-    for (let y = 0; y < 6; y += 1) for (let x = 0; x < 6; x += 1) {
-      const px = right ? x0 + 7 - x : x0 + x, d = 6 - Math.hypot(6 - (x + 0.5), 6 - (y + 0.5));
-      if (d < 0) out.pixels[(64 + y) * 48 + px] = rock(99, px % 8, y);
-      else if (d < 1) out.pixels[(64 + y) * 48 + px] = 3;
-      else if (d < 2 && out.pixels[(64 + y) * 48 + px] !== 3) out.pixels[(64 + y) * 48 + px] = 2;
-    }
+  /** Draws minitile (column, row) pixel by pixel; `right` mirrors x so one rule draws both sides. */
+  const tile = (column: number, row: number, shade: (x: number, y: number) => number, right = false) => {
+    for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) out.pixels[(row * 8 + y) * 48 + column * 8 + x] = shade(right ? 7 - x : x, y);
+  };
+  // The band, seen from its open side: x 0 the outer outline, x 7 the inner one. `cut` cuts its top (or bottom) at 45°.
+  const band = (cut: "top" | "bottom" | null, beyond = CLEAR) => (x: number, y: number) => {
+    const d = cut === "top" ? x + y : cut === "bottom" ? x + 7 - y : 99;
+    if (d < 7) return beyond;
+    if (d === 7 || x === 0 || x === 7) return 3;
+    return 2;
+  };
+  for (const right of [false, true]) {
+    const column = right ? 5 : 0;
+    tile(column, 0, band("top"), right);
+    for (const row of [1, 2, 3, 4]) tile(column, row, band(null), right);
+    tile(column, 5, band("bottom"), right);
+    // Where a band above ends into a wider plateau: the band's foot cut at 45° onto the plateau's top.
+    tile(right ? 3 : 0, 6, (x, y) => x + y < 7 ? (x === 0 && y === 0 ? 3 : 2) : x + y === 7 ? 3 : 0, right);
+    // A band's cut top beside a face: the face shows above the cut.
+    tile(right ? 3 : 0, 8, band("top", 1), right);
   }
-  // The lone mound: a grassy cap over a rock foot.
-  xpRegion(out, 32, 64, 16, 8, { n: true, e: true, w: true }, grass);
-  xpRegion(out, 32, 72, 16, 8, { e: true, s: true, w: true }, rock, 4);
+  for (let column = 1; column <= 4; column += 1) {
+    tile(column, 0, (_x, y) => y === 0 ? 3 : 0);
+    for (const row of [1, 2, 3]) tile(column, row, () => 0);
+    tile(column, 4, (_x, y) => y === 0 ? 3 : 1);
+    tile(column, 5, (_x, y) => y === 7 ? 3 : 1);
+  }
+  // The lone mound: a light cap over a mid face, corners cut.
+  for (let y = 0; y < 16; y += 1) for (let x = 0; x < 16; x += 1) {
+    const ex = Math.min(x, 15 - x), ey = Math.min(y, 15 - y), d = ex + ey;
+    out.pixels[(64 + y) * 48 + 32 + x] = d < 3 ? CLEAR : d === 3 || ex === 0 || ey === 0 || y === 9 ? 3 : y < 9 ? 0 : 1;
+  }
   return out;
 }
