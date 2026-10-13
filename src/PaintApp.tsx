@@ -2571,7 +2571,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         { separator: true },
       ] as MenuEntry[] : []),
       ...(slotTarget.id ? [
-        ...(assetMenu.asset.kind === "stamps" && !assetMenu.asset.autotile ? [{ label: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Make it an object" : "Make it a repeat tile", icon: <PhCheckerboard size={15} />, title: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Back to the Objects shelf" : "A seamless pattern: on the Repeat tiles shelf, and it opens with the seamless 3 × 3 view on", onSelect: () => void setRepeatTile(assetMenu.asset, !assetMenu.asset.tags?.includes(PATTERN_TAG)) }] : []),
+        ...(assetMenu!.asset.kind === "stamps" && !assetMenu!.asset.autotile ? [{ label: assetMenu!.asset.tags?.includes(PATTERN_TAG) ? "Make it an object" : "Make it a repeat tile", icon: <PhCheckerboard size={15} />, title: assetMenu!.asset.tags?.includes(PATTERN_TAG) ? "Back to the Objects shelf" : "A seamless pattern: on the Repeat tiles shelf, and it opens with the seamless 3 × 3 view on", onSelect: () => void setRepeatTile(assetMenu!.asset, !assetMenu!.asset.tags?.includes(PATTERN_TAG)) }] : []),
     { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
         { label: "Duplicate", icon: <CopyPlus />, title: "A new project palette with the same colors", onSelect: () => void duplicateProjectPalette(slotTarget) },
       ] as MenuEntry[] : []),
