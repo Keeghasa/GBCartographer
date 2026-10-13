@@ -53,7 +53,7 @@ function GreenPicture({ src }: { src: string }) {
 function RecentRow({ index, name, path, onOpen }: { index: number; name: string; path: string; onOpen: () => void }) {
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const [shown, setShown] = useState(0);
-  const cells = useRef<(HTMLDivElement | null)[]>([]);
+  const cells = useRef<(HTMLSpanElement | null)[]>([]);
   useEffect(() => {
     let live = true;
     fetch(`./__cartographer/recent-backgrounds?${new URLSearchParams({ path })}`, { cache: "no-cache" }).then((reply) => reply.json() as Promise<{ backgrounds?: Background[] }>)
