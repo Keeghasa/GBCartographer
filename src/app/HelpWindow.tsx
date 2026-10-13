@@ -53,9 +53,9 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
         <Section title="Selection">
           <Row name="Copy, cut, paste" keys={["Ctrl+C", "Ctrl+X", "Ctrl+V"]}>Work on the selection.</Row>
           <Row name="Select all" keys={["Ctrl+A"]}>Selects the whole picture.</Row>
-          <Row name="Drop it" keys={["Esc"]}>Drops the selection.</Row>
-          <Row name="Invert" keys={["Shift+I"]}>Turn the selection's shades over, lightest ↔ darkest (or the whole picture's with nothing selected).</Row>
-          <Row name="Flip, turn" keys={["F", "Shift+F", "T"]}>Flip the selection (or the whole picture) left-right or top-bottom; turn the selection clockwise.</Row>
+          <Row name="Drop it" keys={["Esc", "Ctrl+D"]}>Drops the selection (Ctrl+D, as in Photoshop).</Row>
+          <Row name="Invert" keys={["Ctrl+I"]}>Turn the selection's shades over, lightest ↔ darkest (or the whole picture's with nothing selected).</Row>
+          <Row name="Flip, turn" keys={["F", "Shift+F", "Ctrl+T"]}>Flip the selection (or the whole picture) left-right or top-bottom; turn the selection clockwise.</Row>
           <Row name="Outdoor pieces">Asset Catalog → Outdoor pieces, painted as auto-tiles: the mound ledge (M) wraps any plateau of 16 px cells with its rock face; a forest (T) paints 32 px tree units, the clump inside and single trees round the edge; water (~) fits its shores the RPG Maker way and plays its three frames while in hand, as does the Animated tile (Save writes frame 1). Off the picture counts as more of the area, so an area running off the edge shows no border there. Alt clears.</Row>
           <Row name="Saved stamps" keys={["Right-click"]}>Right-click inside a selection to use it as the stamp, or to save it as a stamp in the project's Cartographer/stamps folder (with its tile palettes, on whole tiles). The Stamp tool shows the saved ones above the picture; the Stamps folder in the project panel opens one to edit.</Row>
         </Section>
@@ -63,6 +63,10 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Open, save, export" keys={["Ctrl+O", "Ctrl+S", "Ctrl+E"]}>Open PNGs (or Aseprite files, which open as new PNGs), save, export a copy.</Row>
           <Row name="Undo, redo" keys={["Ctrl+Z", "Ctrl+Shift+Z"]}>Undo also brings back palette colors changed in the sidebar.</Row>
           <Row name="Zoom" keys={["Ctrl+=", "Ctrl+-"]}>Zoom in and out.</Row>
+          <Row name="Shape tools" keys={["U"]}>Line, rectangle, filled rectangle and ellipse in turn, as Photoshop's shape group (L, R, Shift+R and O still pick one).</Row>
+          <Row name="Grid" keys={["Ctrl+'"]}>The tile grid on or off.</Row>
+          <Row name="Canvas size" keys={["Ctrl+Alt+C"]}>Resize the picture (or the + buttons beside it grow it a tile, or a frame on sprite sheets).</Row>
+          <Row name="New picture" keys={["Ctrl+N"]}>A new blank picture.</Row>
           <Row name="Fit" keys={["Ctrl+0"]}>The biggest zoom that shows the whole picture (or click the zoom % in the header).</Row>
           <Row name="Pin, hide">The buttons on a card (on hover): pin keeps it at the top of the grid; hide puts it in the Hidden folder at the top, which shows what's inside on hover and brings them back on click. Only in this panel: the files stay.</Row>
           <Row name="Hide the panels" keys={["`", "~"]}>Hides both side panels for room to paint, and brings them back. The empty part of the left rail and the gap beside the right panel hide one each.</Row>

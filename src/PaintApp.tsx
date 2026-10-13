@@ -1921,7 +1921,16 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       return;
     }
     if (event.ctrlKey || event.metaKey) {
+      // Photoshop's shortcuts where they fit (the author, 2026-10-13): Ctrl+I invert, Ctrl+D deselect, Ctrl+T turn
+      // (Free Transform's nearest), Ctrl+' grid, Ctrl+Alt+C canvas size, Ctrl+N new.
+      const code = event.code;
       const action = key === "o" ? pickFiles
+        : code === "KeyC" && event.altKey ? () => { if (doc) setShowResize(true); }
+        : code === "KeyI" && !event.shiftKey ? invertSelection
+        : code === "KeyD" ? () => { if (!doc) return; const floating = Boolean(doc.float); dropFloat(doc); doc.sel = null; if (floating) touch(doc); else bump(); }
+        : code === "KeyT" ? () => { if (doc?.sel || doc?.float) transformSelection("turn"); }
+        : code === "Quote" ? () => setGrid(grid === 0 ? 8 : 0)
+        : code === "KeyN" ? () => setShowNew(true)
         : key === "s" || key === "e" ? () => void save(event.shiftKey || key === "e")
         : key === "z" ? () => stepHistory(event.shiftKey ? "redo" : "undo")
         : key === "y" ? () => stepHistory("redo")
@@ -1945,7 +1954,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
     const found = TOOLS.find(([, , , keys]) => keys.toLowerCase() === `${event.shiftKey ? "shift+" : ""}${key}`);
     if (found) return setTool(found[0]);
-    if (event.shiftKey && key === "i") return invertSelection();
+    // U: the shape tools in turn, as Photoshop's shape group (line, rectangle, filled rectangle, ellipse).
+    if (key === "u" && !event.shiftKey) { const shapes = ["line", "rect", "rectFill", "ellipse"] as const; const at = shapes.indexOf(tool as typeof shapes[number]); return setTool(shapes[(at + 1) % shapes.length]); }
     if (event.shiftKey && key === "m") return setMirror(MIRRORS[(MIRRORS.indexOf(mirror) + 1) % MIRRORS.length]);
     if (key === "d" && !event.shiftKey) return cyclePattern();
     if (key === "`" || key === "~") {
@@ -1955,7 +1965,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       return say(show ? "Panels back" : "Panels hidden: ` brings them back");
     }
         if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
-    if (key === "f" || (key === "t" && doc?.sel)) return transformSelection(key === "t" ? "turn" : event.shiftKey ? "y" : "x");
+    if (key === "f") return transformSelection(event.shiftKey ? "y" : "x");
     if (key >= "1" && key <= "4") return setShade(Number(key) - 1);
     if (key === "0" && doc?.hasAlpha) return setShade(CLEAR);
     if (key === "[") return tool === "palette" || tool === "priority" ? setCellBrush(Math.max(1, cellBrush - 1)) : setBrush(Math.max(1, brush - 1));
