@@ -20,7 +20,8 @@
     "dist": "npm run desktop:build && electron-builder --publish never",
     "dist:mac": "npm run desktop:build && electron-builder --mac --publish never",
     "dist:win": "npm run desktop:build && electron-builder --win --publish never",
-    "dist:linux": "npm run desktop:build && electron-builder --linux --publish never"
+    "dist:linux": "npm run desktop:build && electron-builder --linux --publish never",
+    "import-authored": "vite-node scripts/import-authored.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.3.0",

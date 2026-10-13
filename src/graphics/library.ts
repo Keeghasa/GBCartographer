@@ -11,6 +11,8 @@ import { animated, avatar, emote, emotes, things, walker, type Look } from "./sp
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
 import { APPROVED, TEMP_ASSETS } from "./temp";
+import { AUTHORED } from "./authored";
+import { CLEAR, canvas, type Canvas } from "./pen";
 import { acrossTemplate, animTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
 
 export type { WireAsset };
@@ -26,7 +28,17 @@ const LOOP = (frames: number) => `${frames} frames, one looping animation.`;
 const TWO = (a: string, b: string) => `Two frames: ${a}, ${b} (one animation; pick a frame from an event).`;
 
 /** Taken out at the author's word (2026-10-13: what they hid in the Asset Catalog project, they didn't like). */
-const DROPPED = new Set(["person-villager", "person-traveler", "thing-bullet", "thing-bush", "thing-coinStill", "thing-crate", "thing-potion", "anim-chest", "anim-checkbox"]);
+const DROPPED = new Set(["person-villager", "person-traveler", "thing-bullet", "thing-bush", "thing-coinStill", "thing-crate", "thing-potion", "anim-chest", "anim-checkbox",
+  // Deleted by the author in the Asset Catalog project (2026-10-13).
+  "scene-menu", "scene-house", "scene-shop", "scene-cave", "scene-overworld", "scene-battle", "scene-dialogue", "scene-village", "scene-room",
+  "village-0-0", "village-1-0", "village-2-0", "village-0-1", "village-1-1", "village-2-1"]);
+
+/** A picture from the author's rows (src/graphics/authored.ts). */
+function fromAuthored(rows: readonly string[]): Canvas {
+  const out = canvas(rows[0].length, rows.length, CLEAR);
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") out.pixels[y * out.width + x] = Number(ch); }));
+  return out;
+}
 
 const ALL: WireAsset[] = [
   ...PEOPLE.map(([id, name, look]): WireAsset => ({ id: `person-${id}`, name, group: "People", kind: "sprites", about: WALKS, make: () => walker(look) })),
@@ -83,6 +95,7 @@ const ALL: WireAsset[] = [
   ...TEMP_ASSETS.filter((asset) => APPROVED.has(asset.id)).map((asset): WireAsset => ({ id: asset.id, name: asset.name, group: asset.family === "xp" ? "XP auto-tiles" : "Patterns", kind: "stamps", about: asset.about, make: asset.make, ...(asset.autotile ? { autotile: asset.autotile } : {}) })),
 ];
 
-export const GRAPHICS: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id));
+/** The catalog: the author's hand-edited versions (from the Asset Catalog project) in place of the code-drawn art. */
+export const GRAPHICS: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => fromAuthored(AUTHORED[asset.id]) } : asset);
 
 export const GRAPHIC_GROUPS = [...new Set(GRAPHICS.map((asset) => asset.group))];

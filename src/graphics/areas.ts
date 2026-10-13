@@ -10,6 +10,7 @@ import { xpCliffTemplate, xpWaterTemplate } from "./autotiles";
 import { CLEAR, type Canvas } from "./pen";
 import { pieces } from "./pieces";
 import { TEMP_ASSETS } from "./temp";
+import { GRAPHICS } from "./library";
 
 type Filled = (x: number, y: number) => boolean;
 
@@ -18,7 +19,10 @@ const made = new Map<string, Canvas>();
 export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round"): Canvas {
   let art = made.get(id);
   if (!art) {
-    art = id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : TEMP_ASSETS.find((asset) => asset.id === id)!.make();
+    // The catalog's version first (the author's hand edits from the Asset Catalog project), else the code's.
+    const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees" } as Record<string, string>)[id] ?? id;
+    const listed = GRAPHICS.find((asset) => asset.id === catalogId);
+    art = listed ? listed.make() : id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : TEMP_ASSETS.find((asset) => asset.id === id)!.make();
     made.set(id, art);
   }
   return art;
