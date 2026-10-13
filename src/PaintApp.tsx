@@ -425,6 +425,7 @@ export default function PaintApp() {
       target.cells.set(base.cells);
       touch(target);
     }
+    delete base.touched;
     say("Draft wiped: the picture is as it was when the draft began.");
   }
 
@@ -2255,7 +2256,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const image = context.createImageData(doc.width, doc.height);
     // Unchanged pixels are washed out as the slider lowers the old picture, so what's new stands out.
     const wash = Math.round((1 - draftOld / 100) * 255);
-    for (let at = 0; at < doc.pixels.length; at += 1) if (doc.pixels[at] !== base.pixels[at]) image.data.set([255, 150, 40, 110], at * 4); else if (wash) image.data.set([255, 255, 255, wash], at * 4);
+    for (let at = 0; at < doc.pixels.length; at += 1) if (doc.pixels[at] !== base.pixels[at]) image.data.set([255, 150, 40, 110], at * 4); else if (wash && !base.touched?.[at]) image.data.set([255, 255, 255, wash], at * 4);
     context.putImageData(image, 0, 0);
     const cw = cellsWide(doc.width);
     context.strokeStyle = "rgba(255, 150, 40, .9)";

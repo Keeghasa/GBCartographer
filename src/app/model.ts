@@ -114,9 +114,10 @@ export interface Doc extends Snapshot {
   /**
    * The draft layer (the author, 2026-10-12): while it is on, the tools paint the picture as usual and this keeps
    * the picture as it was when the draft began; pixels that differ are the draft, tinted on screen. Commit keeps
-   * them (one undo step back to this), Wipe puts this back.
+   * them (one undo step back to this), Wipe puts this back. `touched`: pixels the brush or a shape went over, so a
+   * pixel painted in the shade it already had still shows as drawn when the old picture is faded.
    */
-  draft?: { pixels: Uint8Array; cells: Uint8Array };
+  draft?: { pixels: Uint8Array; cells: Uint8Array; touched?: Uint8Array };
   /** Resized since it was opened or saved: Save writes the new size (a project asset's size is otherwise fixed). */
   resized?: boolean;
   /** A font sheet: see-through pixels are magenta in the file (a variable-width glyph's unused columns). */
