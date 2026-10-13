@@ -1376,7 +1376,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     if (open && open !== doc) {
       const whole = open.width % CELL === 0 && open.height % CELL === 0;
       const auto = autotileOf(asset, open.width, open.height);
-      setStamp(firstFrame({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes), ...auto.flags }, auto.flags.auto));
+      setStamp(firstFrame({ pixels: open.pixels.slice(), w: open.width, h: open.height, x: 0, y: 0, ...(whole ? { cells: open.cells.slice() } : {}), palettes: clonePalettes(open.palettes), ...auto.flags, ...(asset.tags?.includes(PATTERN_TAG) && !auto.flags.auto ? { repeat: true } : {}) }, auto.flags.auto));
       heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
       return say(`Stamp: ${asset.name} (${open.width} × ${open.height}).${auto.note}`);
@@ -1395,7 +1395,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       const tinted = info.tileColors.length ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
       const whole = bitmap.width % CELL === 0 && bitmap.height % CELL === 0;
       const auto = autotileOf(asset, bitmap.width, bitmap.height);
-      setStamp(firstFrame({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags }, auto.flags.auto));
+      setStamp(firstFrame({ pixels: picture.pixels, w: bitmap.width, h: bitmap.height, x: 0, y: 0, ...(whole && tinted ? { cells: picture.cells } : {}), palettes: clonePalettes(picture.palettes), ...auto.flags, ...(asset.tags?.includes(PATTERN_TAG) && !auto.flags.auto ? { repeat: true } : {}) }, auto.flags.auto));
       heldStamp.current = asset.file;
       if (tool !== "stamp") setTool("stamp");
       // A palette the stamp's tiles were saved with that the project no longer has: those tiles show in the greens.

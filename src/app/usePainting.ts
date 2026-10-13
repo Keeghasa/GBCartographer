@@ -58,7 +58,7 @@ interface Painting {
  * The stamp in hand: a picture to stamp, how it paints as an auto-tile, and for an animated tile its whole sheet of
  * frames (the stamp itself is frame 1; the frames play over the picture while it's held).
  */
-export type HeldStamp = Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind; animSheet?: { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array } };
+export type HeldStamp = Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind; /** A repeat tile (a stamp tagged pattern): paints one 8 × 8 tile at a time, from the pattern's own place there. */ repeat?: boolean; animSheet?: { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array } };
 
 export function usePainting(app: Painting) {
   const { doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, activePalette } = app;
@@ -126,6 +126,20 @@ export function usePainting(app: Painting) {
       });
       dropCells(target.cells, target.width, target.height, { ...source, x, y, cells });
     }
+  }
+
+  /**
+   * A repeat tile paints one 8 × 8 tile at a time (the author, 2026-10-13): the pattern's tile for that place, as if
+   * the pattern covered the whole picture from its top-left corner, so tiles painted anywhere join up.
+   */
+  function putRepeatTile(target: Doc, tx: number, ty: number) {
+    const source = stamp.current;
+    if (!source || tx < 0 || ty < 0 || tx * CELL >= target.width || ty * CELL >= target.height) return;
+    const pixels = new Uint8Array(CELL * CELL);
+    for (let y = 0; y < CELL; y += 1) for (let x = 0; x < CELL; x += 1) pixels[y * CELL + x] = source.pixels[((ty * CELL + y) % source.h) * source.w + (tx * CELL + x) % source.w];
+    const cw = Math.max(1, Math.floor(source.w / CELL)), ch = Math.max(1, Math.floor(source.h / CELL));
+    const cells = source.cells ? Uint8Array.of(source.cells[(ty % ch) * cw + (tx % cw)]) : undefined;
+    putStamp(target, { x: tx * CELL, y: ty * CELL }, { pixels, w: CELL, h: CELL, x: 0, y: 0, palettes: source.palettes, ...(cells ? { cells } : {}) });
   }
 
   /**
@@ -469,7 +483,7 @@ export function usePainting(app: Painting) {
       // An area auto-tile paints one cell a click (a 32 px tree unit, a 16 px block cell, an 8 px tile): the outline
       // shows that cell where it lands, not the whole sheet. Other stamps show their whole size.
       const auto = stamp.current?.auto;
-      const unit = auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
+      const unit = stamp.current?.repeat ? CELL : auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
       const corner = auto === "corner";
       const state = drag.current, forest = auto === "forest" ? (state?.kind === "forest" ? state : forestOrigin(doc, point)) : null;
       const left = forest ? forestUnit(point.x, forest.ox) * 32 + forest.ox * CELL : corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
@@ -583,6 +597,9 @@ export function usePainting(app: Painting) {
       } else if (auto === "box" || auto === "across" || auto === "down") {
         drag.current = { kind: "box", origin, base: doc.pixels.slice(), baseCells: doc.cells.slice() };
         putBox(doc, origin, origin);
+      } else if (stamp.current?.repeat) {
+        putRepeatTile(doc, point.x >> 3, point.y >> 3);
+        drag.current = { kind: "stamp", origin: point, last: point };
       } else {
         putStamp(doc, point);
         drag.current = { kind: "stamp", origin, last: origin };
@@ -656,7 +673,10 @@ export function usePainting(app: Painting) {
     } else if (state.kind === "stamp") {
       // Copies tile outward from the first one, a stamp's size apart, so a block repeats seamlessly.
       const source = stamp.current;
-      if (source) {
+      if (source?.repeat) {
+        for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) putRepeatTile(doc, x, y);
+        state.last = point;
+      } else if (source) {
         const at = { x: state.origin.x + Math.floor((point.x - state.origin.x) / source.w) * source.w, y: state.origin.y + Math.floor((point.y - state.origin.y) / source.h) * source.h };
         if (at.x !== state.last.x || at.y !== state.last.y) {
           drop(doc.pixels, doc.width, doc.height, { ...source, ...at });

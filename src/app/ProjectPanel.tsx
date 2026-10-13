@@ -139,13 +139,16 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         {ASSET_KINDS.filter(([id]) => id !== "stamps").map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = kind === id && open; return (
           <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} · ${count}${on ? " · click to hide" : ""}`} onClick={() => onKind(id)}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>
         ); })}
-        {/* The stamps, on four shelves of their own (GB Cartographer's, in Cartographer/stamps). */}
+        {/* The stamps, on four shelves of their own (GB Cartographer's, in Cartographer/stamps), in the middle of the
+            rail's free space: the hide bar is split, above and below them (the author, 2026-10-13). */}
+        <button type="button" className="app-rail-fill" aria-label={open ? "Hide the pictures" : "Show the pictures"} title={open ? "Hide the pictures" : "Show the pictures"} onClick={onToggle} />
         <hr className="app-rail-rule" />
         {STAMP_GROUPS.map(([id, name]) => {
           const Icon = { objects: TreePine, repeat: PhCheckerboard, autotiles: Blocks, animated: Waves }[id];
           const count = project.assets.filter((asset) => asset.kind === "stamps" && stampGroup(asset) === id).length, on = kind === "stamps" && group === id && open;
           return <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} (stamps) · ${count}${on ? " · click to hide" : ""}`} onClick={() => { if (kind === "stamps" && group !== id) { setGroup(id); store("gbc-stamp-group", id); if (!open) onKind("stamps"); return; } setGroup(id); store("gbc-stamp-group", id); onKind("stamps"); }}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>;
         })}
+        <hr className="app-rail-rule" />
         <button type="button" className="app-rail-fill" aria-label={open ? "Hide the pictures" : "Show the pictures"} title={open ? "Hide the pictures" : "Show the pictures"} onClick={onToggle} />
         <IconButton variant="ghost" aria-label={`Messages${unreadMessages ? ` (${unreadMessages} new)` : ""}`} label={`Messages: everything GB Cartographer said${unreadMessages ? ` · ${unreadMessages} new` : ""}`} onClick={onMessages}><MessageSquareText size={18} />{unreadMessages > 0 && <span className="app-badge">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}</IconButton>
       </nav>
