@@ -52,31 +52,31 @@ export function xpCell(mask: number): [number, number][] {
 }
 
 /**
- * A cliff in the XP style (Axul's cliff sheet, 48 × 80, 6 × 10 minitiles): rows 0–3 the plateau (row 0 its top
- * edge, rows 1–3 its sides and fill), rows 4–5 the cliff face with its sides and rounded foot; rows 6 and 8, columns
- * 0 and 3: where a face meets the plateau beside it (the face's top end, and the side running down past it);
- * columns 4–5 of rows 8–9: a lone mound. A filled cell is face when the cell below it isn't filled, else plateau.
+ * A cliff in the XP style (48 × 80, 6 × 10 minitiles): rows 0–3 the plateau's top, rows 4–5 the cliff face, both
+ * 9-sliced by cells (the author's sheet, 2026-10-12: the top is a framed box): across, a cell at the area's left end
+ * takes columns 0–1, a middle cell columns 2–3, a right end 4–5 (one cell alone: 0 and 5); down, a top-edge cell
+ * takes rows 0–1, a middle cell rows 1–2, the cell just above the face rows 2–3 (both: 0 and 3). A filled cell is
+ * face when the cell below it isn't filled. Rows 6 and 8, columns 0 and 3: where a side ends into a wider plateau
+ * (row 6) and a side's top beside a face (row 8); columns 4–5 of rows 8–9: a lone mound.
  */
 export function xpCliffCell(filled: Filled, x: number, y: number): Piece[] {
   if (!filled(x, y)) return [null, null, null, null];
   if (!filled(x - 1, y) && !filled(x + 1, y) && !filled(x, y - 1) && !filled(x, y + 1)) return [[4, 8], [5, 8], [4, 9], [5, 9]];
   const face = (cx: number, cy: number) => filled(cx, cy) && !filled(cx, cy + 1);
-  if (face(x, y)) {
-    const west = filled(x - 1, y), east = filled(x + 1, y);
-    return [west ? [1, 4] : [0, 4], east ? [2, 4] : [5, 4], west ? [1, 5] : [0, 5], east ? [2, 5] : [5, 5]];
-  }
-  const quarter = (right: boolean, bottom: boolean): Piece => {
-    const dx = right ? 1 : -1, dy = bottom ? 1 : -1, side = filled(x + dx, y), vertical = filled(x, y + dy);
-    // Beside a face: the side starts level with the face's top (its rounded end), then runs down past it.
-    if (side && face(x + dx, y)) return bottom ? [right ? 5 : 0, 1] : [right ? 3 : 0, 8];
-    if (bottom) {
-      return side ? [right ? 2 : 1, 2] : [right ? 5 : 0, 2];
-    }
-    if (!vertical) return side ? [right ? 4 : 1, 0] : [right ? 5 : 0, 0];
-    if (!side) return [right ? 5 : 0, 1];
-    // The top inside corner: a raised part's side ending into the wider plateau below it.
-    if (!filled(x + dx, y + dy)) return [right ? 3 : 0, 6];
-    return [right ? 2 : 1, 1];
+  const west = filled(x - 1, y), east = filled(x + 1, y);
+  // Across: the cell's two columns from where it sits in its row.
+  const columns: [number, number] = [!west ? 0 : !east ? 4 : 2, !east ? 5 : !west ? 1 : 3];
+  if (face(x, y)) return [[columns[0], 4], [columns[1], 4], [columns[0], 5], [columns[1], 5]];
+  // Down: the plateau cell's two rows from where it sits in its column.
+  const top = !filled(x, y - 1), bottom = face(x, y + 1);
+  const rows: [number, number] = [top ? 0 : bottom ? 2 : 1, bottom ? 3 : top ? 1 : 2];
+  const quarter = (right: boolean, lower: boolean): Piece => {
+    const dx = right ? 1 : -1, side = filled(x + dx, y);
+    // Beside a face: the side starts level with the face's top, then runs down past it.
+    if (side && face(x + dx, y)) return lower ? [right ? 5 : 0, 1] : [right ? 3 : 0, 8];
+    // A side above ending into this wider plateau: its foot.
+    if (!lower && !top && side && !filled(x + dx, y - 1)) return [right ? 3 : 0, 6];
+    return [columns[right ? 1 : 0], rows[lower ? 1 : 0]];
   };
   return [quarter(false, false), quarter(true, false), quarter(false, true), quarter(true, true)];
 }

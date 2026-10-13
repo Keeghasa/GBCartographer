@@ -115,7 +115,8 @@ describe("area auto-tiles, painted offline", () => {
 
   it("paints the XP cliff cell by cell the way the painter does (cells read back from the picture) as if all at once", () => {
     const sheet = xpCliffTemplate();
-    const ring = shape(["#####", "#.#.#", "#####"]), w = ring.w, h = ring.h;
+    for (const [name, ring] of [["ring", shape(["#####", "#.#.#", "#####"])], ["block", shape(["#####", "#####", "#####"])]] as const) {
+    const w = ring.w, h = ring.h;
     const art: Canvas = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
     const tileKey = (pixels: Uint8Array, width: number, x0: number, y0: number) => { let key = ""; for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) key += pixels[(y0 + y) * width + x0 + x]; return key; };
     const keys = new Set<string>();
@@ -127,7 +128,7 @@ describe("area auto-tiles, painted offline", () => {
     }
     const order: [number, number][] = [];
     for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) if (ring.filled(x, y)) order.push([x, y]);
-    for (const [cx, cy] of order.reverse()) {
+    for (const [cx, cy] of name === "ring" ? order.reverse() : order) {
       const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
       const filled = (x: number, y: number) => inside(x, y) && ((x === cx && y === cy) || keys.has(tileKey(art.pixels, art.width, x * 16, y * 16)));
       const cells: [number, number, Piece[]][] = [];
@@ -138,8 +139,9 @@ describe("area auto-tiles, painted offline", () => {
       });
     }
     const whole = paint(sheet, w, h, 16, (x, y) => xpCliffCell((fx, fy) => fx >= 0 && fy >= 0 && fx < w && fy < h && ring.filled(fx, fy), x, y));
-    save("xp-cliff-ring", art);
-    expect([...art.pixels]).toEqual([...whole.pixels]);
+    save(`xp-cliff-${name}`, art);
+    expect([...art.pixels], name).toEqual([...whole.pixels]);
+    }
   });
 
   it("draws the mound with no lines inside the plateau, a face under it and rock beside it", () => {
