@@ -122,6 +122,8 @@ export default function PaintApp() {
   const [showStore, setShowStore] = useState(false);
   const [showWizards, setShowWizards] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  /** The start screen was left (a project opened, or pictures were opened without one). */
+  const [startDone, setStartDone] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
   /** Yes / no questions in a kit dialog (in place of the browser's confirm box). */
@@ -520,6 +522,7 @@ export default function PaintApp() {
 
   async function openFiles(files: Opening[]) {
     await palettesReady.current;
+    if (files.length) setStartDone(true);
     let last = 0;
     for (const { file, handle, asset, info, replace } of files) {
       try {
@@ -603,6 +606,7 @@ export default function PaintApp() {
       palettesRef.current = opened.palettes.filter((palette) => palette.colors?.length === 4);
       projectRef.current = { name: opened.name, path: opened.path, assets: opened.assets, palettes: opened.palettes };
       setProject(projectRef.current);
+      setStartDone(true);
       if (ownLoadedFor.current !== opened.path) { ownLoadedFor.current = opened.path; void loadOwn(opened.path); }
     } else {
       ownLoadedFor.current = null;
@@ -666,6 +670,7 @@ export default function PaintApp() {
     palettesReady.current = loadProject();
     await palettesReady.current;
     closeDocsOf(oldPath);
+    setStartDone(false);
   }
 
   /** Asks for a GB Studio project folder: the desktop app's folder dialog, or a typed path on the dev server. `demo` opens a copy of the shipped demo instead. */
@@ -2101,7 +2106,9 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }, []);
 
   // No project and nothing open: the start screen shows on its own, like a splash window (see the render).
-  const splash = served && !project && !docs.current.length;
+  // Like GB Studio, a launch starts on the start screen (pick a project, or open pictures), even when the last session
+  // left pictures open (the author, 2026-10-12); a reload with a project open goes straight back to it.
+  const splash = served && !project && !startDone;
   // Wheel and trackpad zoom (pinch) and middle-button pan, on the picture area. It only exists outside the splash,
   // so the handlers attach again whenever the splash comes or goes.
   useEffect(() => {

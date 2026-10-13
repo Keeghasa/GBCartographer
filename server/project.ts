@@ -68,18 +68,14 @@ export function setProjectFolder(path: string | null) {
   current = path ? resolve(path) : null;
 }
 
-function readSetting(file: string): string | null {
-  try {
-    const value = (JSON.parse(readFileSync(file, "utf8")) as { project?: unknown }).project;
-    return typeof value === "string" && value ? value : null;
-  } catch {
-    return null;
-  }
-}
 
-/** Picks the project from the environment, then the settings file; a folder that is no longer a project is ignored. */
-export function loadProjectFolder(root: string, settingsFile = resolve(root, "cartographer.local.json")): string | null {
-  const candidates = [process.env.GBC_PROJECT, readSetting(settingsFile)];
+/**
+ * The project open at launch: only one named in the environment (GBC_PROJECT, for scripts). Like GB Studio, the app
+ * otherwise starts on its start screen and the user picks a project (the author, 2026-10-12); the settings file still
+ * keeps the recent ones. A folder that is no longer a project is ignored.
+ */
+export function loadProjectFolder(root: string, _settingsFile = resolve(root, "cartographer.local.json")): string | null {
+  const candidates = [process.env.GBC_PROJECT];
   for (const candidate of candidates) {
     if (candidate && isProjectFolder(resolve(root, candidate))) {
       setProjectFolder(resolve(root, candidate));
