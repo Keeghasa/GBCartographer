@@ -133,7 +133,7 @@ export type Drag =
   | { kind: "atlas"; last: Point; erase: boolean }
   | { kind: "mound"; last: Point; erase: boolean }
   | { kind: "xp"; last: Point; erase: boolean }
-  | { kind: "forest"; last: Point; erase: boolean }
+  | { kind: "forest"; last: Point; erase: boolean; /** The stroke's unit grid, in tiles (0–3): where the first click put it. */ ox: number; oy: number }
   /** A corner-Wang stamp painted at grid corners (`last` is a corner, in tiles). */
   | { kind: "corner"; last: Point; erase: boolean }
   /** The collision brush painting GB Studio collisions tile by tile (Alt or right-drag clears). */

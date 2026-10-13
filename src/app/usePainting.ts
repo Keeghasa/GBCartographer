@@ -340,16 +340,18 @@ export function usePainting(app: Painting) {
    * Forest (the author's trees, autopaint.ts forestLayout): 32 px tree units drawn quarter by quarter, the clump's
    * quarter where the three units around that corner are forest too, else the lone tree's. A unit is forest when
    * every tile in it is blank or one of the sheet's (so a forest of other trees beside it isn't taken for this one).
-   * Off the picture counts as forest.
+   * Off the picture counts as forest. The units' grid starts where a stroke began (`ox`, `oy` in tiles, 0–3; the
+   * author, 2026-10-12: trees go anywhere, not only on one fixed 32 px grid), so unit (ux, uy) covers tiles
+   * ux × 4 + ox … and a stroke over an existing forest uses that forest's grid (forestOrigin).
    */
-  function paintForest(target: Doc, ux: number, uy: number, erase: boolean) {
+  function paintForest(target: Doc, ux: number, uy: number, erase: boolean, ox = 0, oy = 0) {
     const UNIT = 4;
-    const uw = Math.floor(cellsWide(target.width) / UNIT), uh = Math.floor(Math.ceil(target.height / CELL) / UNIT);
-    if (ux < 0 || uy < 0 || ux >= uw || uy >= uh) return;
+    const tw = cellsWide(target.width), th = Math.ceil(target.height / CELL);
+    const inside = (x: number, y: number) => x * UNIT + ox >= 0 && y * UNIT + oy >= 0 && (x + 1) * UNIT + ox <= tw && (y + 1) * UNIT + oy <= th;
+    if (!inside(ux, uy)) return;
     const blank = app.blank(target);
     const keys = sheetKeys(8, 32, blank);
     const empty = tileKey(new Uint8Array(CELL * CELL).fill(blank), CELL, 0, 0);
-    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < uw && y < uh;
     const marked = new Map<string, boolean>([[`${ux},${uy}`, !erase]]);
     const painted = (x: number, y: number) => {
       if (!inside(x, y)) return true;
@@ -357,7 +359,7 @@ export function usePainting(app: Painting) {
       if (mark !== undefined) return mark;
       let ours = 0;
       for (let ty = 0; ty < UNIT; ty += 1) for (let tx = 0; tx < UNIT; tx += 1) {
-        const key = tileKey(target.pixels, target.width, (x * UNIT + tx) * CELL, (y * UNIT + ty) * CELL);
+        const key = tileKey(target.pixels, target.width, (x * UNIT + ox + tx) * CELL, (y * UNIT + oy + ty) * CELL);
         if (keys.has(key)) ours += 1; else if (key !== empty) return false;
       }
       return ours >= 4;
@@ -368,13 +370,34 @@ export function usePainting(app: Painting) {
       const x = ux + dx, y = uy + dy;
       if (inside(x, y) && painted(x, y)) units.push([x, y, forestLayout(painted, x, y)]);
     }
-    if (erase) fillRect(target.pixels, target.width, target.height, { x: ux * UNIT * CELL, y: uy * UNIT * CELL, w: UNIT * CELL, h: UNIT * CELL }, blank);
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: (ux * UNIT + ox) * CELL, y: (uy * UNIT + oy) * CELL, w: UNIT * CELL, h: UNIT * CELL }, blank);
     for (const [x, y, pieces] of units) pieces.forEach((piece, quarter) => {
       if (!piece) return;
       const qx = quarter % 2, qy = quarter >> 1;
-      for (let ty = 0; ty < 2; ty += 1) for (let tx = 0; tx < 2; tx += 1) putSheetTile(target, x * UNIT + qx * 2 + tx, y * UNIT + qy * 2 + ty, piece[0] + tx, piece[1] + ty, true);
+      for (let ty = 0; ty < 2; ty += 1) for (let tx = 0; tx < 2; tx += 1) putSheetTile(target, x * UNIT + ox + qx * 2 + tx, y * UNIT + oy + qy * 2 + ty, piece[0] + tx, piece[1] + ty, true);
     });
   }
+
+  /**
+   * Where a forest stroke's unit grid goes (in tiles, 0–3 each way): an existing forest under the pointer keeps its own
+   * grid (the unit under the pointer is all this sheet's tiles), else a unit centred on the pointer, snapped to tiles.
+   */
+  function forestOrigin(target: Doc, point: Point): { ox: number; oy: number } {
+    const keys = sheetKeys(8, 32, app.blank(target));
+    const tx = point.x >> 3, ty = point.y >> 3;
+    for (let oy = 0; oy < 4; oy += 1) for (let ox = 0; ox < 4; ox += 1) {
+      const x0 = tx - ((((tx - ox) % 4) + 4) % 4), y0 = ty - ((((ty - oy) % 4) + 4) % 4);
+      let all = true;
+      for (let y = 0; y < 4 && all; y += 1) for (let x = 0; x < 4 && all; x += 1) {
+        const px = (x0 + x) * CELL, py = (y0 + y) * CELL;
+        all = px >= 0 && py >= 0 && px + CELL <= target.width && py + CELL <= target.height && keys.has(tileKey(target.pixels, target.width, px, py));
+      }
+      if (all) return { ox, oy };
+    }
+    const start = (n: number) => ((Math.round((n - 16) / CELL) % 4) + 4) % 4;
+    return { ox: start(point.x), oy: start(point.y) };
+  }
+  const forestUnit = (n: number, origin: number) => Math.floor((n - origin * CELL) / 32);
 
   /** Corner Wang: sets (or clears) the second terrain at grid corner (vx, vy); the four tiles meeting there redraw. */
   function paintCorner(target: Doc, vx: number, vy: number, erase: boolean) {
@@ -447,8 +470,9 @@ export function usePainting(app: Painting) {
       const auto = stamp.current?.auto;
       const unit = auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
       const corner = auto === "corner";
-      const left = corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
-      const top = corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.y / unit) * unit : point.y & ~7;
+      const state = drag.current, forest = auto === "forest" ? (state?.kind === "forest" ? state : forestOrigin(doc, point)) : null;
+      const left = forest ? forestUnit(point.x, forest.ox) * 32 + forest.ox * CELL : corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
+      const top = forest ? forestUnit(point.y, forest.oy) * 32 + forest.oy * CELL : corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.y / unit) * unit : point.y & ~7;
       const width = corner ? CELL : unit || (stamp.current?.w ?? CELL), height = corner ? CELL : unit || (stamp.current?.h ?? CELL);
       Object.assign(outline.style, { display: visible ? "block" : "none", left: `${left * doc.zoom}px`, top: `${top * doc.zoom}px`, width: `${width * doc.zoom}px`, height: `${height * doc.zoom}px` });
     } else {
@@ -544,8 +568,9 @@ export function usePainting(app: Painting) {
         drag.current = { kind: "mound", last: point, erase };
       } else if (auto === "forest") {
         const erase = event.altKey;
-        paintForest(doc, point.x >> 5, point.y >> 5, erase);
-        drag.current = { kind: "forest", last: point, erase };
+        const { ox, oy } = forestOrigin(doc, point);
+        paintForest(doc, forestUnit(point.x, ox), forestUnit(point.y, oy), erase, ox, oy);
+        drag.current = { kind: "forest", last: point, erase, ox, oy };
       } else if (auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall") {
         const erase = event.altKey;
         paintAtlas(doc, point.x >> 4, point.y >> 4, erase);
@@ -648,7 +673,7 @@ export function usePainting(app: Painting) {
       for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintMound(doc, x, y, state.erase);
       state.last = point;
     } else if (state.kind === "forest") {
-      for (const [x, y] of linePoints(state.last.x >> 5, state.last.y >> 5, point.x >> 5, point.y >> 5)) paintForest(doc, x, y, state.erase);
+      for (const [x, y] of linePoints(forestUnit(state.last.x, state.ox), forestUnit(state.last.y, state.oy), forestUnit(point.x, state.ox), forestUnit(point.y, state.oy))) paintForest(doc, x, y, state.erase, state.ox, state.oy);
       state.last = point;
     } else if (state.kind === "atlas") {
       for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintAtlas(doc, x, y, state.erase);
