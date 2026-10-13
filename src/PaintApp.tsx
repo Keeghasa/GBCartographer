@@ -867,7 +867,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const cells = new Uint8Array(cellsWide(width) * Math.ceil(height / CELL));
     if (!kind) {
       const id = newDocId(docs.current);
-      docs.current.push({ id, name: `${name.replace(/\.png$/i, "")}.png`, width, height, pixels, cells, hasAlpha: false, palettes: clonePalettes(palettesRef.current), undo: [], redo: [], dirty: true, zoom: fitZoom(width, height), sel: null, float: null });
+      docs.current.push({ id, name: `${name.replace(/\.png$/i, "")}.png`, width, height, pixels, cells, hasAlpha: pixels.includes(CLEAR), palettes: clonePalettes(palettesRef.current), undo: [], redo: [], dirty: true, zoom: fitZoom(width, height), sel: null, float: null });
       setActiveId(id);
       scheduleSession();
       bump();
@@ -875,7 +875,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
     const canvas = document.createElement("canvas");
     Object.assign(canvas, { width, height });
-    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, cells, width, [], keyed ? KEY_GREEN : undefined), width, height), 0, 0);
+    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, cells, width, [], keyed ? KEY_GREEN : kind === "fonts" ? KEY_MAGENTA : undefined), width, height), 0, 0);
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((made) => made ? resolve(made) : reject(new Error("No PNG")), "image/png"));
     const response = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind, name })}`, { method: "POST", body: blob }).catch(() => null);
     const result = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;

@@ -13,7 +13,7 @@ import { deflateSync } from "node:zlib";
 import { encodePng } from "../src/gb/png";
 import { GRAPHICS } from "../src/graphics/library";
 import { storeShelves } from "../src/app/store";
-import { KEY_GREEN, toRgba } from "../src/paint";
+import { KEY_GREEN, KEY_MAGENTA, toRgba } from "../src/paint";
 import { ownFolderReadme } from "../server/backups";
 import { KEYED_KINDS, paletteFileName } from "../server/assets";
 
@@ -63,7 +63,7 @@ for (const asset of GRAPHICS) {
   const file = join(dir, `${asset.name}.png`);
   if (existsSync(file)) continue;
   const keyed = (KEYED_KINDS as readonly string[]).includes(asset.kind);
-  const rgba = toRgba(art.pixels, new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)), art.width, [], keyed ? KEY_GREEN : undefined);
+  const rgba = toRgba(art.pixels, new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)), art.width, [], keyed ? KEY_GREEN : asset.kind === "fonts" ? KEY_MAGENTA : undefined);
   writeFileSync(file, encodePng(rgba, art.width, art.height, (bytes) => deflateSync(bytes)));
   if (asset.kind === "stamps") writeFileSync(`${file}.json`, `${JSON.stringify({ _resourceType: "cartographerStamp", slots: [], tileColors: [], ...(asset.group === "Patterns" ? { tags: ["pattern"] } : {}), ...(asset.autotile ? { autotile: asset.autotile } : {}) }, null, 2)}\n`);
   addedArt += 1;

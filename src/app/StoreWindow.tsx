@@ -50,7 +50,7 @@ const GROUP_INTROS: Record<string, string> = {
   "Map screens": "A village cut into six screens that join at their edges, ready for the Map Room.",
   "Outdoor pieces": "The author's ledge, trees and water as auto-tiles: paint an area and the mound wraps it, the forest fills it with single trees round the edge, the water's shores fit and its frames play.",
 };
-const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background" };
+const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background", fonts: "Font" };
 /** Sites the store links to, in their own colors (a Source button wears its site's). */
 const SITES: { host: RegExp; name: string; color: string }[] = [
   { host: /(^|\.)itch\.io$/, name: "itch.io", color: "#FA5C5C" },

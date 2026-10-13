@@ -6,6 +6,7 @@
  * animates by itself). Later: auto-tiles and animated tiles (water, flowers).
  */
 import type { WireAsset } from "./types";
+import { FONTS } from "./fonts";
 import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
 import { INDOOR, OUTDOOR, SIDE } from "./tiles";
@@ -59,6 +60,9 @@ const ALL: WireAsset[] = [
   { id: "ui-frame-dark", name: "Frame (dark)", group: "UI", kind: "ui", about: "A dark window frame (ui/frame.png).", make: ui.frameDark },
   { id: "ui-cursor-arrow", name: "Cursor (arrow)", group: "UI", kind: "ui", about: "The 8 × 8 menu cursor (ui/cursor.png).", make: ui.cursorArrow },
   { id: "ui-cursor-dot", name: "Cursor (dot)", group: "UI", kind: "ui", about: "The 8 × 8 menu cursor (ui/cursor.png).", make: ui.cursorDot },
+  // The fonts (2026-10-13), both CC0; see src/graphics/fonts.ts for their makers.
+  { id: "font-public-pixel", name: "Public Pixel", group: "Fonts", kind: "fonts", about: "8 × 8 capitals and lowercase, fixed width. By GGBotNet (CC0), GB Studio sheet by Santiago Crespo.", make: () => fromAuthored(FONTS["public-pixel"]) },
+  { id: "font-monogram", name: "monogram", group: "Fonts", kind: "fonts", about: "A small, very readable font, variable width (magenta marks each letter's unused columns). By datagoblin (CC0), converted for GB Studio.", make: () => fromAuthored(FONTS.monogram) },
   { id: "tiles-outdoor", name: "Outdoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(OUTDOOR).length} tiles of 16 × 16 (the tall oaks and pines 16 × 32): grass, paths, water, trees, roofs and walls…`, make: () => tileSheet(Object.keys(OUTDOOR)) },
   { id: "tiles-indoor", name: "Indoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(INDOOR).length} tiles: floors, walls, furniture.`, make: () => tileSheet(Object.keys(INDOOR)) },
   { id: "tiles-side", name: "Side-view tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(SIDE).length} tiles for platformers: ground, platforms, ladders.`, make: () => tileSheet(Object.keys(SIDE)) },
