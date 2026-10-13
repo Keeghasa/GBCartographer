@@ -374,7 +374,7 @@ export default function PaintApp() {
   // ---- undo and the floating selection ---------------------------------------------------------------------------
 
   function pushUndo(target: Doc) {
-    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}) });
+    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: target.width, height: target.height, ...(target.asset?.opened ? { opened: target.asset.opened.slice() } : {}) });
     while (target.undo.length > UNDO_LIMIT || (target.undo.length > 1 && target.undo.length * target.pixels.length > UNDO_BYTES)) target.undo.shift();
     target.redo = [];
   }
@@ -391,9 +391,12 @@ export default function PaintApp() {
   function stepHistory(from: "undo" | "redo") {
     if (!doc || !doc[from].length) return;
     dropFloat(doc);
-    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, palettes: clonePalettes(doc.palettes), ...(doc.priority ? { priority: doc.priority } : {}), ...(doc.collision ? { collisionValues: doc.collision.scenes.map((scene) => scene.values.slice()) } : {}) });
-    const { palettes, collisionValues, ...rest } = doc[from].pop()!;
+    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, palettes: clonePalettes(doc.palettes), ...(doc.priority ? { priority: doc.priority } : {}), ...(doc.collision ? { collisionValues: doc.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: doc.width, height: doc.height, ...(doc.asset?.opened ? { opened: doc.asset.opened } : {}) });
+    const { palettes, collisionValues, width, height, opened, ...rest } = doc[from].pop()!;
     Object.assign(doc, rest);
+    // A resize undone or redone: the picture takes that size again (and its view fits it).
+    if (width && height && (width !== doc.width || height !== doc.height)) Object.assign(doc, { width, height, resized: true, zoom: fitZoom(width, height) });
+    if (opened && doc.asset) doc.asset.opened = opened;
     if (collisionValues && doc.collision) collisionValues.forEach((values, index) => { if (doc.collision!.scenes[index]) doc.collision!.scenes[index].values = values; });
     // Palette colors come back too; a restored list that predates a palette added since keeps the newer ones.
     if (palettes) palettes.forEach((palette, index) => { if (doc.palettes[index]) doc.palettes[index] = palette; });
@@ -900,11 +903,13 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       }
       return out;
     };
+    pushUndo(doc);
     const cells = move(doc.cells, 0, (length) => new Uint8Array(length)) as Uint8Array;
+    if (doc.priority) doc.priority = move(doc.priority, 0, (length) => new Uint8Array(length)) as Uint8Array;
     if (doc.asset?.opened) doc.asset.opened = Array.from(move(doc.asset.opened, -1, (length) => new Array<number>(length)) as number[]);
-    Object.assign(doc, { width, height, pixels, cells, undo: [], redo: [], sel: null, float: null, resized: true, zoom: fitZoom(width, height) });
+    Object.assign(doc, { width, height, pixels, cells, sel: null, float: null, resized: true, zoom: fitZoom(width, height) });
     touch(doc);
-    say(`${doc.name} is now ${width} × ${height}. Undo starts over from here; Save writes the new size.`);
+    say(`${doc.name} is now ${width} × ${height} (Ctrl+Z undoes it; Save writes the new size).`);
   }
 
   /** Writes the picture over its GB Studio asset (the server keeps a backup and refuses a file that changed on disk). */
@@ -2695,8 +2700,14 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
                 </div>
                 {/* Grow the canvas a step (the author, 2026-10-13): a frame (16 px) on sprite sheets, a tile (8 px) elsewhere. */}
                 {(() => { const step = doc.asset?.kind === "sprites" ? 16 : CELL, what = doc.asset?.kind === "sprites" ? "16 px (a frame)" : "8 px (a tile)"; return (<>
-                  <span className="gbp-grow-x" onPointerDown={(event) => event.stopPropagation()}><IconButton label={`Add a column: ${what} wider (undo history starts over)`} aria-label="Wider" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false)}><Plus /></IconButton></span>
-                  <span className="gbp-grow-y" onPointerDown={(event) => event.stopPropagation()}><IconButton label={`Add a row: ${what} taller (undo history starts over)`} aria-label="Taller" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false)}><Plus /></IconButton></span>
+                  <span className="gbp-grow-x" onPointerDown={(event) => event.stopPropagation()}>
+                    <IconButton label={`Add a column: ${what} wider (Ctrl+Z undoes it)`} aria-label="Wider" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false)}><Plus /></IconButton>
+                    <IconButton label={`Take a column off the right: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false)}><Minus /></IconButton>
+                  </span>
+                  <span className="gbp-grow-y" onPointerDown={(event) => event.stopPropagation()}>
+                    <IconButton label={`Add a row: ${what} taller (Ctrl+Z undoes it)`} aria-label="Taller" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false)}><Plus /></IconButton>
+                    <IconButton label={`Take a row off the bottom: ${what} shorter (Ctrl+Z undoes it)`} aria-label="Shorter" variant="ghost" disabled={doc.height <= step} onClick={() => resizePicture(doc.width, doc.height - step, false)}><Minus /></IconButton>
+                  </span>
                 </>); })()}
               </div>
             </div>

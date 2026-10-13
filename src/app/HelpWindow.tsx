@@ -65,7 +65,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Zoom" keys={["Ctrl+=", "Ctrl+-"]}>Zoom in and out.</Row>
           <Row name="Shape tools" keys={["U"]}>Line, rectangle, filled rectangle and ellipse in turn, as Photoshop's shape group (L, R, Shift+R and O still pick one).</Row>
           <Row name="Grid" keys={["Ctrl+'"]}>The tile grid on or off.</Row>
-          <Row name="Canvas size" keys={["Ctrl+Alt+C"]}>Resize the picture (or the + buttons beside it grow it a tile, or a frame on sprite sheets).</Row>
+          <Row name="Canvas size" keys={["Ctrl+Alt+C"]}>Resize the picture; or the + and − buttons beside it add or take off a column or row (a tile, or a frame on sprite sheets). Ctrl+Z undoes a resize like any other change.</Row>
           <Row name="New picture" keys={["Ctrl+N"]}>A new blank picture.</Row>
           <Row name="Fit" keys={["Ctrl+0"]}>The biggest zoom that shows the whole picture (or click the zoom % in the header).</Row>
           <Row name="Pin, hide">The buttons on a card (on hover): pin keeps it at the top of the grid; hide puts it in the Hidden folder at the top, which shows what's inside on hover and brings them back on click. Only in this panel: the files stay.</Row>
