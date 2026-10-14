@@ -172,12 +172,12 @@ export function Popover({ trigger, children, open }: { trigger: ReactNode; child
 }
 
 /** A window over the app (Radix dialog): title, optional subtitle, body, and footer buttons. Esc and the × close it. */
-export function Dialog({ open, onOpenChange, title, sub, icon, wide, tall, footer, headExtra, children }: { open: boolean; onOpenChange?: (open: boolean) => void; title: ReactNode; sub?: ReactNode; icon?: ReactNode; wide?: boolean; tall?: boolean; footer?: ReactNode; headExtra?: ReactNode; children: ReactNode }) {
+export function Dialog({ open, onOpenChange, title, sub, icon, wide, tall, full, footer, headExtra, children }: { open: boolean; onOpenChange?: (open: boolean) => void; title: ReactNode; sub?: ReactNode; icon?: ReactNode; wide?: boolean; /** Nearly the whole window (the Asset Catalog). */ full?: boolean; tall?: boolean; footer?: ReactNode; headExtra?: ReactNode; children: ReactNode }) {
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
         <RDialog.Overlay className="k-overlay" />
-        <RDialog.Content className={cx("k-dialog k", wide && "k-dialog--wide", tall && "k-dialog--tall")} aria-describedby={undefined}>
+        <RDialog.Content className={cx("k-dialog k", wide && "k-dialog--wide", tall && "k-dialog--tall", full && "k-dialog--full")} aria-describedby={undefined}>
           <div className="k-dialog-head">
             {icon}
             <div className="k-stack" style={{ gap: 0 }}><RDialog.Title className="k-dialog-title">{title}</RDialog.Title>{sub && <span className="k-dialog-sub">{sub}</span>}</div>

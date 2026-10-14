@@ -1,23 +1,27 @@
 /**
- * The Asset Catalog (the store, 2026-10-10; "Graphics" until the author merged its two aisles into one list,
- * 2026-10-12): what GB Cartographer ships, credited, for taking into a project piecemeal. One list of shelves:
- * palette sets (add a whole set or one palette at a time, to the project or to Mine; a palette the project already
- * has shows as added) and the art library by group (placeholder art: add it to the project as a new PNG, or open it
- * as a new picture). A search looks through both. Each shelf says who made it, its license (the License button
- * explains it) and where it comes from (Source).
+ * The Asset Catalog (the store, 2026-10-10), remade as a mosaic of live tiles (the author's pick B, 2026-10-14, after
+ * the start screen's neo-grotesk, Metro look): one tile per category, sorted as the side bar sorts a project
+ * (Palettes; Backgrounds, Sprites, Tilesets, Fonts, Emotes, Avatars, UI; the stamps' Objects, Repeat tiles, Autotiles,
+ * Animated tiles), each sized by what it holds, with a collage of its pieces, a big count and its name. A category
+ * opens as flat tiles: art to add to the project as a new PNG or open as a new picture (animated tiles play slowly),
+ * palette sets to add whole or a palette at a time, each palette with a little scene painted in it. A search looks
+ * through everything. Each shelf says who made it, its license (the License button explains it) and its source.
  */
-import { Check, ExternalLink, FilePlus2, Plus, Scale, Search, Store } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Blocks, Check, ExternalLink, FilePlus2, Ghost, Palette as PaletteIcon, Plus, Scale, Search, Store, TreePine, Type, Waves } from "lucide-react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { toRgba } from "../paint";
 import { Button, Chip, Dialog, IconButton, Popover } from "../ui/kit";
 import type { Canvas } from "../graphics/pen";
 import type { WireAsset } from "../graphics/types";
 
 // The graphics library is local-only until its art is approved: the aisle shows when its catalog is there.
-const GRAPHICS_LIBRARY = Object.values(import.meta.glob<{ GRAPHICS: WireAsset[]; GRAPHIC_GROUPS: string[] }>("../graphics/library.ts", { eager: true }))[0];
+const GRAPHICS_LIBRARY = Object.values(import.meta.glob<{ GRAPHICS: WireAsset[] }>("../graphics/library.ts", { eager: true }))[0];
 const GRAPHICS = GRAPHICS_LIBRARY?.GRAPHICS ?? [];
-const GRAPHIC_GROUPS = GRAPHICS_LIBRARY?.GRAPHIC_GROUPS ?? [];
 import { LICENSES, hasPalette, storeShelves, type StorePalette, type StoreSet } from "./store";
+import { AnimThumb } from "./AnimThumb";
+import { stampGroup } from "./stampGroups";
+import { PhCheckerboard, PhPuzzlePiece, PxAvatar, PxImage, PxMessageReply, PxSmile } from "../ui/setIcons";
 import "./StoreWindow.css";
 
 interface Props {
@@ -98,143 +102,193 @@ function Credit({ author, license, source, shelf }: { author?: string; license?:
   );
 }
 
-/** A graphic drawn small: pixels scaled up, see-through shown as see-through. */
-function Preview({ art }: { art: Canvas }) {
-  const [target, setTarget] = useState<HTMLCanvasElement | null>(null);
-  useEffect(() => {
-    if (!target) return;
-    Object.assign(target, { width: art.width, height: art.height });
-    const cells = new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8));
-    target.getContext("2d")!.putImageData(new ImageData(toRgba(art.pixels, cells, art.width, []), art.width, art.height), 0, 0);
-  }, [art, target]);
-  const scale = Math.max(1, Math.min(4, Math.floor(300 / art.width), Math.floor(140 / art.height)));
-  return <canvas ref={setTarget} className="st-art" style={{ width: art.width * scale, height: art.height * scale }} />;
+/** A picture as an image address (pixels in GB greens, see-through kept), made once per piece. */
+const urls = new Map<string, string>();
+function pictureUrl(key: string, art: Canvas, palette?: readonly string[]): string {
+  let url = urls.get(key);
+  if (!url) {
+    const canvas = Object.assign(document.createElement("canvas"), { width: art.width, height: art.height });
+    const cells = new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)).fill(palette ? 1 : 0);
+    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(art.pixels, cells, art.width, palette ? [{ name: "", colors: [...palette] }] : []), art.width, art.height), 0, 0);
+    url = canvas.toDataURL();
+    urls.set(key, url);
+  }
+  return url;
+}
+
+/**
+ * The little scene each palette is shown with (the author, 2026-10-14: "hard to imagine it sometimes"): a corner of
+ * the catalog's village (a house, trees, a path), 64 × 48, painted in the palette's four colors.
+ */
+let sceneArt: Canvas | null | undefined;
+function paletteScene(colors: readonly string[]): string | null {
+  if (sceneArt === undefined) {
+    const village = GRAPHICS.find((asset) => asset.id === "scene-village")?.make();
+    sceneArt = village ? { width: 64, height: 48, pixels: Uint8Array.from({ length: 64 * 48 }, (_, at) => { const v = village.pixels[(36 + Math.floor(at / 64)) * village.width + 28 + (at % 64)]; return v > 3 ? 0 : v; }) } : null;
+  }
+  return sceneArt ? pictureUrl(`scene:${colors.join()}`, sceneArt, colors) : null;
+}
+
+type CategoryId = "palettes" | "backgrounds" | "sprites" | "tilesets" | "fonts" | "emotes" | "avatars" | "ui" | "objects" | "repeat" | "autotiles" | "animated";
+/** The categories, in the side bar's order and with its icons. */
+const CATEGORIES: { id: CategoryId; name: string; about: string; icon: ReactNode }[] = [
+  { id: "palettes", name: "Palettes", about: "Palette sets to put in your scenes' slots, or keep in Mine.", icon: <PaletteIcon /> },
+  { id: "backgrounds", name: "Backgrounds", about: "Whole scenes and map screens to start from.", icon: <PxImage size={22} /> },
+  { id: "sprites", name: "Sprites", about: "Walking people, things, and short animations.", icon: <Ghost /> },
+  { id: "tilesets", name: "Tilesets", about: "16 × 16 pieces to build backgrounds from.", icon: <PhPuzzlePiece size={22} /> },
+  { id: "fonts", name: "Fonts", about: "GB Studio font sheets, fixed and variable width.", icon: <Type /> },
+  { id: "emotes", name: "Emotes", about: "Bubbles above an actor's head.", icon: <PxSmile size={22} /> },
+  { id: "avatars", name: "Avatars", about: "Faces for dialogue boxes.", icon: <PxAvatar size={22} /> },
+  { id: "ui", name: "UI", about: "The window frame and the menu cursor.", icon: <PxMessageReply size={22} /> },
+  { id: "objects", name: "Objects", about: "Plain stamps: trees, rocks, signs.", icon: <TreePine /> },
+  { id: "repeat", name: "Repeat tiles", about: "Seamless patterns that tile any way.", icon: <PhCheckerboard size={22} /> },
+  { id: "autotiles", name: "Autotiles", about: "Paint an area and the edges draw themselves.", icon: <Blocks /> },
+  { id: "animated", name: "Animated tiles", about: "Water, lava and flowers that play their frames.", icon: <Waves /> },
+];
+const categoryOf = (asset: WireAsset): CategoryId => asset.kind === "stamps" ? stampGroup({ autotile: asset.autotile, tags: asset.group === "Patterns" ? ["pattern"] : [] }) : asset.kind as CategoryId;
+const PALETTE_COUNT = SHELVES.reduce((sum, shelf) => sum + shelf.sets.reduce((n, set) => n + set.palettes.length, 0), 0);
+/** How many frames an animated stamp's sheet holds side by side. */
+const framesOf = (asset: WireAsset, art: Canvas) => asset.autotile === "xpAnim" ? Math.max(1, Math.round(art.width / 48)) : asset.autotile === "atlasAnim" ? 3 : Math.max(1, Math.floor(art.width / art.height));
+const isAnimated = (asset: WireAsset) => asset.autotile === "anim" || asset.autotile === "xpAnim" || asset.autotile === "atlasAnim";
+
+/** A piece's picture in a tile: still, or (an animated tile) playing its frames slowly. */
+function Piece({ asset, art, className }: { asset: WireAsset; art: Canvas; className?: string }) {
+  const src = pictureUrl(asset.id, art);
+  if (isAnimated(asset)) return <AnimThumb src={src} frames={framesOf(asset, art)} className={className} />;
+  return <img src={src} alt="" className={className} draggable={false} />;
 }
 
 export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProject, onAddToMine, onAddArt, onOpenArt }: Props) {
-  // One shelf is on show: a palette shelf or an art group (a search shows matches from both).
-  const [shelfName, setShelfName] = useState(SHELVES.find((shelf) => shelf.name === "Overworld")?.name ?? SHELVES[0]?.name ?? "");
-  const [group, setGroup] = useState(GRAPHIC_GROUPS[0] ?? "");
-  const [aisle, setAisle] = useState<"palettes" | "graphics">("palettes");
+  const [category, setCategory] = useState<CategoryId | null>(null);
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mine, setMine] = useState<Set<string>>(new Set());
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const pieces = useMemo(() => GRAPHICS.map((asset) => ({ asset, art: asset.make(), category: categoryOf(asset) })), []);
+  const count = (id: CategoryId) => id === "palettes" ? PALETTE_COUNT : pieces.filter((piece) => piece.category === id).length;
 
   const needle = query.trim().toLowerCase();
-  // A search looks through every shelf: sets whose name, or any palette's name, matches.
-  const found = useMemo(() => !needle ? null : SHELVES.map((shelf) => ({ ...shelf, sets: shelf.sets.map((set) => set.name.toLowerCase().includes(needle) ? set : { ...set, palettes: set.palettes.filter((palette) => palette.name.toLowerCase().includes(needle)) }).filter((set) => set.palettes.length) })).filter((shelf) => shelf.sets.length), [needle]);
-  const shelves = found ?? (aisle === "palettes" ? SHELVES.filter((shelf) => shelf.name === shelfName) : []);
-  const arts = useMemo(() => (needle ? GRAPHICS.filter((asset) => `${asset.name} ${asset.group}`.toLowerCase().includes(needle)) : aisle === "graphics" ? GRAPHICS.filter((asset) => asset.group === group) : []).map((asset) => ({ asset, art: asset.make() })), [needle, group, aisle]);
-  const showPalettes = Boolean(needle ? found?.length : aisle === "palettes"), showArt = Boolean(needle ? arts.length : aisle === "graphics");
+  const foundArt = needle ? pieces.filter(({ asset }) => `${asset.name} ${asset.group}`.toLowerCase().includes(needle)) : [];
+  const foundPalettes = needle ? SHELVES.map((shelf) => ({ ...shelf, sets: shelf.sets.map((set) => set.name.toLowerCase().includes(needle) ? set : { ...set, palettes: set.palettes.filter((palette) => palette.name.toLowerCase().includes(needle)) }).filter((set) => set.palettes.length) })).filter((shelf) => shelf.sets.length) : [];
 
   const has = (palette: StorePalette) => hasPalette(projectPalettes, palette);
-  async function add(palettes: StorePalette[]) {
-    setBusy(true);
-    await onAddToProject(palettes.filter((palette) => !has(palette)));
-    setBusy(false);
-  }
-  function toMine(set: StoreSet) {
-    onAddToMine(set.palettes);
-    setMine(new Set(mine).add(set.id));
-  }
-  async function addArt(asset: WireAsset, art: Canvas) {
-    setBusy(true);
-    if (await onAddArt(asset, art)) setAdded(new Set(added).add(asset.id));
-    setBusy(false);
-  }
+  async function add(palettes: StorePalette[]) { setBusy(true); await onAddToProject(palettes.filter((palette) => !has(palette))); setBusy(false); }
+  function toMine(set: StoreSet) { onAddToMine(set.palettes); setMine(new Set(mine).add(set.id)); }
+  async function addArt(asset: WireAsset, art: Canvas) { setBusy(true); if (await onAddArt(asset, art)) setAdded(new Set(added).add(asset.id)); setBusy(false); }
+  const home = () => { setCategory(null); setQuery(""); };
 
-  const nav = [
-    { heading: "Palettes" },
-    ...SHELVES.map((shelf) => ({ key: `p:${shelf.name}`, label: shelf.name, count: shelf.sets.reduce((sum, set) => sum + set.palettes.length, 0), on: !needle && aisle === "palettes" && shelf.name === shelfName, pick: () => { setAisle("palettes"); setShelfName(shelf.name); } })),
-    ...(GRAPHICS.length ? [{ heading: "Art" }] : []),
-    ...GRAPHIC_GROUPS.map((name) => ({ key: `a:${name}`, label: name, count: GRAPHICS.filter((asset) => asset.group === name).length, on: !needle && aisle === "graphics" && name === group, pick: () => { setAisle("graphics"); setGroup(name); } })),
-  ];
+  /** The home: a tile per category, sized by what it holds. */
+  const mosaic = (
+    <div className="stm-mosaic">
+      {CATEGORIES.map((item) => {
+        const n = count(item.id), size = n >= 30 ? "stm-live--4" : n >= 15 ? "stm-live--3" : n >= 6 ? "stm-live--2" : "";
+        const collage = item.id === "palettes"
+          ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 24).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
+          : pieces.filter((piece) => piece.category === item.id).slice(0, 18).map(({ asset, art }) => <img key={asset.id} src={pictureUrl(asset.id, art)} alt="" draggable={false} />);
+        return (
+          <button key={item.id} type="button" className={`stm-live ${size}`} disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>
+            <span className="stm-collage" aria-hidden>{collage}</span>
+            <span className="stm-live-top"><span className="stm-icon">{item.icon}</span><span className="stm-big">{n || "–"}</span></span>
+            <span><span className="stm-live-name">{item.name}</span><span className="stm-meta">{n ? item.about : "None yet"}</span></span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const artTiles = (list: typeof pieces) => (
+    <div className="stm-tiles">
+      {list.map(({ asset, art }) => {
+        const wide = art.width / art.height >= 1.6 && !isAnimated(asset), tall = art.height / art.width >= 1.6, small = art.width <= 16 && art.height <= 16;
+        return (
+          <article key={asset.id} className={`stm-tile${wide ? " stm-tile--wide" : ""}${tall ? " stm-tile--tall" : ""}`} title={asset.about}>
+            <div className="stm-pic"><Piece asset={asset} art={art} className={small ? "stm-small" : undefined} /></div>
+            <span className="stm-acts">
+              {added.has(asset.id) ? <Chip tone="acc"><Check size={12} /> Added</Chip>
+                : <Button size="sm" variant="primary" icon={<FilePlus2 />} disabled={!projectName || busy} title={projectName ? `A new PNG in ${asset.kind === "stamps" ? "Cartographer/stamps" : `assets/${asset.kind}`}/ (never replaces a file), opened to paint` : "Open a project to add art to it"} onClick={() => void addArt(asset, art)}>Add</Button>}
+              <Button size="sm" variant="ghost" title="Open it as a new picture (Save asks where it goes)" onClick={() => onOpenArt(asset, art)}>Open</Button>
+            </span>
+            <b className="stm-tile-name">{asset.name}</b>
+            <small className="stm-tile-meta">{KIND_NAMES[asset.kind] ?? "Stamp"} · {art.width} × {art.height}</small>
+          </article>
+        );
+      })}
+    </div>
+  );
+
+  const paletteShelves = (shelves: typeof SHELVES) => shelves.map((shelf) => (
+    <section key={shelf.name} className="stm-shelf">
+      <header className="stm-sub"><span className="stm-sub-name">{shelf.name}</span><Credit author={shelf.author} license={shelf.license} source={shelf.source} shelf={shelf.name} /></header>
+      {shelf.about && <p className="k-muted k-small stm-about">{shelf.about}</p>}
+      <div className="stm-sets">
+        {shelf.sets.map((set) => {
+          const have = set.palettes.filter(has).length, all = have === set.palettes.length;
+          return (
+            <article key={set.id} className="stm-set">
+              <header className="stm-set-head">
+                <span><b className="stm-tile-name">{set.name}</b><small className="stm-tile-meta">{set.palettes.length} palette{set.palettes.length === 1 ? "" : "s"}{have && !all ? ` · ${have} in the project` : ""}</small></span>
+                {set.source && <SiteButton url={set.source} title={`Where ${set.name} was first posted: visit to support its author`} />}
+              </header>
+              <div className="stm-palettes">
+                {set.palettes.map((palette) => {
+                  const scene = paletteScene(palette.colors);
+                  return (
+                    <div key={palette.name} className="stm-palette">
+                      {scene && <img className="stm-scene" src={scene} alt="" draggable={false} title={`${palette.name}, painted on a little scene`} />}
+                      <Strip colors={palette.colors} />
+                      <span className="stm-palette-name">{palette.name}</span>
+                      {has(palette) ? <Check size={14} className="stm-added" aria-label="In the project" />
+                        : <IconButton size="sm" variant="ghost" label={projectName ? `Add ${palette.name} to the project` : "Open a project to add palettes"} disabled={!projectName || busy} onClick={() => void add([palette])}><Plus /></IconButton>}
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="k-row">
+                {all && projectName ? <Chip tone="acc"><Check size={12} /> In the project</Chip>
+                  : <Button size="sm" variant="primary" disabled={!projectName || busy} title={projectName ? "Adds every palette of the set the project doesn't have yet" : "Open a project to add palettes"} onClick={() => void add(set.palettes)}>{have ? "Add the rest" : "Add set"}</Button>}
+                <Button size="sm" variant="ghost" disabled={mine.has(set.id)} title="Keep the set in Mine (the palette manager), for any project" onClick={() => toMine(set)}>{mine.has(set.id) ? "In Mine" : "To Mine"}</Button>
+              </span>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  ));
+
+  const current = CATEGORIES.find((item) => item.id === category);
+  const groupCredit = current?.id === "fonts" ? GROUP_CREDITS.Fonts : GRAPHICS_CREDIT;
+  let body: ReactNode;
+  if (needle) {
+    body = <>
+      <button type="button" className="stm-back" onClick={home}><ArrowLeft size={14} /> All of the catalog</button>
+      <div className="stm-title"><h1 className="stm-h1"><b>“{query.trim()}”</b></h1><span className="k-muted k-small">{foundArt.length + foundPalettes.reduce((n, shelf) => n + shelf.sets.length, 0)} found</span></div>
+      {!foundArt.length && !foundPalettes.length && <p className="k-muted">Nothing matches “{query.trim()}”.</p>}
+      {foundArt.length > 0 && artTiles(foundArt)}
+      {paletteShelves(foundPalettes)}
+    </>;
+  } else if (current) {
+    body = <>
+      <button type="button" className="stm-back" onClick={home}><ArrowLeft size={14} /> All of the catalog</button>
+      <div className="stm-title">
+        <h1 className="stm-h1"><span className="stm-icon stm-icon--big">{current.icon}</span><b>{current.name}</b></h1>
+        {current.id !== "palettes" && <span className="stm-credit"><Credit {...groupCredit} /></span>}
+      </div>
+      <p className="stm-about">{current.id === "palettes" ? current.about : current.id === "fonts" ? `${current.about} ${GROUP_INTROS.Fonts}` : `${current.about} ${ART_ABOUT}`}</p>
+      {current.id === "palettes" ? paletteShelves(SHELVES) : artTiles(pieces.filter((piece) => piece.category === current.id))}
+    </>;
+  } else {
+    body = <>
+      <div className="stm-head"><span>Everything in the catalog</span><span>{PALETTE_COUNT} palettes · {pieces.length} pieces of art · all CC0 or public domain</span></div>
+      {mosaic}
+      <div className="stm-foot"><span className="k-row">{ELSEWHERE.map((site) => <SiteButton key={site.url} url={site.url} title={site.title} />)}</span><span>Nothing here replaces a file in your project</span></div>
+    </>;
+  }
 
   return (
-    <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose(); }} wide tall title="Asset Catalog" icon={<Store size={18} />}
-      sub={projectName ? `Credited ${GRAPHICS.length ? "palettes and art" : "palettes"} to take into ${projectName}, piece by piece` : `Credited ${GRAPHICS.length ? "palettes and art" : "palettes"}: open a project to add them to it`}>
-      <div className="st">
-        <nav className="st-shelves k-stack k-stack--tight" aria-label="Shelves">
-          <label className="st-search"><Search size={14} /><input className="k-input" placeholder="Find a palette or art" aria-label="Find" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-          {nav.map((item) => "heading" in item ? <span key={item.heading} className="k-eyebrow st-heading">{item.heading}</span> : (
-            <button key={item.key} type="button" className="app-row st-shelf" aria-pressed={item.on} onClick={() => { item.pick(); setQuery(""); setOpen(null); }}>
-              <span className="app-name">{item.label}</span><span className="k-muted k-xs">{item.count}</span>
-            </button>
-          ))}
-          <div className="st-elsewhere k-stack k-stack--tight">
-            <span className="k-label">Find more</span>
-            {ELSEWHERE.map((site) => <SiteButton key={site.url} url={site.url} title={site.title} />)}
-          </div>
-        </nav>
-        <div className="st-body">
-          {showPalettes && <>
-            {shelves.length === 0 && <p className="k-muted k-small">No palette matches “{query}”.</p>}
-            {shelves.map((shelf) => (
-              <section key={shelf.name} className="k-stack">
-                <header className="st-head"><span className="st-title">{shelf.name}</span><Credit author={shelf.author} license={shelf.license} source={shelf.source} shelf={shelf.name} /></header>
-                {shelf.about && <p className="k-muted k-small st-about">{shelf.about}</p>}
-                <div className="st-sets">
-                  {shelf.sets.map((set) => {
-                    const count = set.palettes.filter(has).length, all = count === set.palettes.length;
-                    const expanded = open === set.id || Boolean(found);
-                    return (
-                      <article key={set.id} className="k-card st-set">
-                        {set.source && <span className="st-set-source"><SiteButton url={set.source} title={`Where ${set.name} was first posted: visit to support its author`} /></span>}
-                        <button type="button" className="st-set-top" aria-expanded={expanded} onClick={() => setOpen(open === set.id ? null : set.id)} title={expanded ? "Hide its palettes" : "Show its palettes, to add one at a time"}>
-                          <span className="st-set-name">{set.name}</span>
-                          <span className="k-muted k-xs">{set.palettes.length} palette{set.palettes.length === 1 ? "" : "s"}{count && !all ? ` · ${count} added` : ""}</span>
-                          <span className="st-swatches">{set.palettes.slice(0, 12).map((palette) => <Strip key={palette.name} colors={palette.colors} />)}{set.palettes.length > 12 && <span className="k-muted k-xs">+{set.palettes.length - 12}</span>}</span>
-                        </button>
-                        {set.about && <p className="k-muted k-xs st-about">{set.about}</p>}
-                        {expanded && (
-                          <div className="app-list st-palettes">
-                            {set.palettes.map((palette) => (
-                              <div key={palette.name} className="app-row st-palette">
-                                <Strip colors={palette.colors} /><span className="app-name">{palette.name}</span>
-                                {has(palette) ? <Check size={14} className="st-added" aria-label="In the project" />
-                                  : <IconButton size="sm" variant="ghost" label={projectName ? `Add ${palette.name} to the project` : "Open a project to add palettes"} disabled={!projectName || busy} onClick={() => void add([palette])}><Plus /></IconButton>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <span className="k-row st-actions">
-                          {all && projectName ? <Chip tone="acc"><Check size={12} /> In the project</Chip>
-                            : <Button size="sm" variant="primary" disabled={!projectName || busy} title={projectName ? "Adds every palette of the set the project doesn't have yet" : "Open a project to add palettes"} onClick={() => void add(set.palettes)}>{count ? "Add the rest" : "Add set"}</Button>}
-                          <Button size="sm" variant="ghost" disabled={mine.has(set.id)} title="Keep the set in Mine (the palette manager), for any project" onClick={() => toMine(set)}>{mine.has(set.id) ? "In Mine" : "To Mine"}</Button>
-                        </span>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </>}
-          {showArt && (
-            <section className="k-stack">
-              <header className="st-head"><span className="st-title">{needle ? `Art matching “${query}”` : group}</span><Credit {...(needle ? GRAPHICS_CREDIT : GROUP_CREDITS[group] ?? GRAPHICS_CREDIT)} /></header>
-              <p className="k-muted k-small st-about">{needle ? ART_ABOUT : GROUP_INTROS[group] ?? ART_ABOUT}</p>
-              {arts.length === 0 && <p className="k-muted k-small">Nothing matches “{query}”.</p>}
-              <div className="st-sets st-sets--art">
-                {arts.map(({ asset, art }) => (
-                  <article key={asset.id} className="k-card st-set">
-                    <div className="st-art-box"><Preview art={art} /></div>
-                    <span className="st-set-name">{asset.name}</span>
-                    <span className="k-row"><Chip>{KIND_NAMES[asset.kind] ?? asset.kind}</Chip><span className="k-muted k-xs">{art.width} × {art.height}</span></span>
-                    {asset.about && <p className="k-muted k-xs st-about">{asset.about}</p>}
-                    <span className="k-row st-actions">
-                      {added.has(asset.id) ? <Chip tone="acc"><Check size={12} /> Added</Chip>
-                        : <Button size="sm" variant="primary" icon={<FilePlus2 />} disabled={!projectName || busy} title={projectName ? `A new PNG in assets/${asset.kind}/ (never replaces a file), opened to paint` : "Open a project to add art to it"} onClick={() => void addArt(asset, art)}>Add</Button>}
-                      <Button size="sm" variant="ghost" title="Open it as a new picture (Save asks where it goes)" onClick={() => onOpenArt(asset, art)}>Open</Button>
-                    </span>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
+    <Dialog open onOpenChange={(next) => { if (!next && !busy) { if (category || needle) home(); else onClose(); } }} full title="Asset Catalog" icon={<Store size={18} />}
+      sub={projectName ? `Credited palettes and art to take into ${projectName}, piece by piece` : "Credited palettes and art: open a project to add them to it"}
+      headExtra={<label className="stm-search"><Search size={14} /><input className="k-input" placeholder="Find a palette or a piece of art" aria-label="Find" value={query} onChange={(event) => setQuery(event.target.value)} /></label>}>
+      <div className="stm">{body}</div>
     </Dialog>
   );
 }
