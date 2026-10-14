@@ -120,7 +120,6 @@ const CUTS: Cut[] = [
 
   // Gauntness (surt): the grey set of its dungeon walls, and its sample room.
   { id: "oga-gaunt-tiles", name: "Gauntness walls", kind: "tilesets", parts: one("gaunt", 0, 240, 640, 392), about: "Five dungeon wall styles in three looks each, plus doors, pipes and floors." },
-  { id: "oga-gaunt-room", name: "Gauntness room", kind: "backgrounds", parts: one("gaunt", 8, 40, 256, 192), equal: true, about: "The pack's sample room, 256 × 192." },
 
   // Stonelands (Chasersgaming): the sheet, its trees and props.
   { id: "oga-stone-tiles", name: "Stonelands", kind: "tilesets", parts: one("stone", 0, 24, 280, 232), about: "Grassland, rocks, fences, logs, water and a waterfall, 8 × 8 tiles." },

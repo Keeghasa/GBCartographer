@@ -3,10 +3,10 @@
 The demo is GB Cartographer's Asset Catalog as a GB Studio 4 project: every palette and graphic in the catalog, as
 project files. It is made by `npm run demo-from-catalog` from the author's catalog project.
 
-- **GB Cartographer's own graphics and palettes**: Keeghasa, CC0.
+- **GB Cartographer's own graphics and palettes**: Keegan, CC0.
 - **Public Pixel** (font): [GGBotNet](https://ggbot.itch.io/public-pixel-font), GB Studio sheet by
   [Santiago Crespo](https://santiagocrespo.itch.io/public-pixel-for-gbs), CC0.
-- **Varigram** (font): Keeghasa, from [monogram](https://datagoblin.itch.io/monogram) by datagoblin, CC0.
+- **Varigram** (font): Keegan, from [monogram](https://datagoblin.itch.io/monogram) by datagoblin, CC0.
 - **SpicyGame's palettes**: [SpicyGame](https://spicygame.itch.io/palettes), public domain.
 
 CC0 art from OpenGameArt, turned into Game Boy shades and cut into tilesets, stamps, auto-tiles and sprites (each

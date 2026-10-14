@@ -20,4 +20,4 @@ export interface WireAsset {
 
 export interface PieceCredit { author: string; license: string; source?: string }
 /** The credit of a piece with none of its own: GB Cartographer's author. */
-export const AUTHOR_CREDIT: PieceCredit = { author: "Keeghasa", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };
+export const AUTHOR_CREDIT: PieceCredit = { author: "Keegan", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };

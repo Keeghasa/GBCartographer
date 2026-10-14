@@ -65,7 +65,7 @@
   {
    "name": "Chorbi",
    "about": "Palettes from the author's game Chorbi: Dustwatch Center, the diner and the greenhouse, with day, sunset and night versions.",
-   "author": "Keeghasa",
+   "author": "Keegan",
    "license": "CC0",
    "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "sets": {
@@ -448,7 +448,7 @@
   {
    "name": "Overworld",
    "about": "One palette per terrain for overworld maps: grass, forest, mountain, water, shore, road, town.",
-   "author": "Keeghasa",
+   "author": "Keegan",
    "license": "CC0",
    "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "palettes": [
@@ -823,7 +823,7 @@
    "name": "Scenery",
    "shelf": "GB Cartographer Palettes",
    "about": "Backgrounds: buildings, plants, water, machines, with dawn and night versions.",
-   "author": "Keeghasa",
+   "author": "Keegan",
    "license": "CC0",
    "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "palettes": [
@@ -1076,7 +1076,7 @@
    "name": "Screens & UI",
    "shelf": "GB Cartographer Palettes",
    "about": "Title screens, menus, terminals and space.",
-   "author": "Keeghasa",
+   "author": "Keegan",
    "license": "CC0",
    "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "palettes": [
@@ -1158,7 +1158,7 @@
    "name": "Characters",
    "shelf": "GB Cartographer Palettes",
    "about": "Sprite palettes for people and creatures (in GB Studio a sprite palette's first color is see-through).",
-   "author": "Keeghasa",
+   "author": "Keegan",
    "license": "CC0",
    "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
    "palettes": [

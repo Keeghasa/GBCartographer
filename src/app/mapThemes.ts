@@ -20,7 +20,7 @@ const SPICY = "SpicyGame, public domain";
 export const OVERWORLD_PALETTES: MapPalette[] = (library.collections.find((group) => group.name === "Overworld")?.palettes ?? []).map(({ name, colors }) => ({ name, colors: [...colors] }));
 
 export const WORLD_THEMES: MapTheme[] = [
-  { id: "overworld", name: "Overworld", credit: "Keeghasa, CC0", palettes: OVERWORLD_PALETTES },
+  { id: "overworld", name: "Overworld", credit: "Keegan, CC0", palettes: OVERWORLD_PALETTES },
   { id: "vibe20", name: "VIBE-20", credit: SPICY, palettes: terrains("VIBE-20", [
     ["#43BD35", "#007A49", "#3E4A6D", "#1C162D"],
     ["#43BD35", "#A7FF19", "#007A49", "#1C162D"],
@@ -44,7 +44,7 @@ export const WORLD_THEMES: MapTheme[] = [
 
 export const CAVE_THEMES: MapTheme[] = [
   ["V20-5-Stone", "Stone (VIBE-20)", SPICY], ["Vibrant14-5-Stone", "Stone (Vibrant-14)", SPICY], ["SG-Winter Forest GB", "Winter Forest GB", SPICY],
-  ["SG-Campfire GB", "Campfire GB", SPICY], ["DWC-1-Cliffs", "Dustwatch cliffs (Chorbi)", "Keeghasa, CC0"], ["DWC-6-MauveBldg", "Dustwatch mauve (Chorbi)", "Keeghasa, CC0"],
+  ["SG-Campfire GB", "Campfire GB", SPICY], ["DWC-1-Cliffs", "Dustwatch cliffs (Chorbi)", "Keegan, CC0"], ["DWC-6-MauveBldg", "Dustwatch mauve (Chorbi)", "Keegan, CC0"],
 ].flatMap(([palette, name, credit]) => { const found = named(palette); return found ? [{ id: palette, name, credit, palettes: [found] }] : []; });
 
 export const themeOf = (themes: MapTheme[], id: string) => themes.find((theme) => theme.id === id) ?? null;
