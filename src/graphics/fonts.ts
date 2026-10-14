@@ -3,7 +3,7 @@
  * as rows: 3 ink, 0 paper, "." an unused column (magenta in the PNG, so the glyph is narrower). Both CC0:
  * - Public Pixel by GGBotNet (https://ggbot.itch.io), the GB Studio sheet by Santiago Crespo
  *   (https://santiagocrespo.itch.io/public-pixel-for-gbs);
- * - monogram by datagoblin (https://datagoblin.itch.io/monogram), converted to the sheet by the author: variable width.
+ * - Varigram, the author's variable-width font made from monogram by datagoblin (https://datagoblin.itch.io/monogram).
  */
 export const FONTS: Record<string, readonly string[]> = {
   "public-pixel": [
@@ -120,7 +120,7 @@ export const FONTS: Record<string, readonly string[]> = {
     "33000330330003303300033033000330330003303300033033000330000000003330033033000330330003303300033033000330003330003300000000333000",
     "03333300330003300333330003333300033333000333330003333300000300000333330003333300033333000333330003333300333300003300000033330000",
   ],
-  "monogram": [
+  "varigram": [
     "000.....30......3030....000000..003000..300030..033000..30......030.....300.....000000..000000..000.....000000..00......000030..",
     "000.....30......3030....030300..033330..300030..300300..30......300.....030.....003000..003000..000.....000000..00......000030..",
     "000.....30......3030....333330..303000..000300..300300..30......300.....030.....303030..003000..000.....000000..00......000300..",

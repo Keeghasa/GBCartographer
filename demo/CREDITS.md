@@ -33,9 +33,9 @@ Both CC0 1.0 (public domain), credited anyway; each has its license beside it in
 
 - `assets/fonts/Public Pixel (GGBotNet).png`: Public Pixel by **GGBotNet** (https://ggbot.itch.io), as a GB Studio
   sheet by **Santiago Crespo** (https://santiagocrespo.itch.io/public-pixel-for-gbs).
-- `assets/fonts/monogram (datagoblin).png`: monogram by **datagoblin** (https://datagoblin.itch.io/monogram), converted
-  to GB Studio's 8 × 8 sheet by GB Cartographer's author: moved to the cell's top, one-row descenders, and variable
-  width (magenta marks each glyph's unused columns). Characters 32–126.
+- `assets/fonts/Varigram.png`: **Varigram**, GB Cartographer's author's variable-width font, made from monogram by
+  **datagoblin** (https://datagoblin.itch.io/monogram, CC0): moved to the cell's top, one-row descenders, and each glyph
+  trimmed to its width (magenta marks the unused columns). Characters 32–126. CC0.
 
 ## Palettes
 

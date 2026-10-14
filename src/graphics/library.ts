@@ -62,7 +62,7 @@ const ALL: WireAsset[] = [
   { id: "ui-cursor-dot", name: "Cursor (dot)", group: "UI", kind: "ui", about: "The 8 × 8 menu cursor (ui/cursor.png).", make: ui.cursorDot },
   // The fonts (2026-10-13), both CC0; see src/graphics/fonts.ts for their makers.
   { id: "font-public-pixel", name: "Public Pixel", group: "Fonts", kind: "fonts", about: "8 × 8 capitals and lowercase, fixed width. By GGBotNet (CC0), GB Studio sheet by Santiago Crespo.", make: () => fromAuthored(FONTS["public-pixel"]) },
-  { id: "font-monogram", name: "monogram", group: "Fonts", kind: "fonts", about: "A small, very readable font, variable width (magenta marks each letter's unused columns). By datagoblin (CC0), converted for GB Studio.", make: () => fromAuthored(FONTS.monogram) },
+  { id: "font-varigram", name: "Varigram", group: "Fonts", kind: "fonts", about: "A small, very readable font, variable width (magenta marks each letter's unused columns). The author's, made from monogram by datagoblin (CC0).", make: () => fromAuthored(FONTS.varigram) },
   { id: "tiles-outdoor", name: "Outdoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(OUTDOOR).length} tiles of 16 × 16 (the tall oaks and pines 16 × 32): grass, paths, water, trees, roofs and walls…`, make: () => tileSheet(Object.keys(OUTDOOR)) },
   { id: "tiles-indoor", name: "Indoor tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(INDOOR).length} tiles: floors, walls, furniture.`, make: () => tileSheet(Object.keys(INDOOR)) },
   { id: "tiles-side", name: "Side-view tiles", group: "Tile sheets", kind: "tilesets", about: `${Object.keys(SIDE).length} tiles for platformers: ground, platforms, ladders.`, make: () => tileSheet(Object.keys(SIDE)) },

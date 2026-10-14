@@ -35,9 +35,9 @@ docs/demo-tile-palettes.json
 # Other people's art stays on the author's machines until its artists have given their blessing (2026-10-10):
 # the demo's pictures, and old screenshots that show them. GB Cartographer's own graphics (src/graphics) ship.
 demo/assets/**/*.png
-# …except the demo's CC0 fonts (2026-10-13: Public Pixel by GGBotNet, monogram by datagoblin)
+# …except the demo's CC0 fonts (2026-10-13: Public Pixel by GGBotNet, Varigram, made from monogram by datagoblin)
 !demo/assets/fonts/Public Pixel (GGBotNet).png
-!demo/assets/fonts/monogram (datagoblin).png
+!demo/assets/fonts/Varigram.png
 docs/*.png
 docs/*.gif
 # …except the author's own demo GIFs (2026-10-10: "put back the gifs i made")

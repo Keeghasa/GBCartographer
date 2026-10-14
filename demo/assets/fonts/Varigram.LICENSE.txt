@@ -1,0 +1,8 @@
+Varigram, a GB Studio font sheet.
+
+Varigram is GB Cartographer's author's variable-width GB Studio font (2026-10-13), made from monogram by datagoblin
+(https://datagoblin.itch.io/monogram, CC0 1.0 Universal; no attribution required, credited anyway): glyphs moved up to the cell's top,
+descenders on g, j, p, q, y shortened to one row, and each glyph trimmed to its width with magenta. Characters 32-126.
+Varigram is released under CC0 1.0 Universal too.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/legalcode
