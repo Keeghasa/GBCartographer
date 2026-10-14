@@ -14,4 +14,10 @@ export interface WireAsset {
   make: () => Canvas;
   /** A stamp template that is an auto-tile (src/app/autotile.ts): added with its 9 or W already set. */
   autotile?: AutotileKind;
+  /** Who made it, its license and where it comes from (2026-10-14: each piece credited; unset: the author, CC0). */
+  credit?: PieceCredit;
 }
+
+export interface PieceCredit { author: string; license: string; source?: string }
+/** The credit of a piece with none of its own: GB Cartographer's author. */
+export const AUTHOR_CREDIT: PieceCredit = { author: "Keeghasa", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };

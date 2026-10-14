@@ -15,7 +15,7 @@ import { useMemo, useState } from "react";
 import { toRgba } from "../paint";
 import { Button, Chip, Dialog, IconButton, Popover } from "../ui/kit";
 import type { Canvas } from "../graphics/pen";
-import type { WireAsset } from "../graphics/types";
+import { AUTHOR_CREDIT, type WireAsset } from "../graphics/types";
 
 // The graphics library is local-only until its art is approved: the aisle shows when its catalog is there.
 const GRAPHICS_LIBRARY = Object.values(import.meta.glob<{ GRAPHICS: WireAsset[] }>("../graphics/library.ts", { eager: true }))[0];
@@ -41,11 +41,6 @@ interface Props {
 }
 
 const SHELVES = storeShelves();
-const GRAPHICS_CREDIT = { author: "Keeghasa (GB Cartographer)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };
-/** Shelves made from other people's work carry their own credit (each piece's own line names its maker too). */
-const GROUP_CREDITS: Record<string, typeof GRAPHICS_CREDIT> = {
-  Fonts: { author: "GGBotNet, datagoblin (adapted)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/blob/main/src/graphics/fonts.ts" },
-};
 /** What the catalog's art is (2026-10-14: made to be painted over; each shelf credits whoever made it, as others' art may join). */
 const ART_ABOUT = "Free to use: take it in as it is, or paint over it your own way.";
 /** What each Art section holds, in a line. */
@@ -224,6 +219,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
               <Button size="sm" variant="ghost" title="Open it as a new picture (Save asks where it goes)" onClick={() => onOpenArt(asset, art)}>Open</Button>
             </span>
             <b className="stm-tile-name">{asset.name}</b>
+            <small className="stm-tile-meta stm-tile-by" title={`${(asset.credit ?? AUTHOR_CREDIT).author} · ${(asset.credit ?? AUTHOR_CREDIT).license}`}>by {(asset.credit ?? AUTHOR_CREDIT).author} · {(asset.credit ?? AUTHOR_CREDIT).license}</small>
             <small className="stm-tile-meta">{asset.kind === "stamps" ? "Stamp · Cartographer/stamps" : `${KIND_NAMES[asset.kind] ?? asset.kind} · assets/${asset.kind}`} · {art.width} × {art.height}</small>
           </article>
         );
@@ -271,7 +267,10 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   ));
 
   const current = CATEGORIES.find((item) => item.id === category);
-  const groupCredit = current?.id === "fonts" ? GROUP_CREDITS.Fonts : GRAPHICS_CREDIT;
+  // One credit for the shelf when all its pieces share it; else each tile says who made it.
+  const shelfPieces = current ? pieces.filter((piece) => piece.category === current.id) : [];
+  const shelfCredits = new Set(shelfPieces.map(({ asset }) => JSON.stringify(asset.credit ?? AUTHOR_CREDIT)));
+  const groupCredit = shelfCredits.size === 1 ? JSON.parse([...shelfCredits][0]) as typeof AUTHOR_CREDIT : null;
   let body: ReactNode;
   if (needle) {
     body = <>
@@ -286,7 +285,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
       <button type="button" className="stm-back" onClick={home}><ArrowLeft size={14} /> All of the catalog</button>
       <div className="stm-title">
         <h1 className="stm-h1"><span className="stm-icon stm-icon--big">{current.icon}</span><b>{current.name}</b></h1>
-        {current.id !== "palettes" && <span className="stm-credit"><Credit {...groupCredit} /></span>}
+        {current.id !== "palettes" && <span className="stm-credit">{groupCredit ? <Credit {...groupCredit} /> : <span className="k-muted k-small">Each piece names who made it</span>}</span>}
       </div>
       <p className={`stm-where${isStampCategory(current.id) ? " stm-where--stamps" : ""}`}>{SECTIONS.find((section) => section.ids.includes(current.id))!.note}</p>
       <p className="stm-about">{current.id === "palettes" ? current.about : current.id === "fonts" ? `${current.about} ${GROUP_INTROS.Fonts}` : `${current.about} ${ART_ABOUT}`}</p>
