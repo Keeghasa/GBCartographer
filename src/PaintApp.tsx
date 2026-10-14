@@ -2700,6 +2700,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             stateOf={(asset) => { const open = docs.current.find((item) => item.asset?.kind === asset.kind && item.asset.file === asset.file && !foreignProject(item)); return { open: Boolean(open), active: Boolean(open && open.id === activeId), dirty: Boolean(open?.dirty) }; }}
             onOpen={(asset) => void openAsset(asset)}
             onUseStamp={(asset) => void useSavedStamp(asset)}
+            onUseFont={(asset) => { void updateText({ ...textSettings, font: asset.file }); setTool("text"); say(`Type with ${asset.name}: click the picture to place the text`); }}
             onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)}
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />

@@ -40,6 +40,8 @@ interface ProjectPanelProps {
   onOpen: (asset: Asset) => void;
   /** A saved stamp's card: a click takes it as the stamp in hand (its hover pencil opens it to edit instead). */
   onUseStamp: (asset: Asset) => void;
+  /** A font card picked: type with it (the Type tool, this font). */
+  onUseFont: (asset: Asset) => void;
   /** A saved stamp's 9 / W auto-tile toggles. */
   onAutotile: (asset: Asset, autotile: AutotileKind | null) => void;
   onMenu: (asset: Asset, x: number, y: number) => void;
@@ -47,7 +49,7 @@ interface ProjectPanelProps {
 
 const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchParams({ kind: asset.kind, file: asset.file });
 
-export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages, unreadMessages, slotsVersion, stateOf, onOpen, onUseStamp, onAutotile, onMenu }: ProjectPanelProps) {
+export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages, unreadMessages, slotsVersion, stateOf, onOpen, onUseStamp, onUseFont, onAutotile, onMenu }: ProjectPanelProps) {
   const [filter, setFilter] = useState("");
   // Which stamp shelf shows when the folder is stamps (Objects, Repeat tiles, Autotiles, Animated tiles).
   const [group, setGroup] = useState<StampGroup>(() => readStored("gbc-stamp-group", "objects" as StampGroup));
@@ -169,10 +171,10 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
             const state = stateOf(asset);
             // The thumbnail box takes the picture's own shape (kept between 4:5 and 2:1), so the picture fills it.
             const fit = { aspectRatio: String(Math.min(2, Math.max(0.8, asset.width / Math.max(1, asset.height)))) };
-            const stamp = asset.kind === "stamps";
+            const stamp = asset.kind === "stamps", font = asset.kind === "fonts";
             const isPinned = pinned.has(hideKey(asset));
             const card = (
-              <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : onOpen(asset)}>
+              <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : font ? onUseFont(asset) : onOpen(asset)}>
                 {thumbOf(asset, fit)}
                 <b className={state.dirty ? "dirty" : ""}>{asset.name}</b>
                 <small>{asset.width} × {asset.height}</small>
@@ -182,7 +184,7 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
               <span key={asset.file} role="listitem" className="app-card-slot">{card}
                 <span className="app-card-actions">
                   {stamp && <AutotileToggles stamp={asset} onAutotile={onAutotile} />}
-                  {stamp && <button type="button" className="app-stamp-edit" title={`Edit ${asset.name}`} aria-label={`Edit ${asset.name}`} onClick={() => onOpen(asset)}><Pencil size={11} /></button>}
+                  {(stamp || font) && <button type="button" className="app-stamp-edit" title={`Edit ${asset.name}`} aria-label={`Edit ${asset.name}`} onClick={() => onOpen(asset)}><Pencil size={11} /></button>}
                   <button type="button" className="app-stamp-edit" aria-pressed={isPinned} title={isPinned ? `Unpin ${asset.name}` : `Pin ${asset.name}: it stays at the top of the grid`} aria-label={isPinned ? `Unpin ${asset.name}` : `Pin ${asset.name}`} onClick={() => togglePinned(asset)}><Pin size={11} /></button>
                   <button type="button" className="app-stamp-edit" title={`Hide ${asset.name}: it goes into the Hidden folder at the top (only here; the file stays)`} aria-label={`Hide ${asset.name}`} onClick={() => toggleHidden(asset)}><Archive size={11} /></button>
                 </span>
