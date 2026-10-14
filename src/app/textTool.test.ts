@@ -48,11 +48,12 @@ describe("text tool", () => {
   it("inverts: a box of the ink shade with see-through letters, or paper letters in a box", () => {
     const font = sheet(true);
     const inverted = renderText(font, "!", { ink: 3, invert: true, box: false, leading: 0 });
-    expect([inverted.w, inverted.h]).toEqual([5, 10]);
-    expect(inverted.pixels[0]).toBe(3);
-    expect(inverted.pixels[1 * 5 + 1]).toBe(CLEAR);
+    // No margin: the box is the glyph's own 3 × 8 (2026-10-13), on the 8 × 8 grid like GB Studio's text.
+    expect([inverted.w, inverted.h]).toEqual([3, 8]);
+    expect(inverted.pixels[2]).toBe(3);
+    expect(inverted.pixels[0]).toBe(CLEAR);
     const boxed = renderText(font, "!", { ink: 3, invert: false, box: true, leading: 0 });
-    expect(boxed.pixels[0]).toBe(0);
-    expect(boxed.pixels[1 * 5 + 1]).toBe(3);
+    expect(boxed.pixels[2]).toBe(0);
+    expect(boxed.pixels[0]).toBe(3);
   });
 });

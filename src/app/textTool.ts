@@ -29,7 +29,8 @@ export interface TextOptions {
 export function renderText(font: FontSheet, text: string, options: TextOptions, x = 0, y = 0): Floating {
   const lines = text.split("\n").map((line) => encodeText(font, line).map((code) => glyphOf(font, code)).filter((glyph) => glyph !== null));
   const widthOf = (line: typeof lines[number]) => line.reduce((sum, glyph) => sum + glyph.width, 0);
-  const pad = options.box || options.invert ? 1 : 0;
+  // No margin round a box or inverted text (the author, 2026-10-13): letters sit on the 8 × 8 grid as GB Studio draws them.
+  const pad = 0;
   const w = Math.max(1, ...lines.map(widthOf)) + pad * 2;
   const h = lines.length * 8 + (lines.length - 1) * options.leading + pad * 2;
   const paper = 3 - options.ink;
