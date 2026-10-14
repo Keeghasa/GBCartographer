@@ -2771,7 +2771,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         {showSide && <aside className="k-panel app-side">
           <div className="app-swatches">
             {swatchColors.slice(0, 4).map((color, index) => (
-              <button key={index} className="app-swatch" aria-pressed={shade === index} style={{ background: color }} aria-label={`Shade ${index + 1}`} title={`Shade ${index + 1} · ${index + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => { if (shade === index) shadeInputs.current[index]?.click(); else { setShade(index); if (tool === "eyedropper") setToolState(paintTool.current); } }}>
+              <button key={index} className={doc?.keyGreen && index === 0 ? "app-swatch app-ignored" : "app-swatch"} aria-pressed={shade === index} style={{ background: color }} aria-label={`Shade ${index + 1}`} title={doc?.keyGreen && index === 0 ? "Shade 1 · GB Studio draws a sprite's or emote's lightest shade as see-through, so it never shows in the game: paint with 2, 3 and 4" : `Shade ${index + 1} · ${index + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => { if (shade === index) shadeInputs.current[index]?.click(); else { setShade(index); if (tool === "eyedropper") setToolState(paintTool.current); } }}>
                 <Kbd>{index + 1}</Kbd>
                 <input type="color" tabIndex={-1} aria-label={`Change color ${index + 1}`} ref={(element) => { shadeInputs.current[index] = element; }} value={normalizeHex(color)} onClick={(event) => event.stopPropagation()} onChange={(event) => changeShadeColor(index, event.target.value.toUpperCase())} />
               </button>

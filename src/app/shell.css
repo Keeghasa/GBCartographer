@@ -189,3 +189,5 @@
   linear-gradient(to top right, transparent calc(50% - 1px), #e0605a calc(50% - 1px), #e0605a calc(50% + 1px), transparent calc(50% + 1px)),
   linear-gradient(to bottom right, transparent calc(50% - 1px), #e0605a calc(50% - 1px), #e0605a calc(50% + 1px), transparent calc(50% + 1px)); }
 .app-color.app-ignored::after { inset: 4px; border-radius: 4px; }
+/* …and the lightest shade swatch above the picture, on a sprite or emote. */
+.app-swatch.app-ignored::after { border-radius: inherit; }

@@ -55,7 +55,8 @@ const ALL: WireAsset[] = [
   }),
   ...Object.entries(emotes).map(([id, { name }]): WireAsset => ({ id: `emote-${id}`, name, group: "Emotes", kind: "emotes", about: "16 × 16, shown above an actor's head.", make: () => emote(id) })),
   ...[...PEOPLE.map(([id, name, look]) => [id, name, look] as const), ["mystery", "Mystery", "mystery"] as const]
-    .map(([id, name, look]): WireAsset => ({ id: `avatar-${id}`, name, group: "Avatars", kind: "avatars", about: "16 × 16 face for dialogue boxes.", make: () => avatar(look) })),
+    // The hero's and the townsfolk's faces trade names (the author, 2026-10-13: the graphics suit the other name).
+    .map(([id, name, look]): WireAsset => ({ id: `avatar-${id}`, name: ({ hero: "Townsfolk", villager: "Hero" } as Record<string, string>)[id] ?? name, group: "Avatars", kind: "avatars", about: "16 × 16 face for dialogue boxes.", make: () => avatar(look) })),
   { id: "ui-frame-round", name: "Frame (rounded)", group: "UI", kind: "ui", about: "GB Studio's window frame: 24 × 24, cut in 8 × 8 corners, edges and middle. It reads ui/frame.png.", make: ui.frameRound },
   { id: "ui-frame-double", name: "Frame (double line)", group: "UI", kind: "ui", about: "A window frame (ui/frame.png).", make: ui.frameDouble },
   { id: "ui-frame-thick", name: "Frame (thick)", group: "UI", kind: "ui", about: "A window frame (ui/frame.png).", make: ui.frameThick },
