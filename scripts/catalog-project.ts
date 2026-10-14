@@ -68,5 +68,13 @@ for (const asset of GRAPHICS) {
   if (asset.kind === "stamps") writeFileSync(`${file}.json`, `${JSON.stringify({ _resourceType: "cartographerStamp", slots: [], tileColors: [], ...(asset.group === "Patterns" ? { tags: ["pattern"] } : {}), ...(asset.autotile ? { autotile: asset.autotile } : {}) }, null, 2)}\n`);
   addedArt += 1;
 }
+// The village's six screens laid out in the Map Room (the author, 2026-10-14), once: neighbours share one edge tile.
+const mapsPath = join(folder, "Cartographer", "maps.json");
+const maps = existsSync(mapsPath) ? (JSON.parse(readFileSync(mapsPath, "utf8")) as { maps?: { name: string }[] }).maps ?? [] : [];
+if (!maps.some((map) => map.name === "Village")) {
+  maps.push({ id: randomUUID(), name: "Village", screen: { width: 160, height: 144 }, overlap: 1, cells: [0, 1].flatMap((y) => [0, 1, 2].map((x) => ({ x, y, file: `Village ${x + 1}-${y + 1}.png` }))) } as { name: string });
+  writeFileSync(mapsPath, `${JSON.stringify({ maps }, null, 2)}\n`);
+  console.log("Village laid out in the Map Room.");
+}
 ownFolderReadme(folder);
 console.log(`${name}: ${addedPalettes} palettes and ${addedArt} graphics added (${have.size} palettes, ${GRAPHICS.length} graphics in the catalog).`);
