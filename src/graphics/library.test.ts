@@ -8,11 +8,12 @@ describe("graphics library", () => {
     for (const asset of GRAPHICS) expect(asset.make().pixels.length, asset.id).toBeGreaterThan(0);
   });
 
-  it("draws sprites and emotes 16 tall in 16-wide frames, without shade 0 (see-through on sprites)", () => {
+  it("draws sprites and emotes in square frames 16 (or 32) tall, without shade 0 (see-through on sprites)", () => {
     for (const asset of GRAPHICS.filter((item) => item.kind === "sprites" || item.kind === "emotes")) {
       const art = asset.make();
-      expect(art.height, asset.id).toBe(16);
-      expect(art.width % 16, asset.id).toBe(0);
+      // 16 tall in 16-wide frames; credited packs may draw 32 × 32 frames (GB Studio 4's default sprite canvas).
+      expect([16, 32], asset.id).toContain(art.height);
+      expect(art.width % art.height, asset.id).toBe(0);
       expect(art.pixels.includes(0), `${asset.id} uses shade 0`).toBe(false);
       expect(art.pixels.some((shade) => shade !== CLEAR), asset.id).toBe(true);
     }
