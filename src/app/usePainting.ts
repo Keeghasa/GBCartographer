@@ -299,6 +299,9 @@ export function usePainting(app: Painting) {
     if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const tall = auto === "xpCliffTall", cliff = auto === "xpCliff" || tall, blank = app.blank(target);
     const keys = sheetKeys(6, tall ? 72 : cliff ? 60 : 48, blank);
+    // The sheet's inside-corner pieces (row 7; row 9 once stretched for 32 px walls), when it has them.
+    const sheetNow = stamp.current!, cornerTop = tall ? 72 : 56;
+    const corners = cliff && sheetNow.h >= cornerTop + 8 && Array.from({ length: 8 }, (_, y) => sheetNow.pixels.subarray((cornerTop + y) * sheetNow.w, (cornerTop + y) * sheetNow.w + 16)).some((row) => row.some((v) => v !== CLEAR));
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
     const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
@@ -311,19 +314,19 @@ export function usePainting(app: Painting) {
     const top = (fx: number, fy: number) => filledIn(fx, fy) && filledIn(fx, fy + 1);
     const lower = (pieces: Piece[]) => pieces.map((piece): Piece => piece && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece);
     const tallCell = (x: number, y: number): Piece[] => {
-      const columns = (fx: number, fy: number) => { const pieces = xpCliffCell(top, fx, fy); return [pieces[0]![0], pieces[1]![0]]; };
+      const columns = (fx: number, fy: number) => { const pieces = xpCliffCell(top, fx, fy, corners); return [pieces[0]![0], pieces[1]![0]]; };
       if (top(x, y)) {
-        if (top(x, y + 1)) return lower(xpCliffCell(top, x, y));
+        if (top(x, y + 1)) return lower(xpCliffCell(top, x, y, corners));
         const [a, b] = columns(x, y);
         return [[a, 4], [b, 4], [a, 5], [b, 5]];
       }
       if (top(x, y - 1)) { const [a, b] = columns(x, y - 1); return [[a, 6], [b, 6], [a, 7], [b, 7]]; }
-      return xpCliffCell(filledIn, x, y).map((piece): Piece => piece && piece[1] === 5 ? [piece[0], 7] : piece && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece);
+      return xpCliffCell(filledIn, x, y, corners).map((piece): Piece => piece && piece[1] === 5 ? [piece[0], 7] : piece && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece);
     };
     for (let dy = tall ? -2 : -1; dy <= (tall ? 2 : 1); dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
       const x = cx + dx, y = cy + dy;
       if (!inside(x, y) || !filled(x, y)) continue;
-      cells.push([x, y, tall ? tallCell(x, y) : cliff ? xpCliffCell(filledIn, x, y) : xpCell(maskAt(filled, x, y))]);
+      cells.push([x, y, tall ? tallCell(x, y) : cliff ? xpCliffCell(filledIn, x, y, corners) : xpCell(maskAt(filled, x, y))]);
     }
     if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
     for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => { if (piece) putSheetTile(target, x * 2 + (quarter % 2), y * 2 + (quarter >> 1), piece[0], piece[1], true); });

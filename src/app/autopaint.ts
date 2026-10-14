@@ -59,7 +59,7 @@ export function xpCell(mask: number): [number, number][] {
  * face when the cell below it isn't filled. Rows 6 and 8, columns 0 and 3: where a side ends into a wider plateau
  * (row 6) and a side's top beside a face (row 8); columns 4–5 of rows 8–9: a lone mound.
  */
-export function xpCliffCell(filled: Filled, x: number, y: number): Piece[] {
+export function xpCliffCell(filled: Filled, x: number, y: number, corners = false): Piece[] {
   if (!filled(x, y)) return [null, null, null, null];
   if (!filled(x - 1, y) && !filled(x + 1, y) && !filled(x, y - 1) && !filled(x, y + 1)) return [[4, 8], [5, 8], [4, 9], [5, 9]];
   const face = (cx: number, cy: number) => filled(cx, cy) && !filled(cx, cy + 1);
@@ -74,8 +74,9 @@ export function xpCliffCell(filled: Filled, x: number, y: number): Piece[] {
     const dx = right ? 1 : -1, side = filled(x + dx, y);
     // Beside a face: the side starts level with the face's top, then runs down past it.
     if (side && face(x + dx, y)) return lower ? [right ? 5 : 0, 1] : [right ? 3 : 0, 8];
-    // A side above ending into this wider plateau: its foot.
-    if (!lower && !top && side && !filled(x + dx, y - 1)) return [right ? 3 : 0, 6];
+    // A side above ending into this wider plateau: its foot, or (`corners`: the sheet has them in row 7, the author's
+    // 2026-10-14 pieces) the inside corner where the narrow strip meets the wider plateau.
+    if (!lower && !top && side && !filled(x + dx, y - 1)) return corners ? [right ? 1 : 0, 7] : [right ? 3 : 0, 6];
     return [columns[right ? 1 : 0], rows[lower ? 1 : 0]];
   };
   return [quarter(false, false), quarter(true, false), quarter(false, true), quarter(true, true)];

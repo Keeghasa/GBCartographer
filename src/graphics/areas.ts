@@ -61,9 +61,10 @@ export function paintXp(out: Canvas, art: Canvas, filled: Filled, cellsW: number
 /** Cliffs (Cliff XP) on 16 px cells: plateaus with their faces where the cell below isn't cliff. */
 export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH: number, x0 = 0, y0 = 0, tall = false) {
   const art = sheet("cliff"), is = (x: number, y: number) => x >= 0 && y >= 0 && x < cellsW && y < cellsH && filled(x, y);
+  const corners = hasCliffCorners(art);
   if (!tall) {
     for (let y = 0; y < cellsH; y += 1) for (let x = 0; x < cellsW; x += 1) {
-      xpCliffCell(is, x, y).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
+      xpCliffCell(is, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
     }
     return;
   }
@@ -72,17 +73,17 @@ export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH:
   // kept). A rock strip one cell thin keeps the 16 px face.
   const top = (x: number, y: number) => is(x, y) && is(x, y + 1);
   const faceRow = (t: number) => t < 4 ? 32 + t : t >= 22 ? 38 + t - 22 : 37;
-  const faceColumns = (x: number, y: number) => { const pieces = xpCliffCell(top, x, y); return [pieces[0]![0], pieces[1]![0]]; };
+  const faceColumns = (x: number, y: number) => { const pieces = xpCliffCell(top, x, y, corners); return [pieces[0]![0], pieces[1]![0]]; };
   const stretched = (columns: number[], x: number, y: number, from: number) => columns.forEach((column, half) => {
     for (let t = 0; t < 16; t += 1) put(out, art, column, 0, x0 + x * 16 + half * 8, y0 + y * 16 + t, 8, faceRow(from + t), 1);
   });
   for (let y = 0; y < cellsH; y += 1) for (let x = 0; x < cellsW; x += 1) {
     if (top(x, y)) {
       if (!top(x, y + 1)) stretched(faceColumns(x, y), x, y, 0);
-      else xpCliffCell(top, x, y).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
+      else xpCliffCell(top, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
     } else if (is(x, y)) {
       if (top(x, y - 1)) stretched(faceColumns(x, y - 1), x, y, 16);
-      else xpCliffCell(is, x, y).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
+      else xpCliffCell(is, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
     }
   }
 }
@@ -120,6 +121,13 @@ export function paintForest(out: Canvas, art: Canvas, forest: Filled, unitsW: nu
       for (let ty = 0; ty < 2; ty += 1) for (let tx = 0; tx < 2; tx += 1) put(out, art, piece[0] + tx, piece[1] + ty, x0 + x * 32 + (quarter % 2) * 16 + tx * 8, y0 + y * 32 + (quarter >> 1) * 16 + ty * 8);
     });
   }
+}
+
+/** Whether a Cliff sheet has the inside-corner pieces in row 7 (columns 0–1 not see-through). */
+export function hasCliffCorners(art: { width: number; height: number; pixels: Uint8Array }): boolean {
+  if (art.height < 64) return false;
+  for (let y = 56; y < 64; y += 1) for (let x = 0; x < 16; x += 1) if (art.pixels[y * art.width + x] !== CLEAR) return true;
+  return false;
 }
 
 /** A 16 × 16 piece of a sheet as a tile (the fill of an XP block, a cliff face…): (column, row) in 8 px units. */
