@@ -1,5 +1,5 @@
 /** The paint tools (with their icons and help) and the asset kinds' icons. */
-import { BrickWall, CaseSensitive, Circle, DropletOff, Eraser, Ghost, Layers2, Move, PaintBucket, Palette as PaletteIcon, Pencil, Pipette, SprayCan, Square, Type } from "lucide-react";
+import { BrickWall, CaseSensitive, Circle, DropletOff, Eraser, Ghost, Grid3x3, Layers2, Move, PaintBucket, Palette as PaletteIcon, PaintRoller, Pencil, Pipette, SprayCan, Square, Type } from "lucide-react";
 import { FilledSquare, LineEnds } from "../ui/icons";
 import { PhCheckerboard, PhPuzzlePiece, PhSelection, PhSticker, PxAvatar, PxHand, PxImage, PxMessageReply, PxSmile } from "../ui/setIcons";
 
@@ -16,15 +16,19 @@ export const TOOLS = [
   ["eraser", "Eraser", Eraser, "E", "drag to erase", "Drag to erase: to see-through on stamps, sprites and pictures with see-through pixels, else to the lightest shade."],
   ["fill", "Flood fill", PaintBucket, "G", "click an area to fill · Alt-click replaces that shade everywhere", "Click an area to fill it with the active shade (always solid: the Pattern fill tool, D, fills with a pattern). Alt-click replaces that shade everywhere with the active one (inside the selection, if there is one)."],
   ["fillErase", "Flood erase", DropletOff, "Shift+G", "click an area to erase", "Click an area to erase it."],
-  ["patternFill", "Pattern fill", PhCheckerboard, "D", "click an area or drag a box to fill it with the pattern · D next pattern", "Fills with a pattern in the active shade over what is there (checker, dots, dense, rows, columns): click an area to fill it, or drag a box. Press D again (or click the swatch) for the next pattern."],
+  ["patternFill", "Pattern fill", PhCheckerboard, "D", "click an area to fill it with the pattern · D next pattern", "Click an area to fill it with a pattern in the active shade (checker, dots, dense, rows, columns). Press D again (or click the swatch) for the next pattern. Flood fill, G, fills solid."],
   ["palette", "Palette brush", PaletteIcon, "P", "drag over tiles · Shift-click line · [ ] size · right-click picks", "Pick a palette on the right, then drag over tiles to give it to them. Shift-click draws a straight line of tiles. [ and ] set the brush to 1, 2 × 2 or 3 × 3 tiles. Right-click picks a tile's palette. On a project background or sprite sheet, Save writes each tile's palette into GB Studio as its slot; None leaves a tile's slot as it is."],
+  ["paletteAll", "Palette fill", PaintRoller, "J", "click a tile to give its palette to every copy of it · right-click picks", "Click a tile: it and every identical tile in the picture (pixel for pixel) get the palette picked on the right. Right-click picks a tile's palette. Save writes the slots like the palette brush."],
   ["priority", "Priority brush", Layers2, "Shift+P", "drag over tiles to draw them over sprites · Alt or right-drag clears", "On a background or tileset, drag over tiles to mark them as drawn over sprites (GB Studio's priority flag; marked tiles show hatched). Alt-drag or right-drag clears the mark. Save writes the flag into the tile colors."],
   ["collision", "Collision brush", BrickWall, "W", "drag over tiles to set GB Studio collisions · Alt or right-drag clears · [ ] size", "On a project background that GB Studio has put in a scene, paint that scene's collisions: pick solid, a one-way side, a ladder or a slope (what the scene's type offers) in the strip above the picture, then drag over tiles; Shift-click combines one-way sides. Alt or right-drag clears. The scene picker chooses which scene, when several show the background. Save writes only the scene's collisions."],
   ["text", "Text", CaseSensitive, "T", "click to place text in a project font · drag to move · switch tools to stamp it", "Click the picture to place text set in one of the project's font sheets (pick the font, type, choose the ink above the picture). It floats: drag it, change the words, invert it, then switch tools or press Stamp it to put it down. Variable-width fonts keep their widths."],
   ["line", "Line", LineEnds, "L", "drag from one end to the other", "Drag from one end of the line to the other."],
   ["rect", "Rectangle", Square, "R", "drag a box", "Drag a box to outline it in the active shade."],
-  ["rectFill", "Filled rectangle", FilledSquare, "Shift+R", "drag a box to fill it", "Drag a box to fill it with the active shade (always solid: the Pattern fill tool, D, fills with a pattern)."],
+  ["rectFill", "Filled rectangle", FilledSquare, "Shift+R", "drag a box to fill it", "Drag a box to fill it with the active shade, solid (Pattern rectangle, Shift+D, fills with a pattern)."],
+  ["patternRect", "Pattern rectangle", Grid3x3, "Shift+D", "drag a box to fill it with the pattern · D next pattern", "Drag a box to fill it with the pattern in the active shade. D (or the swatch) picks the next pattern. Filled rectangle, Shift+R, fills solid."],
   ["ellipse", "Ellipse", Circle, "O", "drag a box; the ellipse fills it", "Drag a box; the ellipse fills it."],
   ["hand", "Pan", PxHand, "H", "drag to pan · Space or middle button with any tool", "Drag to pan. Space or the middle mouse button pans with any tool."],
 ] as const;
+/** The tile tools (palette, priority, collision): their own section in the tool column. */
+export const TILE_TOOLS: readonly string[] = ["palette", "paletteAll", "priority", "collision"];
 export const KIND_ICONS = { backgrounds: PxImage, sprites: Ghost, tilesets: PhPuzzlePiece, fonts: Type, emotes: PxSmile, avatars: PxAvatar, ui: PxMessageReply, stamps: PhSticker } as const;

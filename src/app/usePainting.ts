@@ -100,6 +100,25 @@ export function usePainting(app: Painting) {
     }
   }
 
+  /** Gives the palette to the tile under `point` and every tile identical to it, pixel for pixel (8 × 16 pairs on sprites). */
+  function setSameTiles(target: Doc, point: Point): number {
+    if (!inside(target, point)) return 0;
+    const cw = cellsWide(target.width), ch = Math.ceil(target.height / CELL), tall = target.keyGreen ? 2 : 1;
+    const tileOf = (cx: number, cy: number) => {
+      let key = "";
+      for (let y = cy * CELL; y < (cy + tall) * CELL; y += 1) for (let x = cx * CELL; x < cx * CELL + CELL; x += 1) key += y < target.height && x < target.width ? target.pixels[y * target.width + x] : "-";
+      return key;
+    };
+    const cy0 = target.keyGreen ? point.y >> 4 << 1 : point.y >> 3, want = tileOf(point.x >> 3, cy0);
+    let count = 0;
+    for (let cy = 0; cy < ch; cy += tall) for (let cx = 0; cx < cw; cx += 1) {
+      if (tileOf(cx, cy) !== want) continue;
+      for (let dy = 0; dy < tall && cy + dy < ch; dy += 1) target.cells[(cy + dy) * cw + cx] = activePalette;
+      count += 1;
+    }
+    return count;
+  }
+
   /** Picks up a block of the picture (and, on tile edges, its tile palettes) as the stamp. */
   function takeStamp(target: Doc, rect: { x: number; y: number; w: number; h: number }) {
     const area = clipRect(rect, target.width, target.height);
@@ -466,9 +485,9 @@ export function usePainting(app: Painting) {
   }
 
   function drawShape(target: Doc, a: Point, b: Point, value: number) {
-    if (tool === "rectFill" || tool === "patternFill") {
+    if (tool === "rectFill" || tool === "patternRect") {
       // The filled rectangle is always solid; the Pattern fill tool draws its box in the pattern.
-      return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, tool === "patternFill" ? pattern : "solid");
+      return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, tool === "patternRect" ? pattern : "solid");
     }
     const points = tool === "line" ? linePoints(a.x, a.y, b.x, b.y)
       : tool === "ellipse" ? ellipsePoints(a.x, a.y, b.x, b.y)
@@ -509,7 +528,7 @@ export function usePainting(app: Painting) {
       const width = corner ? CELL : unit || (stamp.current?.w ?? CELL), height = corner ? CELL : unit || (stamp.current?.h ?? CELL);
       Object.assign(outline.style, { display: visible ? "block" : "none", left: `${left * doc.zoom}px`, top: `${top * doc.zoom}px`, width: `${width * doc.zoom}px`, height: `${height * doc.zoom}px` });
     } else {
-      const cells = tool === "palette" || tool === "priority" || tool === "collision", tall = tool === "palette" && doc.keyGreen;
+      const cells = tool === "palette" || tool === "paletteAll" || tool === "priority" || tool === "collision", tall = (tool === "palette" || tool === "paletteAll") && doc.keyGreen;
       const cellH = tall ? 2 * CELL : CELL, cellOffset = Math.floor((cellBrush - 1) / 2);
       const size = cells ? CELL * cellBrush : brush, offset = cells ? 0 : Math.floor((brush - 1) / 2);
       const [x, y] = cells ? [(point.x & ~7) - cellOffset * CELL, (tall ? point.y & ~15 : point.y & ~7) - cellOffset * cellH] : [point.x - offset, point.y - offset];
@@ -553,7 +572,7 @@ export function usePainting(app: Painting) {
       return app.touch(doc);
     }
     if (event.button === 2) {
-      if (tool === "palette" && inside(doc, point)) app.setActivePalette(doc.cells[(point.y >> 3) * cellsWide(doc.width) + (point.x >> 3)]);
+      if ((tool === "palette" || tool === "paletteAll") && inside(doc, point)) app.setActivePalette(doc.cells[(point.y >> 3) * cellsWide(doc.width) + (point.x >> 3)]);
       else pickShade(doc, point);
       return;
     }
@@ -565,7 +584,7 @@ export function usePainting(app: Painting) {
       else app.onPlaceText(point);
       return;
     }
-    linkStroke.current = linked && !["eyedropper", "select", "move", "palette", "hand"].includes(tool) ? { link: linkGroups(doc.pixels, doc.width, doc.height), base: doc.pixels.slice(), previous: doc.pixels.slice() } : null;
+    linkStroke.current = linked && !["eyedropper", "select", "move", "palette", "paletteAll", "hand"].includes(tool) ? { link: linkGroups(doc.pixels, doc.width, doc.height), base: doc.pixels.slice(), previous: doc.pixels.slice() } : null;
     if (tool === "eyedropper") {
       // Came here from the palette brush: pick the tile's palette instead of a shade.
       if (app.paintTool.current === "palette") { if (inside(doc, point)) app.setActivePalette(doc.cells[(point.y >> 3) * cellsWide(doc.width) + (point.x >> 3)]); }
@@ -634,6 +653,12 @@ export function usePainting(app: Painting) {
       const on = !event.altKey;
       setPriority(doc, point, on);
       drag.current = { kind: "priority", last: point, on };
+    } else if (tool === "paletteAll") {
+      const blocked = app.paletteBlocked();
+      if (blocked) { app.say(blocked); return; }
+      app.pushUndo(doc);
+      const count = setSameTiles(doc, point);
+      app.say(`Palette given to ${count} tile${count === 1 ? "" : "s"} alike.`);
     } else if (tool === "palette") {
       const blocked = app.paletteBlocked();
       if (blocked) { app.say(blocked); return; }
@@ -641,6 +666,9 @@ export function usePainting(app: Painting) {
       for (const [x, y] of event.shiftKey && lastPoint.current ? linePoints(lastPoint.current.x, lastPoint.current.y, point.x, point.y) : [[point.x, point.y]]) setCell(doc, { x, y });
       drag.current = { kind: "cells", last: point };
       lastPoint.current = point;
+    } else if (tool === "patternFill") {
+      app.pushUndo(doc);
+      if (!floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value, pattern)) doc.undo.pop();
     } else if (tool === "fill" || tool === "fillErase") {
       app.pushUndo(doc);
       // Alt-click replaces that shade everywhere (inside the selection, if any) instead of filling one area.
@@ -752,13 +780,6 @@ export function usePainting(app: Painting) {
     linkStroke.current = null;
     if (!doc || !state || state.kind === "pan") return;
     if (state.kind === "marquee" && doc.sel && doc.sel.w < 2 && doc.sel.h < 2) doc.sel = null;
-    // Pattern fill: a click (no drag) fills the area under it with the pattern instead of a one-pixel box.
-    if (state.kind === "shape" && tool === "patternFill" && !state.moved) {
-      doc.pixels.set(state.base);
-      const value = shade === CLEAR && !doc.hasAlpha ? app.blank(doc) : shade;
-      if (!floodFill(doc.pixels, doc.width, doc.height, state.start.x, state.start.y, value, pattern)) doc.undo.pop();
-      followLinks(doc);
-    }
     if (state.kind !== "marquee") app.touch(doc);
     else app.bump();
   }

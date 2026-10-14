@@ -2022,7 +2022,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       return;
     }
     // D: the Pattern fill tool; pressed again with it in hand, the next pattern.
-    if (key === "d" && !event.shiftKey && tool === "patternFill") return cyclePattern();
+    if (key === "d" && !event.shiftKey && (tool === "patternFill" || tool === "patternRect")) return cyclePattern();
     const found = TOOLS.find(([, , , keys]) => keys.toLowerCase() === `${event.shiftKey ? "shift+" : ""}${key}`);
     if (found) return setTool(found[0]);
     // U: the shape tools in turn, as Photoshop's shape group (line, rectangle, filled rectangle, ellipse).
@@ -2561,7 +2561,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   const sceneSlots = doc?.asset?.slots ?? [];
   const slotPalettes = sceneSlots.map((id) => docPalettes.findIndex((palette) => palette.id === id));
   const slotWhere = doc?.asset?.slotScene ? `${doc.asset.slotScene}'s palettes` : doc?.asset?.kind === "sprites" ? "the project's default sprite palettes (every scene without its own)" : "the project's default background palettes (every scene without its own)";
-  const pickPalette = (index: number) => { setActivePalette(index); if (index && tool !== "palette") setTool("palette"); };
+  const pickPalette = (index: number) => { setActivePalette(index); if (index && tool !== "palette" && tool !== "paletteAll") setTool("palette"); };
 
   // No project and nothing open: the start screen on its own, like a splash window, with no tools behind it.
   if (splash) {

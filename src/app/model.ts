@@ -6,7 +6,7 @@ import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect } from "
 import type { AutotileKind } from "./autotile";
 import type { CollisionTileDef } from "../gb/collisions";
 
-export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "patternFill" | "eyedropper" | "palette" | "select" | "move" | "hand" | "priority" | "stamp" | "text" | "collision";
+export type ToolId = "pencil" | "eraser" | "spray" | "line" | "rect" | "rectFill" | "ellipse" | "fill" | "fillErase" | "patternFill" | "patternRect" | "eyedropper" | "palette" | "paletteAll" | "select" | "move" | "hand" | "priority" | "stamp" | "text" | "collision";
 
 export const MIRRORS: Mirror[] = ["off", "x", "y", "xy"];
 export const MIRROR_LABEL = { off: "Mirror off", x: "Mirror ↔", y: "Mirror ↕", xy: "Mirror ↔↕" } as const;
