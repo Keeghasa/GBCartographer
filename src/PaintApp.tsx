@@ -1350,10 +1350,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const kind = autotileKind(asset.autotile);
     if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
     if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
-    return { flags: { auto: kind.id }, note: ` ${kind.name}: ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff"].includes(kind.id) ? " Alt clears." : ""}` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name}: ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff", "xpCliffTall"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
+    if (auto === "xpCliffTall") return tallCliffSheet(stamp);
     if (auto !== "anim") return stamp;
     const size = stamp.h, pixels = new Uint8Array(size * size);
     for (let y = 0; y < size; y += 1) pixels.set(stamp.pixels.subarray(y * stamp.w, y * stamp.w + size), y * size);
@@ -1362,6 +1363,19 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     // The whole strip goes along, so its frames can play over the picture while the stamp is held.
     return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}), animSheet: { pixels: stamp.pixels, w: stamp.w, h: stamp.h, ...(stamp.cells ? { cells: stamp.cells } : {}) } };
   };
+
+  /**
+   * A Cliff sheet (48 × 80) as the 32 px-wall brush reads it (48 × 96, the author 2026-10-14): the plateau rows as
+   * they are, the 16 px face stretched to 32 (its top 4 rows, its plain middle row repeated, its last 10 rows), then
+   * the sheet's spare pieces two tile rows lower. Tile palettes follow their rows.
+   */
+  function tallCliffSheet<T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T): T {
+    const from = (y: number) => y < 32 ? y : y < 64 ? (y - 32 < 4 ? y : y - 32 >= 22 ? 38 + (y - 32 - 22) : 37) : y - 16;
+    const pixels = new Uint8Array(stamp.w * 96);
+    for (let y = 0; y < 96; y += 1) pixels.set(stamp.pixels.subarray(from(y) * stamp.w, from(y) * stamp.w + stamp.w), y * stamp.w);
+    const cw = stamp.w / 8, cells = stamp.cells ? Uint8Array.from({ length: cw * 12 }, (_, at) => stamp.cells![(from(Math.floor(at / cw) * 8 + 4) >> 3) * cw + (at % cw)]) : undefined;
+    return { ...stamp, pixels, h: 96, ...(cells ? { cells } : {}) };
+  }
 
   /** Sets a saved stamp's auto-tile (9 box, W Wang, or none) in its own sidecar; the stamp in hand follows. */
   async function setStampAutotile(asset: Asset, autotile: AutotileKind | null) {

@@ -297,18 +297,33 @@ export function usePainting(app: Painting) {
     const auto = stamp.current?.auto;
     const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
     if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
-    const cliff = auto === "xpCliff", blank = app.blank(target);
-    const keys = sheetKeys(6, cliff ? 60 : 48, blank);
+    const tall = auto === "xpCliffTall", cliff = auto === "xpCliff" || tall, blank = app.blank(target);
+    const keys = sheetKeys(6, tall ? 72 : cliff ? 60 : 48, blank);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
     const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
     const filled = (x: number, y: number) => !inside(x, y) ? !cliff : marked.get(`${x},${y}`) ?? keys.has(keyAt(x, y));
     // Every cell around is decided before anything is drawn (drawing changes what the neighbours read as).
     const cells: [number, number, Piece[]][] = [];
-    for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+    const filledIn = (fx: number, fy: number) => inside(fx, fy) && filled(fx, fy);
+    // 32 px walls (tallCliffSheet's 48 × 96 sheet): the plateau ends a cell higher and its face takes that cell and
+    // the one below (rows 4–5, then 6–7); a strip one cell thin keeps a 16 px face (rows 4 and 7); spare pieces 2 lower.
+    const top = (fx: number, fy: number) => filledIn(fx, fy) && filledIn(fx, fy + 1);
+    const lower = (pieces: Piece[]) => pieces.map((piece): Piece => piece && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece);
+    const tallCell = (x: number, y: number): Piece[] => {
+      const columns = (fx: number, fy: number) => { const pieces = xpCliffCell(top, fx, fy); return [pieces[0]![0], pieces[1]![0]]; };
+      if (top(x, y)) {
+        if (top(x, y + 1)) return lower(xpCliffCell(top, x, y));
+        const [a, b] = columns(x, y);
+        return [[a, 4], [b, 4], [a, 5], [b, 5]];
+      }
+      if (top(x, y - 1)) { const [a, b] = columns(x, y - 1); return [[a, 6], [b, 6], [a, 7], [b, 7]]; }
+      return xpCliffCell(filledIn, x, y).map((piece): Piece => piece && piece[1] === 5 ? [piece[0], 7] : piece && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece);
+    };
+    for (let dy = tall ? -2 : -1; dy <= (tall ? 2 : 1); dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
       const x = cx + dx, y = cy + dy;
       if (!inside(x, y) || !filled(x, y)) continue;
-      cells.push([x, y, cliff ? xpCliffCell((fx, fy) => inside(fx, fy) && filled(fx, fy), x, y) : xpCell(maskAt(filled, x, y))]);
+      cells.push([x, y, tall ? tallCell(x, y) : cliff ? xpCliffCell(filledIn, x, y) : xpCell(maskAt(filled, x, y))]);
     }
     if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
     for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => { if (piece) putSheetTile(target, x * 2 + (quarter % 2), y * 2 + (quarter >> 1), piece[0], piece[1], true); });
@@ -483,7 +498,7 @@ export function usePainting(app: Painting) {
       // An area auto-tile paints one cell a click (a 32 px tree unit, a 16 px block cell, an 8 px tile): the outline
       // shows that cell where it lands, not the whole sheet. Other stamps show their whole size.
       const auto = stamp.current?.auto;
-      const unit = stamp.current?.repeat ? CELL : auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
+      const unit = stamp.current?.repeat ? CELL : auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "xpCliffTall" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
       const corner = auto === "corner";
       const state = drag.current, forest = auto === "forest" ? (state?.kind === "forest" ? state : forestOrigin(doc, point)) : null;
       const left = forest ? forestUnit(point.x, forest.ox) * 32 + forest.ox * CELL : corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
@@ -573,7 +588,7 @@ export function usePainting(app: Painting) {
         const erase = event.altKey;
         paintAuto(doc, point.x >> 3, point.y >> 3, erase);
         drag.current = { kind: "auto", last: point, erase };
-      } else if (auto === "xp" || auto === "xpAnim" || auto === "xpCliff") {
+      } else if (auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "xpCliffTall") {
         const erase = event.altKey;
         paintXp(doc, point.x >> 4, point.y >> 4, erase);
         drag.current = { kind: "xp", last: point, erase };

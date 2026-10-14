@@ -17,7 +17,7 @@ import { GB_SHADES, KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quant
 /** The picture folders under assets/. Emotes are read like sprites (key green see-through); avatars and the UI
  * frame and cursor (assets/ui, no sidecars) like background tiles. Only backgrounds, sprites and tilesets carry palettes. */
 /** A stamp's auto-tile kinds (src/app/autotile.ts). */
-export const AUTOTILE_NAMES = ["box", "wang", "across", "down", "path", "edges", "corner", "wallface", "anim", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff"] as const;
+export const AUTOTILE_NAMES = ["box", "wang", "across", "down", "path", "edges", "corner", "wallface", "anim", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliffTall", "xpCliff"] as const;
 export type AutotileName = typeof AUTOTILE_NAMES[number];
 export const isAutotile = (value: unknown): value is AutotileName => (AUTOTILE_NAMES as readonly unknown[]).includes(value);
 export const ASSET_KINDS = ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui", "stamps"] as const;

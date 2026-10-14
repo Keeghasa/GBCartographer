@@ -24,7 +24,7 @@ export function AutotileIcon({ kind, glyph, size = 13 }: { kind: AutotileKind; g
     case "anim": return <Film size={size} />;
     case "xp": case "atlas": return <Proportions size={size} />;
     case "xpAnim": case "atlasAnim": return <Waves size={size} />;
-    case "xpCliff": return <Trapezoid size={size} />;
+    case "xpCliff": case "xpCliffTall": return <Trapezoid size={size} />;
     case "forest": return <Trees size={size} />;
     default: return glyph;
   }

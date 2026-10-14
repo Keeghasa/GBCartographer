@@ -8,7 +8,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
 import { join } from "node:path";
-import { GRAPHICS } from "../src/graphics/library";
+import { GRAPHICS, codeDrawn } from "../src/graphics/library";
+import { AUTHORED } from "../src/graphics/authored";
 import { decodePng } from "../src/gb/png";
 
 const folder = process.argv[2];
@@ -33,6 +34,10 @@ for (const asset of GRAPHICS) {
     }
     rows.push(row);
   }
+  // A file that is just the code's drawing (written by a refresh, with older backups beside it) isn't a hand edit;
+  // one already taken as the author's stays theirs.
+  const code = AUTHORED[asset.id] ? null : codeDrawn(asset.id);
+  if (code && code.width === png.width && code.height === png.height && rows.join("") === Array.from(code.pixels, (v) => v > 3 ? "." : String(v)).join("")) continue;
   out.push(`  ${JSON.stringify(asset.id)}: [\n${rows.map((row) => `    ${JSON.stringify(row)},`).join("\n")}\n  ],`);
 }
 writeFileSync("src/graphics/authored.ts", `/**

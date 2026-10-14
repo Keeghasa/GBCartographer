@@ -46,7 +46,7 @@ export function maskAt(filled: (tx: number, ty: number) => boolean, tx: number, 
  * corner-Wang. The wall-face sheet is 4 × 3 tiles: floor, nothing; the upper wall row and the lower wall row, each
  * as middle, left end, right end, both ends.
  */
-export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall" | "mound" | "forest" | "xp" | "xpAnim" | "xpCliff";
+export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall" | "mound" | "forest" | "xp" | "xpAnim" | "xpCliff" | "xpCliffTall";
 const whole = (w: number, h: number) => w % 8 === 0 && h % 8 === 0;
 /**
  * `hidden`: no longer offered (the author's review, 2026-10-14), though stamps already set to it keep painting:
@@ -67,6 +67,7 @@ export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: 
   { id: "xp", glyph: "X", name: "Area with edges", about: "paint 16 px cells: RPG Maker XP's autotile layout (a lone tile, the inner corners, a 3 × 3 block), every edge and inner corner fits; RPG Maker's 2 × 3 ground sheets (32 × 48) work too", size: "3 × 4 tiles of 16 px, 48 × 64 (or a 2 × 3 block, 32 × 48)", fits: (w, h) => (w === 48 && h === 64) || (w === ATLAS_W && h === ATLAS_H) },
   { id: "xpAnim", glyph: "X~", name: "Animated area", about: "the XP layout in two or three frames side by side: paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "two or three 48 × 64 blocks side by side, 96 × 64 or 144 × 64 (or RPG Maker's 96 × 48 water)", fits: (w, h) => ((w === 96 || w === 144) && h === 64) || (w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H) },
   { id: "xpCliff", glyph: "X▲", name: "Cliff", about: "paint 16 px cells: a plateau whose bottom row of cells is the cliff face, sides and inside corners fitted (Axul's cliff layout)", size: "3 × 5 tiles of 16 px, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
+  { id: "xpCliffTall", glyph: "X▲▲", name: "Cliff (32 px walls)", about: "paint 16 px cells: a Cliff sheet whose face is stretched to two cells (32 px) tall, the top edge and foot kept, like the cave wizard's walls", size: "3 × 5 tiles of 16 px, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
   { id: "mound", hidden: "dropped", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 10-minitile sheet, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
   { id: "forest", glyph: "T", name: "Forest", about: "paint 32 px tree units: a clump of trees inside, single trees along the edge (the author's trees)", size: "a clump and a single tree side by side, 64 × 32", fits: (w, h) => w === 64 && h === 32 },
   { id: "atlasWall", hidden: "dropped", glyph: "A▣", name: "RPG Maker wall (roof + face)", about: "paint an area: its roof fits like RPG Maker ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },

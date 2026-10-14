@@ -136,7 +136,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
             <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Catalog shores")} />
             <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Catalog roads")} />
-            <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your C stamp for shores, your P stamp for roads" : "Stamps marked C or P (Asset Catalog → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
+            <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your Corner Wang stamp for shores, your Road stamp for roads" : "Corner Wang and Road stamps (Asset Catalog → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
           {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style, walls: undefined }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
