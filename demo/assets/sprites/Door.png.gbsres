@@ -1,0 +1,160 @@
+{
+  "_resourceType": "sprite",
+  "id": "df8633e2-c7d9-4c64-a1cb-74c673d146b2",
+  "name": "Door",
+  "symbol": "sprite_door",
+  "states": [
+    {
+      "id": "dbdc353b-e0a7-43b1-b8c7-33c56a046da5",
+      "name": "",
+      "animationType": "fixed",
+      "flipLeft": false,
+      "animations": [
+        {
+          "id": "f40590ab-16c0-47e6-aa45-4789c4ff1a5f",
+          "frames": [
+            {
+              "id": "b867872f-f98e-47cc-886d-ec3f3aaaaab7",
+              "tiles": [
+                {
+                  "id": "b804df04-7bd9-42fd-8b32-6cca760445e1",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 0,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "9351d249-f931-46ab-811a-aa92d257712d",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 8,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            },
+            {
+              "id": "f788b268-c49c-4f87-ac82-6ef774b51b07",
+              "tiles": [
+                {
+                  "id": "05cf2b67-0a94-4a0b-a5ef-16116aa76c69",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 16,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "7b072e6c-3884-4cd7-8225-3de19a232603",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 24,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "a9bb7684-70aa-4eb6-b111-f864896107d9",
+          "frames": [
+            {
+              "id": "dd12d1c9-0a45-45ac-996b-2872a46152b0",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "2abc0fbb-0065-4fa8-818a-a7bbc54ced17",
+          "frames": [
+            {
+              "id": "0933cfcc-7913-4f16-aa68-a0635c5538a9",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "7bafcc99-3baa-4227-9def-848c1d7ce8c5",
+          "frames": [
+            {
+              "id": "fb63cdba-ae21-4d9a-866e-a29e7a682a38",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "d3cdaca2-1b7d-4364-9b27-b2196e698ddc",
+          "frames": [
+            {
+              "id": "629fca52-2f2e-4fb2-9b85-33fdf53640bb",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "e59f54d6-f3fb-4a61-a256-c76872458a55",
+          "frames": [
+            {
+              "id": "8a313d43-fc23-44f6-ace9-cb0350234ff1",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "7c3d76f4-0e82-40c0-80d8-0e24bae811c2",
+          "frames": [
+            {
+              "id": "a2dfd604-4799-42d3-b115-8f5cb5191ae6",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "495577a9-d796-4d7f-8276-8bb3e7634e20",
+          "frames": [
+            {
+              "id": "b16d1954-0736-4135-999c-59af9f88cc56",
+              "tiles": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "numTiles": 2,
+  "canvasOriginX": 0,
+  "canvasOriginY": 0,
+  "canvasWidth": 16,
+  "canvasHeight": 16,
+  "boundsX": 0,
+  "boundsY": -8,
+  "boundsWidth": 16,
+  "boundsHeight": 16,
+  "animSpeed": 15,
+  "filename": "Door.png",
+  "width": 32,
+  "height": 16,
+  "checksum": "91bdb4405668cb90937befcf9abb1a27d6a26832"
+}

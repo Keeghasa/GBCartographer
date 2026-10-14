@@ -1,0 +1,222 @@
+{
+  "_resourceType": "sprite",
+  "id": "24521dc5-994d-4a05-b191-5aa1e3bacf6c",
+  "name": "Spinning coin",
+  "symbol": "sprite_spinning_coin",
+  "states": [
+    {
+      "id": "eebc93be-046a-41cc-a389-5e9e47604d52",
+      "name": "",
+      "animationType": "fixed",
+      "flipLeft": false,
+      "animations": [
+        {
+          "id": "7613ec2f-2801-452c-a9f4-128afd40d9b0",
+          "frames": [
+            {
+              "id": "2d43b905-c70d-44b6-bd90-05d44700139e",
+              "tiles": [
+                {
+                  "id": "0bfa624d-11fc-4631-b38f-7b58085df32e",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 0,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "30eba87c-0e3f-4ec5-becc-5be37ad88b66",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 8,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            },
+            {
+              "id": "8f3f7b07-f6bd-4a93-b0ab-c2529c54c97e",
+              "tiles": [
+                {
+                  "id": "400c85e9-c075-4845-8efd-9e37f60fe04b",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 16,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "e52caf80-12be-45c4-aae6-03693312b058",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 24,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            },
+            {
+              "id": "8635bc5a-91fa-477d-a6b0-5d3da2d5fd95",
+              "tiles": [
+                {
+                  "id": "23aa804c-8549-442c-acc1-bdd306a977d9",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 32,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "022539a7-08ab-47e7-b8d7-d6b89d3f4136",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 40,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            },
+            {
+              "id": "74c5f6b0-1f0e-4792-af2c-232d514acfe3",
+              "tiles": [
+                {
+                  "id": "17b79be2-49f7-43ca-adc1-8ede456cea22",
+                  "x": 0,
+                  "y": 0,
+                  "sliceX": 48,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                },
+                {
+                  "id": "2129a6ec-7121-4dcc-afad-80f8face2a53",
+                  "x": 8,
+                  "y": 0,
+                  "sliceX": 56,
+                  "sliceY": 0,
+                  "flipX": false,
+                  "flipY": false,
+                  "palette": 0,
+                  "paletteIndex": 0,
+                  "objPalette": "OBP0",
+                  "priority": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c324bf1c-cf8e-49c3-8c89-37a441817346",
+          "frames": [
+            {
+              "id": "de34bfd4-e965-4bac-9689-82fca1c2f412",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "63a551b1-2721-4eb0-9309-4f946498bcde",
+          "frames": [
+            {
+              "id": "0896e393-b129-41f3-bfd6-b10a225ef062",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "3f05f32a-5e5b-4be7-aa1e-5eb60693450c",
+          "frames": [
+            {
+              "id": "d1cc93e1-7fc4-4479-8ce1-1a55b1ce0331",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "720f9bca-0818-4028-b307-e0d3fed46391",
+          "frames": [
+            {
+              "id": "26aa58bf-d8ce-47ac-8ba0-4d0c2f6cc2ed",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "eaf6194d-b810-4d66-b107-e61557784865",
+          "frames": [
+            {
+              "id": "b60daa86-ea5f-41b5-ac7f-a9153393b8ae",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "a016c150-fc38-48d0-95a2-bc6ac513fcec",
+          "frames": [
+            {
+              "id": "b35afb96-dd68-49d7-94c8-62fb28cc4c31",
+              "tiles": []
+            }
+          ]
+        },
+        {
+          "id": "a047d9c3-a7f0-43a0-bcaf-80a7a65bf745",
+          "frames": [
+            {
+              "id": "68d58349-f968-4687-936b-442677a92521",
+              "tiles": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "numTiles": 3,
+  "canvasOriginX": 0,
+  "canvasOriginY": 0,
+  "canvasWidth": 16,
+  "canvasHeight": 16,
+  "boundsX": 0,
+  "boundsY": -8,
+  "boundsWidth": 16,
+  "boundsHeight": 16,
+  "animSpeed": 15,
+  "filename": "Spinning coin.png",
+  "width": 64,
+  "height": 16,
+  "checksum": "58e0660fc5f7305de3b47d814292d2fc514d6e26"
+}

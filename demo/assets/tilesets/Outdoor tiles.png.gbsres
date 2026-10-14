@@ -1,0 +1,12 @@
+{
+  "_resourceType": "tileset",
+  "id": "8826b74b-c1dd-4a7c-8de0-f2d80a97bd74",
+  "name": "Outdoor tiles",
+  "symbol": "tileset_outdoor_tiles",
+  "width": 16,
+  "height": 10,
+  "imageWidth": 128,
+  "imageHeight": 80,
+  "filename": "Outdoor tiles.png",
+  "tileColors": "00a0+"
+}

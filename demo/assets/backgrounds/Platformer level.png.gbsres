@@ -1,0 +1,12 @@
+{
+  "_resourceType": "background",
+  "id": "0e053104-9e9d-4898-9aba-de72e4bb3f28",
+  "name": "Platformer level",
+  "symbol": "bg_platformer_level",
+  "tileColors": "00438+",
+  "filename": "Platformer level.png",
+  "width": 60,
+  "height": 18,
+  "imageWidth": 480,
+  "imageHeight": 144
+}

@@ -87,7 +87,7 @@ palettes straight back into the project.
 - **Careful with your files.** The last 10 versions of every file it overwrites, restorable from **Backups…**; a
   warning when a file changed on disk (pictures GB Studio changes reload by themselves) or GB Studio is open; and a
   short, fixed list of what it ever writes (below).
-- **Works offline**, with its fonts built in. **A demo project** to try it on (its art joins once its artists say yes).
+- **Works offline**, with its fonts built in. **A demo project** to try it on: the whole Asset Catalog as a GB Studio project.
 
 ## Screenshots
 
@@ -124,7 +124,6 @@ The builds aren't signed yet, so the first launch needs one extra step:
 ## Planned
 
 - An itch.io page, and a tested Windows pass.
-- The demo project's art, once its artists have said yes.
 
 ## GB Studio versions
 
@@ -141,11 +140,10 @@ lists opens with a note: keep a backup and look for a GB Cartographer update.
 
 ## Try it with the demo project
 
-`demo/` holds a small GB Studio 4 project: its scenes, palettes and settings. Its art isn't in the repository or
-the downloads yet: it will join once each artist has given their blessing (credits in
-[demo/CREDITS.md](demo/CREDITS.md)). Until then, open your own (backed-up) GB Studio project. When a build has the
-demo, **Try the demo** on the start screen opens a copy of it (in the app's data folder, so the shipped copy stays
-clean).
+`demo/` is the Asset Catalog as a GB Studio 4 project: every palette and graphic in the catalog as project files,
+stamps and auto-tiles in `Cartographer/stamps`, and the village laid out in the Map Room (credits in
+[demo/CREDITS.md](demo/CREDITS.md)). **Try the demo** on the start screen opens a copy of it (in the app's data
+folder, so the shipped copy stays clean).
 
 ## What GB Cartographer writes into your project
 
@@ -239,5 +237,5 @@ npm run build
 
 Code: MIT (see LICENSE). The logo is the author's pixel art, CC0. [Public Pixel](https://ggbot.itch.io/public-pixel-font)
 by GGBotNet (CC0, shipped in `public/fonts/`) is an optional UI font. Inter by Rasmus Andersson and the Inter Project Authors, and JetBrains Mono by JetBrains, ship with the app (SIL Open Font License 1.1, licences in `public/fonts/`).
-Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholders, CC0, and eleven CC0 packs from OpenGameArt, turned into Game Boy shades and cut into tilesets, stamps, auto-tiles and sprites, each piece credited to its maker in the catalog: [4-Color Dungeon Bricks Extended](https://opengameart.org/content/4-color-dungeon-bricks-extended-16x16) by MoikMellah, [GB Mini Pixel World](https://opengameart.org/content/gb-mini-pixel-world) by pebonius, [Nestor](https://opengameart.org/content/nestor-tileset) by Demetrius (Garbata Team), [Gauntness](https://opengameart.org/content/gauntness) by surt, [Stonelands](https://opengameart.org/content/rpg-tile-set-stonelands-nes) by Chasersgaming, [NES CC0 Graphics 2](https://opengameart.org/content/nes-cc0-graphics-2) by ETTiNGRiNDER (with thanks to [gwes](http://opengameart.org/users/gwes)), [Wintery Pixel Art Pack](https://opengameart.org/content/wintery-pixel-art-pack) by Spencer "Raptorspank" Gerowe, [GB Platformer Starter Pack](https://opengameart.org/content/gb-platformer-starter-pack) (and Catila) by Fava Beans, [Tile Set Pack #1 GBE](https://opengameart.org/content/tile-set-pack-1-gbe) by Chasersgaming, [Green Robot + Enemy](https://opengameart.org/content/green-robot-enemy) by darkagent (Arbiyan) and [Choco Prairies](https://opengameart.org/content/choco-prairies-gb-pack) by GrafxKid. Other people's art appears only in this README's screenshots and GIFs, as pictures of the app at work: the demo project's art files aren't in the repository or the downloads until their artists have said yes (credits in [demo/CREDITS.md](demo/CREDITS.md)). GB Studio is by Chris Maltby and
+Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholders, CC0, and eleven CC0 packs from OpenGameArt, turned into Game Boy shades and cut into tilesets, stamps, auto-tiles and sprites, each piece credited to its maker in the catalog: [4-Color Dungeon Bricks Extended](https://opengameart.org/content/4-color-dungeon-bricks-extended-16x16) by MoikMellah, [GB Mini Pixel World](https://opengameart.org/content/gb-mini-pixel-world) by pebonius, [Nestor](https://opengameart.org/content/nestor-tileset) by Demetrius (Garbata Team), [Gauntness](https://opengameart.org/content/gauntness) by surt, [Stonelands](https://opengameart.org/content/rpg-tile-set-stonelands-nes) by Chasersgaming, [NES CC0 Graphics 2](https://opengameart.org/content/nes-cc0-graphics-2) by ETTiNGRiNDER (with thanks to [gwes](http://opengameart.org/users/gwes)), [Wintery Pixel Art Pack](https://opengameart.org/content/wintery-pixel-art-pack) by Spencer "Raptorspank" Gerowe, [GB Platformer Starter Pack](https://opengameart.org/content/gb-platformer-starter-pack) (and Catila) by Fava Beans, [Tile Set Pack #1 GBE](https://opengameart.org/content/tile-set-pack-1-gbe) by Chasersgaming, [Green Robot + Enemy](https://opengameart.org/content/green-robot-enemy) by darkagent (Arbiyan) and [Choco Prairies](https://opengameart.org/content/choco-prairies-gb-pack) by GrafxKid. The demo project is the catalog's art (credits in [demo/CREDITS.md](demo/CREDITS.md)). Other artists' work appears only in this README's screenshots and GIFs, as pictures of the app at work, never as files. GB Studio is by Chris Maltby and
 contributors; GB Cartographer is not affiliated with it. The collision tile definitions (`src/gb/collisions.ts`) come from GB Studio's engine (MIT).

@@ -1,0 +1,12 @@
+{
+  "_resourceType": "tileset",
+  "id": "80194753-66cc-43ab-94b0-bd2797f9660d",
+  "name": "Side-view tiles",
+  "symbol": "tileset_side_view_tiles",
+  "width": 16,
+  "height": 4,
+  "imageWidth": 128,
+  "imageHeight": 32,
+  "filename": "Side-view tiles.png",
+  "tileColors": "0040+"
+}

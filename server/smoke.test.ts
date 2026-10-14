@@ -15,7 +15,7 @@ import { handleCartographerRequest } from "./endpoints";
 import { setProjectFolder } from "./project";
 
 const repo = resolve(__dirname, "..");
-// The demo's art stays on the author's machines until its artists say yes (only palettes ship): without it, skip.
+// The demo is the Asset Catalog project (2026-10-14); without its pictures, skip.
 const tilesets = join(repo, "demo/assets/tilesets");
 const hasDemoArt = existsSync(tilesets) && readdirSync(tilesets).some((file) => file.endsWith(".png"));
 let data = "";
@@ -43,10 +43,10 @@ const json = async <T>(response: Response) => {
 
 it.skipIf(!hasDemoArt)("opens the demo, paints a tile, saves it and its palette, and GB Studio's files say so", async () => {
   const opened = await json<{ project: { name: string; path: string } }>(await fetch(`${base}/project`, { method: "POST", body: JSON.stringify({ demo: true }) }));
-  expect(opened.project.name).toBe("Demo Project");
+  expect(opened.project.name).toBe("GB Cartographer demo");
   const project = opened.project.path;
   const listed = await json<{ assets: { kind: string; file: string }[]; palettes: { id: string; name: string }[] }>(await fetch(`${base}/gbstudio-assets`));
-  const tileset = listed.assets.find((asset) => asset.kind === "tilesets" && asset.file.startsWith("Winter Tileset"))!;
+  const tileset = listed.assets.find((asset) => asset.kind === "tilesets" && asset.file.startsWith("Outdoor tiles"))!;
   expect(tileset).toBeTruthy();
   const query = new URLSearchParams({ kind: "tilesets", file: tileset.file });
 
@@ -70,18 +70,8 @@ it.skipIf(!hasDemoArt)("opens the demo, paints a tile, saves it and its palette,
   expect(colors[0] & 7).toBe(4);
   expect(colors.slice(1)).toEqual(info.tileColors.slice(1));
 
-  // Put DWC-3-Cactus in slot 3 of the Winter Example scene (it holds WIN-3-Pine): its scene file changes.
-  const winter = listed.assets.find((asset) => asset.kind === "backgrounds" && asset.file.startsWith("Winter Example"))!;
-  const pine = listed.palettes.find((palette) => palette.name === "WIN-3-Pine")!;
-  const cactus = listed.palettes.find((palette) => palette.name === "DWC-3-Cactus")!;
-  const placed = await json<{ scene: string; slots: string[] }>(await fetch(`${base}/gbstudio-palette-slot?${new URLSearchParams({ kind: "backgrounds", file: winter.file })}`, { method: "POST", body: JSON.stringify({ slot: 2, paletteId: cactus.id, expected: pine.id }) }));
-  expect(placed.scene).toBe("Winter Example");
-  const scene = JSON.parse(readFileSync(join(project, "project/scenes/winter_example/scene.gbsres"), "utf8")) as { paletteIds: string[] };
-  expect(scene.paletteIds[2]).toBe(cactus.id);
-  expect(scene.paletteIds.filter((id) => id !== cactus.id)).toHaveLength(7);
-
   // Every overwritten file has a backup, and the shipped demo is untouched.
   const backups = await json<{ files: { file: string }[] }>(await fetch(`${base}/backups`));
-  expect(backups.files.map((entry) => entry.file).sort()).toEqual([`assets/tilesets/${tileset.file}`, `assets/tilesets/${tileset.file}.gbsres`, "project/scenes/winter_example/scene.gbsres"].sort());
+  expect(backups.files.map((entry) => entry.file).sort()).toEqual([`assets/tilesets/${tileset.file}`, `assets/tilesets/${tileset.file}.gbsres`].sort());
   expect(readFileSync(join(repo, "demo/assets/tilesets", tileset.file)).equals(readFileSync(file))).toBe(false);
 });
