@@ -117,11 +117,13 @@ export const TILES: Record<string, Tile> = { ...OUTDOOR, ...INDOOR, ...SIDE, ...
  * False when there is no such tile, and the code draws it.
  */
 export function outdoorTile(out: Canvas, id: string, x: number, y: number): boolean {
-  const art = catalogVersion("tiles-outdoor"), ids = Object.keys(OUTDOOR);
-  if (!art || !(id in OUTDOOR)) return false;
-  const small = ids.filter((key) => !OUTDOOR[key].tall), tall = ids.filter((key) => OUTDOOR[key].tall), rows = Math.ceil(small.length / 8);
-  const at = OUTDOOR[id].tall ? tall.indexOf(id) : small.indexOf(id), h = OUTDOOR[id].tall ? 32 : 16;
-  const sx = (at % 8) * 16, sy = OUTDOOR[id].tall ? rows * 16 + Math.floor(at / 8) * 32 : Math.floor(at / 8) * 16;
+  // The Side-view tiles too (2026-10-14: the platformer level drawn with the author's side-view sheet).
+  const [group, sheetId] = id in OUTDOOR ? [OUTDOOR, "tiles-outdoor"] : id in SIDE ? [SIDE, "tiles-side"] : [null, ""];
+  const art = group ? catalogVersion(sheetId) : null;
+  if (!art || !group) return false;
+  const ids = Object.keys(group), small = ids.filter((key) => !group[key].tall), tall = ids.filter((key) => group[key].tall), rows = Math.ceil(small.length / 8);
+  const at = group[id].tall ? tall.indexOf(id) : small.indexOf(id), h = group[id].tall ? 32 : 16;
+  const sx = (at % 8) * 16, sy = group[id].tall ? rows * 16 + Math.floor(at / 8) * 32 : Math.floor(at / 8) * 16;
   if (sy + h > art.height) return false;
   for (let py = 0; py < h; py += 1) for (let px = 0; px < 16; px += 1) {
     const value = art.pixels[(sy + py) * art.width + sx + px], tx = x + px, ty = y + py;

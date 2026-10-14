@@ -115,16 +115,18 @@ const shopLegend = { ":": "tileFloor", "#": "wallTopIn", B: "bookshelf", V: "wal
 
 const level = [
   "..............................",
-  "....cc..........cc............",
-  "...............?..........cc..",
-  "........?.?................L..",
-  "..................====.....L..",
-  ".............L.............L..",
-  "....====.....L.....^^......L..",
-  "GGGGGGGGGGGGGGGGGG~~GGGGGGGGGG",
-  "dddddddddddddddddd~~dddddddddd",
+  "...........?.?................",
+  "..........................?...",
+  "....BB?BB..........====.......",
+  "........................L.....",
+  "..............====......L.....",
+  "..p......p..............L..p..",
+  "..p..^^..p.......^^.....L..p..",
+  "GGGGGGGGGGGGGG~~GGGGGGGGGGGGGG",
 ];
-const levelLegend = { ".": "sky", c: "cloud", "?": "questionBlock", "=": "platform", L: "ladder", "^": "spikesUp", G: "groundTop", d: "ground", "~": "waterSide" };
+// Remade 2026-10-14 with the author's Side-view tiles: brick ledges with "!" blocks, columns, platforms, a ladder,
+// spikes and a water pit.
+const levelLegend = { ".": "sky", "?": "questionBlock", "=": "platform", L: "ladder", "^": "spikesUp", G: "groundTop", d: "ground", "~": "waterSide", B: "brick", p: "pipe" };
 
 /**
  * The village, 30 × 18 cells of 16 (3 × 2 screens), remade after the author's Town (2026-10-13, the Asset Catalog
