@@ -4,9 +4,9 @@
  * (an 8 × 8 nine-slice) and the 8 × 8 menu cursor. Backgrounds in screens of 160 × 144 (10 × 9 tiles).
  */
 import { drawCave, drawWorld } from "../app/generators";
-import { catalogVersion, paintXp, sheet } from "./areas";
+import { paintXp, sheet } from "./areas";
 import { Pen, canvas, textWidth, type Canvas } from "./pen";
-import { OUTDOOR, TILES } from "./tiles";
+import { outdoorTile, TILES } from "./tiles";
 
 /** A background from rows of letters, each letter a tile id in `legend` (space: the first entry). Tall tiles go on
  * after the rest, over the cell below them too. */
@@ -25,26 +25,6 @@ export function fromMap(rows: string[], legend: Record<string, string>, between?
     });
   }
   return out;
-}
-
-/**
- * An outdoor tile as the author drew it (the Outdoor tiles sheet's catalog version, 2026-10-13: "with new tiles"):
- * copied from its place on the sheet (laid out as tileSheet lays it out), see-through pixels left as they are.
- * False when there is no such tile, and the code draws it.
- */
-function outdoorTile(out: Canvas, id: string, x: number, y: number): boolean {
-  const art = catalogVersion("tiles-outdoor"), ids = Object.keys(OUTDOOR);
-  if (!art || !(id in OUTDOOR)) return false;
-  const small = ids.filter((key) => !OUTDOOR[key].tall), tall = ids.filter((key) => OUTDOOR[key].tall), rows = Math.ceil(small.length / 8);
-  const at = OUTDOOR[id].tall ? tall.indexOf(id) : small.indexOf(id), h = OUTDOOR[id].tall ? 32 : 16;
-  const sx = (at % 8) * 16, sy = OUTDOOR[id].tall ? rows * 16 + Math.floor(at / 8) * 32 : Math.floor(at / 8) * 16;
-  if (sy + h > art.height) return false;
-  for (let py = 0; py < h; py += 1) for (let px = 0; px < 16; px += 1) {
-    const value = art.pixels[(sy + py) * art.width + sx + px], tx = x + px, ty = y + py;
-    if (value > 3 || tx >= out.width || ty >= out.height) continue;
-    out.pixels[ty * out.width + tx] = value;
-  }
-  return true;
 }
 
 /** A sheet of tiles, eight to a row (128 pixels wide), for GB Studio's tilesets; tall ones in a row of their own. */

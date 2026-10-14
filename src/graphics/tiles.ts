@@ -4,7 +4,7 @@
  * (shade 0), dark outlines (shade 3). Grouped by where they go: outdoors, indoors, side-view levels.
  */
 import type { Canvas, Pen } from "./pen";
-import { pieceOf, sheet } from "./areas";
+import { catalogVersion, pieceOf, sheet } from "./areas";
 
 export interface Tile { name: string; /** Two tiles tall (16 × 32): drawn over the cell below it too. */ tall?: boolean; draw: (p: Pen) => void }
 
@@ -110,3 +110,24 @@ export const SCENERY: Record<string, Tile> = {
 
 /** Every tile by id, for building scenes. */
 export const TILES: Record<string, Tile> = { ...OUTDOOR, ...INDOOR, ...SIDE, ...SCENERY };
+
+/**
+ * An outdoor tile as the author drew it (the Outdoor tiles sheet's catalog version, 2026-10-13: "with new tiles"):
+ * copied from its place on the sheet (laid out as tileSheet lays it out), see-through pixels left as they are.
+ * False when there is no such tile, and the code draws it.
+ */
+export function outdoorTile(out: Canvas, id: string, x: number, y: number): boolean {
+  const art = catalogVersion("tiles-outdoor"), ids = Object.keys(OUTDOOR);
+  if (!art || !(id in OUTDOOR)) return false;
+  const small = ids.filter((key) => !OUTDOOR[key].tall), tall = ids.filter((key) => OUTDOOR[key].tall), rows = Math.ceil(small.length / 8);
+  const at = OUTDOOR[id].tall ? tall.indexOf(id) : small.indexOf(id), h = OUTDOOR[id].tall ? 32 : 16;
+  const sx = (at % 8) * 16, sy = OUTDOOR[id].tall ? rows * 16 + Math.floor(at / 8) * 32 : Math.floor(at / 8) * 16;
+  if (sy + h > art.height) return false;
+  for (let py = 0; py < h; py += 1) for (let px = 0; px < 16; px += 1) {
+    const value = art.pixels[(sy + py) * art.width + sx + px], tx = x + px, ty = y + py;
+    if (value > 3 || tx >= out.width || ty >= out.height) continue;
+    out.pixels[ty * out.width + tx] = value;
+  }
+  return true;
+}
+

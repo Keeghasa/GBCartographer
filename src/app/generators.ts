@@ -8,6 +8,7 @@
 import { CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, wangSlot } from "./autotile";
 import { Pen } from "../graphics/pen";
 import { paintCliffs, paintForest, paintSliced, paintXp, sheet } from "../graphics/areas";
+import { OUTDOOR, outdoorTile } from "../graphics/tiles";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 
 export { OVERWORLD_PALETTES } from "./mapThemes";
@@ -66,10 +67,11 @@ export interface CaveSettings {
  * The catalog walls a cave or dungeon can wear (the author, 2026-10-13): caves the Cliff XP ridges with a face two
  * cells (32 px) tall, dungeons Stone wall 9-sliced; either can take the other, the 16 px cliff or Brick wall XP.
  */
-export type CaveWalls = "cliff32" | "cliff16" | "stone" | "brick";
+export type CaveWalls = "cliff32" | "cliff16" | "stone" | "brick" | "pines" | "oaks";
 export const CAVE_WALLS: { value: CaveWalls; label: string }[] = [
   { value: "cliff32", label: "Cliff XP · 32 px walls" }, { value: "cliff16", label: "Cliff XP · 16 px walls" },
   { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall XP" },
+  { value: "pines", label: "Pine forest" }, { value: "oaks", label: "Round forest" },
 ];
 export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "stone" : "cliff32");
 
@@ -271,8 +273,10 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
     if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32");
     else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
+    else if (walls === "pines" || walls === "oaks") paintWoods(canvasOut, rock, cw, ch, walls === "pines");
     else paintSliced(canvasOut, sheet("pat-stone-wall"), rock, cw, ch);
-    paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
+    const woods = walls === "pines" || walls === "oaks";
+    if (!woods) paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
   } else for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
     if (tiles?.kind === "wallface") {
@@ -305,6 +309,22 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
   }
   return cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+}
+
+/**
+ * A forest for walls (the author, 2026-10-13: "a forest style, using the pine or oak"): grass everywhere (Grass XP),
+ * then the rock as the pine or round forest brush on 32 px units wherever a whole unit is rock, and a lone tree from
+ * the author's Outdoor tiles in each rock cell left over, so no rock is left bare.
+ */
+function paintWoods(out: { width: number; height: number; pixels: Uint8Array }, rock: (x: number, y: number) => boolean, cw: number, ch: number, pines: boolean) {
+  paintXp(out, sheet("xp-grass"), () => true, cw, ch, true);
+  const uw = Math.ceil(cw / 2), uh = Math.ceil(ch / 2);
+  const unit = (ux: number, uy: number) => [0, 1].every((dy) => [0, 1].every((dx) => { const x = ux * 2 + dx, y = uy * 2 + dy; return x >= cw || y >= ch || rock(x, y); }));
+  paintForest(out, sheet(pines ? "pines" : "round"), unit, uw, uh);
+  for (let y = 0; y < ch; y += 1) for (let x = 0; x < cw; x += 1) {
+    if (!rock(x, y) || unit(x >> 1, y >> 1)) continue;
+    if (!outdoorTile(out, pines ? "pine" : "tree", x * 16, y * 16)) OUTDOOR[pines ? "pine" : "tree"].draw(new Pen(out, x * 16, y * 16, 16));
+  }
 }
 
 /** The picture cut to `width` × `height` from its top left (its tile palettes too). */
