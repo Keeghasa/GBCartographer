@@ -48,24 +48,28 @@ export function maskAt(filled: (tx: number, ty: number) => boolean, tx: number, 
  */
 export type AutotileKind = "box" | "wang" | "across" | "down" | "path" | "edges" | "corner" | "wallface" | "anim" | "atlas" | "atlasAnim" | "atlasWall" | "mound" | "forest" | "xp" | "xpAnim" | "xpCliff";
 const whole = (w: number, h: number) => w % 8 === 0 && h % 8 === 0;
-export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: string; size: string; fits: (w: number, h: number) => boolean }[] = [
-  { id: "box", glyph: "9", name: "Box", about: "drag a rectangle: corners, edges and middle stretch over it", size: "whole tiles, at least 3 × 3", fits: (w, h) => whole(w, h) && w >= 24 && h >= 24 },
-  { id: "across", glyph: "↔", name: "3-slice across", about: "drag a line: left and right tiles cap the ends, the middle repeats (fences, bridges, platforms)", size: "whole tiles, at least 3 wide", fits: (w, h) => whole(w, h) && w >= 24 },
-  { id: "down", glyph: "↕", name: "3-slice down", about: "drag down: top and bottom tiles cap the ends, the middle repeats (ladders, pillars, waterfalls)", size: "whole tiles, at least 3 tall", fits: (w, h) => whole(w, h) && h >= 24 },
-  { id: "path", glyph: "P", name: "Path", about: "paint a line: each tile joins its neighbours up, down, left and right (roads, rivers, fences)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
+/**
+ * `hidden`: no longer offered (the author's review, 2026-10-14), though stamps already set to it keep painting:
+ * "dropped" styles, and RPG Maker's layouts "folded" into Area with edges / Animated area (which take those sheets).
+ */
+export const AUTOTILES: { id: AutotileKind; glyph: string; name: string; about: string; size: string; fits: (w: number, h: number) => boolean; hidden?: "dropped" | "folded" }[] = [
+  { id: "box", glyph: "9", name: "9-slice box", about: "drag a rectangle: corners, edges and middle stretch over it", size: "whole tiles, at least 3 × 3", fits: (w, h) => whole(w, h) && w >= 24 && h >= 24 },
+  { id: "across", glyph: "↔", name: "Fence style", about: "drag a line: left and right tiles cap the ends, the middle repeats (fences, bridges, platforms)", size: "whole tiles, at least 3 wide", fits: (w, h) => whole(w, h) && w >= 24 },
+  { id: "down", glyph: "↕", name: "Ladder style", about: "drag down: top and bottom tiles cap the ends, the middle repeats (ladders, pillars, waterfalls)", size: "whole tiles, at least 3 tall", fits: (w, h) => whole(w, h) && h >= 24 },
+  { id: "path", glyph: "P", name: "Road", about: "paint a line: each tile joins its neighbours up, down, left and right (roads, rivers, fences)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
   { id: "wang", glyph: "W", name: "Wang (47)", about: "paint an area: each tile fits all eight neighbours, inner corners too", size: "a 47-tile sheet, 8 × 6 tiles", fits: (w, h) => w === WANG_COLUMNS * 8 && h === WANG_ROWS * 8 },
-  { id: "edges", glyph: "E", name: "Wang edges (16)", about: "paint an area: each tile fits its four sides (no inner corners)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
+  { id: "edges", hidden: "dropped", glyph: "E", name: "Wang edges (16)", about: "paint an area: each tile fits its four sides (no inner corners)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
   { id: "corner", glyph: "C", name: "Corner Wang (2 terrains)", about: "paint at the grid's corners: two ground types blend (grass into sand, water into shore)", size: "a 16-tile sheet, 4 × 4 tiles", fits: (w, h) => w === 32 && h === 32 },
-  { id: "wallface", glyph: "F", name: "Wall face", about: "paint floor: a wall face grows one tile tall above it, nothing (black) everywhere else", size: "a 4 × 2-tile sheet", fits: (w, h) => w === 32 && (h === 16 || h === 24) },
+  { id: "wallface", hidden: "dropped", glyph: "F", name: "Wall face", about: "paint floor: a wall face grows one tile tall above it, nothing (black) everywhere else", size: "a 4 × 2-tile sheet", fits: (w, h) => w === 32 && (h === 16 || h === 24) },
   { id: "anim", glyph: "▶", name: "Animated tile", about: "frames side by side: stamps the first frame, the card plays them all", size: "square frames side by side, at least 2", fits: (w, h) => h % 8 === 0 && h > 0 && w % h === 0 && w / h >= 2 },
-  { id: "atlas", glyph: "A", name: "RPG Maker ground (2 × 3)", about: "paint 16 px cells: a 2 × 3 block of 16 × 16 tiles in RPG Maker's layout fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
-  { id: "atlasAnim", glyph: "~", name: "Water (3 frames)", about: "a 2 × 3 block in three frames side by side (RPG Maker's water layout): paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
-  { id: "xp", glyph: "X", name: "XP ground", about: "paint 16 px cells: RPG Maker XP's autotile layout (a lone tile, the inner corners, a 3 × 3 block), every edge and inner corner fits", size: "3 × 4 tiles of 16 px, 48 × 64", fits: (w, h) => w === 48 && h === 64 },
-  { id: "xpAnim", glyph: "X~", name: "XP water (animated)", about: "the XP layout in two or three frames side by side: paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "two or three 48 × 64 blocks side by side, 96 × 64 or 144 × 64", fits: (w, h) => (w === 96 || w === 144) && h === 64 },
-  { id: "xpCliff", glyph: "X▲", name: "XP cliff", about: "paint 16 px cells: a plateau whose bottom row of cells is the cliff face, sides and inside corners fitted (Axul's cliff layout)", size: "3 × 5 tiles of 16 px, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
-  { id: "mound", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 10-minitile sheet, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
-  { id: "forest", glyph: "T", name: "Forest (trees)", about: "paint 32 px tree units: a clump of trees inside, single trees along the edge (the author's trees)", size: "a clump and a single tree side by side, 64 × 32", fits: (w, h) => w === 64 && h === 32 },
-  { id: "atlasWall", glyph: "A▣", name: "RPG Maker wall (roof + face)", about: "paint an area: its roof fits like RPG Maker ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
+  { id: "atlas", hidden: "folded", glyph: "A", name: "RPG Maker ground (2 × 3)", about: "paint 16 px cells: a 2 × 3 block of 16 × 16 tiles in RPG Maker's layout fits every neighbour, inner corners too", size: "a 2 × 3 block of 16 px tiles, 32 × 48", fits: (w, h) => w === ATLAS_W && h === ATLAS_H },
+  { id: "atlasAnim", hidden: "folded", glyph: "~", name: "Water (3 frames)", about: "a 2 × 3 block in three frames side by side (RPG Maker's water layout): paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "three 2 × 3 blocks side by side, 96 × 48", fits: (w, h) => w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H },
+  { id: "xp", glyph: "X", name: "Area with edges", about: "paint 16 px cells: RPG Maker XP's autotile layout (a lone tile, the inner corners, a 3 × 3 block), every edge and inner corner fits; RPG Maker's 2 × 3 ground sheets (32 × 48) work too", size: "3 × 4 tiles of 16 px, 48 × 64 (or a 2 × 3 block, 32 × 48)", fits: (w, h) => (w === 48 && h === 64) || (w === ATLAS_W && h === ATLAS_H) },
+  { id: "xpAnim", glyph: "X~", name: "Animated area", about: "the XP layout in two or three frames side by side: paint 16 px cells, the shores fit, and the picture plays the frames while it's in hand (Save writes frame 1)", size: "two or three 48 × 64 blocks side by side, 96 × 64 or 144 × 64 (or RPG Maker's 96 × 48 water)", fits: (w, h) => ((w === 96 || w === 144) && h === 64) || (w === ATLAS_W * ATLAS_FRAMES && h === ATLAS_H) },
+  { id: "xpCliff", glyph: "X▲", name: "Cliff", about: "paint 16 px cells: a plateau whose bottom row of cells is the cliff face, sides and inside corners fitted (Axul's cliff layout)", size: "3 × 5 tiles of 16 px, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
+  { id: "mound", hidden: "dropped", glyph: "M", name: "Mound ledge", about: "paint 16 px cells: a plateau with a rounded top plate, and a rock face that wraps its sides and foot (the author's ledge)", size: "a 6 × 10-minitile sheet, 48 × 80", fits: (w, h) => w === 48 && h === 80 },
+  { id: "forest", glyph: "T", name: "Forest", about: "paint 32 px tree units: a clump of trees inside, single trees along the edge (the author's trees)", size: "a clump and a single tree side by side, 64 × 32", fits: (w, h) => w === 64 && h === 32 },
+  { id: "atlasWall", hidden: "dropped", glyph: "A▣", name: "RPG Maker wall (roof + face)", about: "paint an area: its roof fits like RPG Maker ground, and a wall face two cells tall grows below its bottom edge", size: "a 2 × 3 roof block over a 2 × 2 wall block, 32 × 80", fits: (w, h) => w === ATLAS_W && h === ATLAS_H + ATLAS_WALL_H },
 ];
 
 /**
@@ -107,3 +111,15 @@ export const slot16 = (mask: number) => ({ column: mask % 4, row: Math.floor(mas
 export const canBox = (w: number, h: number) => w % 8 === 0 && h % 8 === 0 && w >= 24 && h >= 24;
 /** A stamp can be a Wang sheet when it is exactly 8 × 6 tiles. */
 export const canWang = (w: number, h: number) => w === WANG_COLUMNS * 8 && h === WANG_ROWS * 8;
+
+/**
+ * The style a stamp gets when a style is picked from the menu: Area with edges and Animated area take RPG Maker's
+ * layouts (2026-10-14, folded in), so a sheet in that layout is set to the RPG Maker style underneath.
+ */
+export function styleFor(kind: AutotileKind, width: number, height: number): AutotileKind {
+  if (kind === "xp" && AUTOTILES.find((item) => item.id === "atlas")!.fits(width, height)) return "atlas";
+  if (kind === "xpAnim" && AUTOTILES.find((item) => item.id === "atlasAnim")!.fits(width, height)) return "atlasAnim";
+  return kind;
+}
+/** The style shown in the menu for a stamp's style (RPG Maker's layouts show as the area they were folded into). */
+export const shownStyle = (kind: AutotileKind | undefined): AutotileKind | undefined => kind === "atlas" ? "xp" : kind === "atlasAnim" ? "xpAnim" : kind;

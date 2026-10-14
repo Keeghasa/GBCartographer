@@ -3,6 +3,7 @@
  * click one to pick it up; the pencil in its corner (on hover) opens it for editing (the author, 2026-10-10: using
  * is the main thing, editing the exception).
  */
+import { AutotileIcon } from "./autotileIcons";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { ASSET_URL, PREVIEW_VERSION, type Asset } from "./model";
@@ -36,7 +37,7 @@ export function StampsStrip({ stamps, slotsVersion, onUse, onOpen }: Props) {
             <button className="app-frame named" title={`${stamp.name} · ${stamp.width} × ${stamp.height}${stamp.tags?.length ? ` · ${stamp.tags.join(", ")}` : ""} · click to use`} onClick={() => onUse(stamp)}>
               {stamp.autotile === "anim" || stamp.autotile === "atlasAnim" || stamp.autotile === "xpAnim" ? <AnimThumb className="app-frame-anim" frames={stamp.autotile === "atlasAnim" || stamp.autotile === "xpAnim" ? 3 : undefined} src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} /> : <img alt="" src={`${ASSET_URL}-preview?${new URLSearchParams({ kind: stamp.kind, file: stamp.file })}&v=${Math.round(stamp.mtime)}&pv=${PREVIEW_VERSION}&s=${slotsVersion}`} />}
               <small>{stamp.name}</small>
-              {autotileOf(stamp.autotile) && <i className="app-stamp-badge" title={autotileOf(stamp.autotile)!.name}>{autotileOf(stamp.autotile)!.glyph}</i>}
+              {autotileOf(stamp.autotile) && <i className="app-stamp-badge" title={autotileOf(stamp.autotile)!.name}><AutotileIcon kind={autotileOf(stamp.autotile)!.id} glyph={autotileOf(stamp.autotile)!.glyph} size={10} /></i>}
             </button>
             <button type="button" className="app-stamp-edit" title={`Edit ${stamp.name}`} aria-label={`Edit ${stamp.name}`} onClick={(event) => { event.stopPropagation(); onOpen(stamp); }}><Pencil size={11} /></button>
           </span>

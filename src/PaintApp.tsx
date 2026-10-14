@@ -1350,7 +1350,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const kind = autotileKind(asset.autotile);
     if (!kind) return { flags: {}, note: " Click or drag to stamp it on the grid." };
     if (!kind.fits(w, h)) return { flags: {}, note: ` (${kind.name} needs ${kind.size}: stamped as it is.)` };
-    return { flags: { auto: kind.id }, note: ` ${kind.name} (${kind.glyph}): ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff"].includes(kind.id) ? " Alt clears." : ""}` };
+    return { flags: { auto: kind.id }, note: ` ${kind.name}: ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
@@ -1370,7 +1370,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     await loadProject();
     const fresh = projectRef.current?.assets.find((item) => item.kind === "stamps" && item.file === asset.file);
     if (fresh && heldStamp.current === asset.file) await useSavedStamp(fresh);
-    else { const kind = autotileKind(autotile ?? undefined); say(`${asset.name}: ${kind ? `${kind.name} (${kind.glyph})` : "a plain stamp"}.`); }
+    else { const kind = autotileKind(autotile ?? undefined); say(`${asset.name}: ${kind ? kind.name : "a plain stamp"}.`); }
   }
   const heldStamp = useRef<string | null>(null);
 
