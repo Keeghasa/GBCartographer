@@ -1,6 +1,8 @@
 /**
  * The Asset Catalog (the store, 2026-10-10), remade as a mosaic of live tiles (the author's pick B, 2026-10-14, after
- * the start screen's neo-grotesk, Metro look): one tile per category, sorted as the side bar sorts a project
+ * the start screen's neo-grotesk, Metro look) in three sections, Palettes, Assets (pictures that go into the GB Studio
+ * project) and Stamps (Cartographer/stamps, which GB Studio never reads; not only the author's: others' may join),
+ * one tile per category, sorted as the side bar sorts a project
  * (Palettes; Backgrounds, Sprites, Tilesets, Fonts, Emotes, Avatars, UI; the stamps' Objects, Repeat tiles, Autotiles,
  * Animated tiles), each sized by what it holds, with a collage of its pieces, a big count and its name. A category
  * opens as flat tiles: art to add to the project as a new PNG or open as a new picture (animated tiles play slowly),
@@ -44,8 +46,8 @@ const GRAPHICS_CREDIT = { author: "Keeghasa (GB Cartographer)", license: "CC0", 
 const GROUP_CREDITS: Record<string, typeof GRAPHICS_CREDIT> = {
   Fonts: { author: "GGBotNet, datagoblin (adapted)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/blob/main/src/graphics/fonts.ts" },
 };
-/** What the catalog's art is (2026-10-14: the art that ships, made to be painted over). */
-const ART_ABOUT = "GB Cartographer's own art, free to use: take it in as it is, or paint over it your own way.";
+/** What the catalog's art is (2026-10-14: made to be painted over; each shelf credits whoever made it, as others' art may join). */
+const ART_ABOUT = "Free to use: take it in as it is, or paint over it your own way.";
 /** What each Art section holds, in a line. */
 const GROUP_INTROS: Record<string, string> = {
   People: "Walking characters in GB Studio's classic six-frame strip: GB Studio sets up their animations by itself.",
@@ -151,8 +153,8 @@ const CATEGORIES: { id: CategoryId; name: string; about: string; icon: ReactNode
  */
 const SECTIONS: { id: string; title: string; note: string; ids: CategoryId[] }[] = [
   { id: "palettes", title: "Palettes", note: "Go into the project's palettes (project/palettes), or into Mine on this computer.", ids: ["palettes"] },
-  { id: "pictures", title: "Pictures for your GB Studio project", note: "Added as new PNGs in the project's assets folders, where GB Studio picks them up.", ids: ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"] },
-  { id: "stamps", title: "Stamps: GB Cartographer's own", note: "Added to Cartographer/stamps in the project, for painting with in GB Cartographer. GB Studio never reads them.", ids: ["objects", "repeat", "autotiles", "animated"] },
+  { id: "pictures", title: "Assets", note: "Added as new PNGs in your GB Studio project's assets folders, where GB Studio uses them.", ids: ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"] },
+  { id: "stamps", title: "Stamps", note: "Added to Cartographer/stamps in your project, for painting with in GB Cartographer. GB Studio never reads them.", ids: ["objects", "repeat", "autotiles", "animated"] },
 ];
 const isStampCategory = (id: CategoryId) => SECTIONS[2].ids.includes(id);
 const categoryOf = (asset: WireAsset): CategoryId => asset.kind === "stamps" ? stampGroup({ autotile: asset.autotile, tags: asset.group === "Patterns" ? ["pattern"] : [] }) : asset.kind as CategoryId;
