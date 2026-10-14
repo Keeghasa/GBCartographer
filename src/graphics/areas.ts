@@ -6,7 +6,7 @@
  */
 import { forestLayout, xpCell, xpCliffCell } from "../app/autopaint";
 import { maskAt } from "../app/autotile";
-import { xpCliffTemplate, xpWaterTemplate } from "./autotiles";
+import { xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
 import { CLEAR, type Canvas } from "./pen";
 import { pieces } from "./pieces";
 import { TEMP_ASSETS } from "./temp";
@@ -17,17 +17,19 @@ import { TEMP_ASSETS } from "./temp";
  */
 let catalogArt: (id: string) => Canvas | null = () => null;
 export function setCatalogArt(lookup: (id: string) => Canvas | null) { catalogArt = lookup; made.clear(); }
+/** The catalog's version of any library graphic by id (the author's hand edit, else the code's), or null. */
+export const catalogVersion = (id: string): Canvas | null => catalogArt(id);
 
 type Filled = (x: number, y: number) => boolean;
 
 /** A sheet by its temp-asset id (made once). */
 const made = new Map<string, Canvas>();
-export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round" | "xp-brick-square" | "pat-stone-wall"): Canvas {
+export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round" | "xp-brick-square" | "pat-stone-wall" | "xp-flowers" | "xp-ground" | "xp-ice"): Canvas {
   let art = made.get(id);
   if (!art) {
     // The catalog's version first (the author's hand edits from the Asset Catalog project), else the code's.
     const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees" } as Record<string, string>)[id] ?? id;
-    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
+    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : id === "xp-ground" ? xpGroundTemplate() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
     made.set(id, art);
   }
   return art;

@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Check, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Check, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -113,6 +113,8 @@ export default function PaintApp() {
   /** Atlas water in hand: its frames played over every painted cell (the author, 2026-10-12; Save writes frame 1). */
   const atlasAnimCanvas = useRef<HTMLCanvasElement>(null);
   const [atlasPlaying, setAtlasPlaying] = useState(false);
+  /** The animated stamp's frames over the picture stopped (the author, 2026-10-13: a button to stop them); kept per computer. */
+  const [animStopped, setAnimStopped] = useState(() => readStored("gbc-anim-stopped", false));
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [activePalette, setActivePalette] = useState(0);
   const [tint, setTint] = useState(() => readStored(TINT_KEY, "GB greens"));
@@ -2256,7 +2258,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   // picture itself. Nothing is written: Save keeps frame 1.
   const held = tool === "stamp" ? stampInHand() : null;
   const atlasHeld = held?.auto === "atlasAnim" || held?.auto === "xpAnim" || (held?.auto === "anim" && held.animSheet) ? held : null;
-  useEffect(() => { setAtlasPlaying(Boolean(atlasHeld && doc)); }, [atlasHeld, doc]);
+  useEffect(() => { setAtlasPlaying(Boolean(atlasHeld && doc && !animStopped)); }, [atlasHeld, doc, animStopped]);
   useEffect(() => {
     const canvas = atlasAnimCanvas.current;
     if (!atlasPlaying || !atlasHeld || !doc || !canvas) return;
@@ -2799,6 +2801,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         </aside>}
       </div>
       <footer className="app-status">
+        {atlasHeld && doc && <Button size="sm" icon={animStopped ? <Play /> : <Pause />} title={animStopped ? "Play the animated stamp's frames over the picture" : "Stop the animated stamp's frames playing over the picture (the picture itself is never changed)"}
+          onClick={() => { const next = !animStopped; setAnimStopped(next); try { localStorage.setItem("gbc-anim-stopped", JSON.stringify(next)); } catch { /* private window */ } }}>{animStopped ? "Play" : "Stop"} animation</Button>}
         <span className="app-status-hint">{doc ? <><b>{hint[1]}</b> · {tool === "eraser" ? (doc.hasAlpha ? "drag to erase to see-through" : canSeeThrough(doc) ? "drag to erase to the lightest shade (Transparent, beside the shades, lets this picture be see-through)" : "drag to erase to the lightest shade (GB Studio has no see-through here)") : hint[4]}</> : project ? "Open a picture: click one in the project panel, or drop a PNG here" : "Open a GB Studio project, or a PNG (Ctrl+O)"}</span>
         <span ref={readoutRef} className="gbp-readout" />
         <span className="k-spacer" />

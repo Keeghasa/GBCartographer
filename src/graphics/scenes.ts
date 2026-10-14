@@ -4,9 +4,9 @@
  * (an 8 × 8 nine-slice) and the 8 × 8 menu cursor. Backgrounds in screens of 160 × 144 (10 × 9 tiles).
  */
 import { drawCave, drawWorld } from "../app/generators";
-import { paintXp, sheet } from "./areas";
+import { catalogVersion, paintXp, sheet } from "./areas";
 import { Pen, canvas, textWidth, type Canvas } from "./pen";
-import { TILES } from "./tiles";
+import { OUTDOOR, TILES } from "./tiles";
 
 /** A background from rows of letters, each letter a tile id in `legend` (space: the first entry). Tall tiles go on
  * after the rest, over the cell below them too. */
@@ -18,12 +18,33 @@ export function fromMap(rows: string[], legend: Record<string, string>, between?
     if (tall && between) between(out);
     rows.forEach((row, y) => {
     for (let x = 0; x < width / 16; x += 1) {
-      const tile = TILES[legend[row[x] ?? " "] ?? blank];
-      if (tile && Boolean(tile.tall) === tall) tile.draw(new Pen(out, x * 16, y * 16, 16, tall ? 32 : 16));
+      const id = legend[row[x] ?? " "] ?? blank, tile = TILES[id];
+      if (!tile || Boolean(tile.tall) !== tall) continue;
+      if (!outdoorTile(out, id, x * 16, y * 16)) tile.draw(new Pen(out, x * 16, y * 16, 16, tall ? 32 : 16));
     }
     });
   }
   return out;
+}
+
+/**
+ * An outdoor tile as the author drew it (the Outdoor tiles sheet's catalog version, 2026-10-13: "with new tiles"):
+ * copied from its place on the sheet (laid out as tileSheet lays it out), see-through pixels left as they are.
+ * False when there is no such tile, and the code draws it.
+ */
+function outdoorTile(out: Canvas, id: string, x: number, y: number): boolean {
+  const art = catalogVersion("tiles-outdoor"), ids = Object.keys(OUTDOOR);
+  if (!art || !(id in OUTDOOR)) return false;
+  const small = ids.filter((key) => !OUTDOOR[key].tall), tall = ids.filter((key) => OUTDOOR[key].tall), rows = Math.ceil(small.length / 8);
+  const at = OUTDOOR[id].tall ? tall.indexOf(id) : small.indexOf(id), h = OUTDOOR[id].tall ? 32 : 16;
+  const sx = (at % 8) * 16, sy = OUTDOOR[id].tall ? rows * 16 + Math.floor(at / 8) * 32 : Math.floor(at / 8) * 16;
+  if (sy + h > art.height) return false;
+  for (let py = 0; py < h; py += 1) for (let px = 0; px < 16; px += 1) {
+    const value = art.pixels[(sy + py) * art.width + sx + px], tx = x + px, ty = y + py;
+    if (value > 3 || tx >= out.width || ty >= out.height) continue;
+    out.pixels[ty * out.width + tx] = value;
+  }
+  return true;
 }
 
 /** A sheet of tiles, eight to a row (128 pixels wide), for GB Studio's tilesets; tall ones in a row of their own. */
@@ -126,54 +147,47 @@ const level = [
 const levelLegend = { ".": "sky", c: "cloud", "?": "questionBlock", "=": "platform", L: "ladder", "^": "spikesUp", G: "groundTop", d: "ground", "~": "waterSide" };
 
 /**
- * A village of 30 × 18 tiles (2 × 2 pixel cells of 16) built in code: tall trees round the edge with four ways out,
- * two crossing paths, houses with their doors on paths, a pond, a well, fences and flowers.
+ * The village, 30 × 18 cells of 16 (3 × 2 screens), remade after the author's Town (2026-10-13, the Asset Catalog
+ * project's Town.png): a ring of small round trees with ways out at the bottom, houses with two rows of roof over a
+ * brick wall and their door on a path, plain Path tiles in a grid (as the author painted them), Flower bed XP hedges, a framed field (Ground XP),
+ * a little pond (Floor tiles XP) under a pine, fences, a sign and a few bushes on Grass XP.
+ * Cells: "." grass, T tree, R roof, W wall, D door, "," path, h hedge, c field, o pond, F fence, s sign, P pine.
  */
 function village(): string[] {
   const W = 30, H = 18, map = Array.from({ length: H }, () => Array.from({ length: W }, () => "."));
   const set = (x: number, y: number, c: string) => { if (x >= 0 && y >= 0 && x < W && y < H) map[y][x] = c; };
-  const trees = "QPKN";
-  for (let x = 0; x < W; x += 1) if (x < 13 || x > 15) { if (x % 2 === 0) set(x, 0, trees[(x / 2) % 4]); }
-  for (let x = 0; x < W; x += 1) if (x < 5 || x > 8) { if (x % 2 === 1) set(x, 16, trees[(x + 1) % 4]); }
-  // Tall trees cover the row below too, so none stands on row 8 (the way out on row 9).
-  for (let y = 2; y < 15; y += 2) if (y !== 8) { set(0, y, trees[y % 4]); set(W - 1, y, trees[(y + 1) % 4]); }
-  for (let x = 0; x < W; x += 1) set(x, 9, ",");
-  for (let y = 0; y < H; y += 1) set(14, y, ",");
-  for (let y = 9; y < H; y += 1) set(6, y, ",");
-  const house = (x: number, y: number, w: number) => {
-    for (let dx = 0; dx < w; dx += 1) { set(x + dx, y, "R"); set(x + dx, y + 1, "R"); set(x + dx, y + 2, "W"); }
-    const door = x + Math.floor(w / 2);
-    set(door, y + 2, "D");
-    for (let py = y + 3; py < 9; py += 1) set(door, py, ",");
-    return door;
+  const box = (x: number, y: number, w: number, h: number, c: string) => { for (let dy = 0; dy < h; dy += 1) for (let dx = 0; dx < w; dx += 1) set(x + dx, y + dy, c); };
+  box(0, 0, W, 1, "T"); box(0, H - 1, W, 1, "T"); box(0, 0, 1, H, "T"); box(W - 1, 0, 1, H, "T");
+  // Paths: two long ones across, three down, the ways out at the bottom.
+  box(2, 5, 26, 1, ","); box(2, 10, 26, 1, ","); box(4, 14, 22, 1, ",");
+  box(2, 5, 1, 6, ","); box(8, 5, 1, 10, ","); box(17, 5, 1, 13, ","); box(25, 5, 1, 6, ","); box(11, 14, 1, 4, ",");
+  // Houses: roof, roof, wall with its door, a path from the door to the nearest path.
+  const house = (x: number, y: number, w: number, door: number, to: number) => {
+    box(x, y, w, 2, "R"); box(x, y + 2, w, 1, "W"); set(door, y + 2, "D");
+    for (let py = y + 3; py !== to; py += to > y ? 1 : -1) set(door, py, ",");
   };
-  house(2, 3, 4); house(8, 3, 3); house(17, 2, 5); house(24, 3, 3);
-  // Two houses below the main path, their doors on a path along row 14 to the north–south paths.
-  for (const [x, y, w, to] of [[2, 11, 3, 6], [18, 11, 4, 14]] as const) {
-    for (let dx = 0; dx < w; dx += 1) { set(x + dx, y, "R"); set(x + dx, y + 1, "R"); set(x + dx, y + 2, "W"); }
-    const door = x + Math.floor(w / 2);
-    set(door, y + 2, "D");
-    for (let px = Math.min(door, to); px <= Math.max(door, to); px += 1) set(px, y + 3, ",");
-  }
-  for (let y = 11; y < 14; y += 1) for (let x = 9; x < 12; x += 1) set(x, y, "~");
-  set(16, 11, "w"); set(15, 8, "s"); set(23, 11, "Q"); set(25, 14, "P"); set(11, 6, "K");
-  for (let x = 23; x < 28; x += 1) set(x, 7, "F");
-  for (const [x, y] of [[4, 7], [10, 15], [21, 15], [27, 12], [12, 2], [20, 7], [3, 15], [26, 9]]) set(x, y, "f");
-  for (const [x, y] of [[8, 14], [16, 14], [27, 5], [2, 7]]) set(x, y, "b");
-  set(12, 14, "r");
+  house(3, 1, 4, 4, 5); house(11, 1, 5, 13, 5); house(20, 1, 4, 21, 5);
+  house(3, 11, 4, 5, 14); house(13, 11, 3, 14, 14); house(21, 11, 4, 23, 14);
+  // Hedges, the field, the pond under its pine, fences, a sign and bushes.
+  box(4, 6, 1, 3, "h"); box(4, 8, 3, 1, "h"); box(10, 6, 3, 1, "h"); box(19, 7, 5, 2, "h"); box(26, 11, 2, 2, "h"); box(1, 15, 3, 1, "h"); box(19, 15, 4, 1, "h");
+  box(11, 7, 5, 3, "c");
+  box(26, 2, 2, 2, "o"); set(27, 1, "P");
+  box(6, 6, 1, 1, "F"); box(21, 6, 3, 1, "F");
+  set(15, 6, "s");
   return map.map((row) => row.join(""));
 }
-const villageLegend = { ".": "grass", Q: "oakTall", K: "oakTall2", P: "pineTall", N: "pineTall2", R: "roof", W: "houseWall", D: "door", ",": "grass", F: "fence", f: "flowers", b: "bush", s: "sign", "~": "grass", w: "well", r: "rock" };
+const villageLegend = { ".": "grass", T: "tree", P: "pine", R: "roof", W: "houseWall", D: "door", ",": "path", h: "grass", c: "grass", o: "grass", F: "fence", s: "sign" };
 
 /**
- * The village as one picture (480 × 288). Its pond and paths are painted with the library's pieces (the author,
- * 2026-10-13): Water XP for the pond, Dirt XP for the paths, joined at their edges as the stamps would.
+ * The village as one picture (480 × 288): the tiles from the Outdoor tiles sheet (the author's versions), its paths,
+ * hedges, field and pond painted with the library's XP pieces, joined at their edges as the stamps would.
  */
 export const villageMap = () => {
   const rows = village(), w = rows[0].length, h = rows.length;
   return fromMap(rows, villageLegend, (out) => {
-    paintXp(out, sheet("xp-dirt"), (x, y) => rows[y][x] === ",", w, h, false);
-    paintXp(out, sheet("water"), (x, y) => rows[y][x] === "~", w, h, false);
+    paintXp(out, sheet("xp-flowers"), (x, y) => rows[y][x] === "h", w, h, false);
+    paintXp(out, sheet("xp-ground"), (x, y) => rows[y][x] === "c", w, h, false);
+    paintXp(out, sheet("xp-ice"), (x, y) => rows[y][x] === "o", w, h, false);
   });
 };
 

@@ -32,12 +32,14 @@ const TWO = (a: string, b: string) => `Two frames: ${a}, ${b} (one animation; pi
 /** Taken out at the author's word (2026-10-13: what they hid in the Asset Catalog project, they didn't like). */
 const DROPPED = new Set(["person-villager", "person-traveler", "thing-bullet", "thing-bush", "thing-coinStill", "thing-crate", "thing-potion", "anim-chest", "anim-checkbox",
   // Deleted by the author in the Asset Catalog project (2026-10-13).
-  "scene-menu", "scene-house", "scene-shop", "scene-cave", "scene-overworld", "scene-battle", "scene-dialogue", "scene-village", "scene-room",
-  "village-0-0", "village-1-0", "village-2-0", "village-0-1", "village-1-1", "village-2-1",
+  "scene-menu", "scene-house", "scene-shop", "scene-cave", "scene-overworld", "scene-battle", "scene-dialogue", "scene-room",
+  // The village came back remade after the author's Town (2026-10-13).
   // Unticked in the shipped-art review (the author, 2026-10-13).
   "piece-mound", "autotile-wallface", "pat-sand", "pat-water",
   // One Wang sheet, not two (the author, 2026-10-13): Wang (W) does what Wang edges did and more; Corner Wang (C) stays.
-  "autotile-edges"]);
+  "autotile-edges",
+  // Taken out at the author's word (2026-10-13).
+  "tiles-indoor"]);
 
 /** A picture from the author's rows (src/graphics/authored.ts). */
 function fromAuthored(rows: readonly string[]): Canvas {
