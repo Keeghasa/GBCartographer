@@ -364,7 +364,7 @@ export default function PaintApp() {
     for (const { kind, file, data } of listed?.pictures ?? []) {
       const key = `${kind}/${file}`;
       kept.set(key, "");
-      const mine = (item: Doc) => item.asset?.kind === kind && item.asset.file === file && (!item.asset.project || item.asset.project === path);
+      const mine = (item: Doc) => item.asset?.kind === kind && item.asset.file === file && item.asset.project === path;
       let target = docs.current.find(mine);
       if (target?.dirty) continue;
       const asset = projectRef.current?.assets.find((item) => item.kind === kind && item.file === file);
@@ -531,7 +531,13 @@ export default function PaintApp() {
         const flags = asset && info && (asset.kind === "backgrounds" || asset.kind === "tilesets") ? Array.from({ length: picture.cells.length }, (_, cell) => (info.tileColors[cell] ?? 0) >= 0 && (info.tileColors[cell] ?? 0) & 0x80 ? 1 : 0) : null;
         const own = ase ? undefined : handle;
         const opened: Doc = { id, ...(own && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? (ase ? file.name.replace(/\.(aseprite|ase)$/i, ".png") : file.name), width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: Boolean(ase), handle: own, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
-        if (old >= 0) docs.current[old] = opened;
+        if (old >= 0) {
+          // Reloaded from disk (2026-10-14): what was on screen stays one undo away, with the history before it.
+          const before = docs.current[old];
+          pushUndo(before);
+          opened.undo = before.undo;
+          docs.current[old] = opened;
+        }
         else docs.current.push(opened);
         if (asset?.kind === "backgrounds") void loadCollisions(opened);
         if (old >= 0) continue;
@@ -834,13 +840,18 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
    * Puts a backed-up version back into the project, then shows it: an open picture of that file (or of its sidecar)
    * reloads, the project's thumbnails and palettes are read again, and open pictures reread their slots.
    */
-  async function restoreFromBackup(file: string, version: string): Promise<boolean> {
+  async function restoreFromBackup(file: string, version: string, expected: number | null = null): Promise<boolean> {
     const match = /^assets\/(backgrounds|sprites|tilesets|fonts)\/([^/]+\.png)(\.gbsres)?$/i.exec(file);
     const open = match ? docs.current.find((item) => item.asset?.kind === match[1] && item.asset.file === match[2] && (!item.asset.project || item.asset.project === projectRef.current?.path)) : undefined;
     if (open?.dirty && !await confirmBox(`${open.name} has unsaved changes. Restoring replaces them with the backup. Go on?`)) return false;
     if (!file.endsWith(".png") && !await okToWriteProjectJson()) return false;
     try {
-      const response = await fetch("./__cartographer/backup-restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, version }) });
+      const send = (force: boolean) => fetch("./__cartographer/backup-restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, version, expected, force }) });
+      let response = await send(false);
+      if (response.status === 409) {
+        if (!await confirmBox(`${file.split("/").pop()} changed on disk after the Backups window read it (GB Studio may have saved it). Restore the backup over it anyway? The newer file goes to the backups first.`, { yes: "Restore anyway" })) return false;
+        response = await send(true);
+      }
       const result = await response.json() as { ok?: boolean; error?: string };
       if (!response.ok || !result.ok) { say(`Could not restore ${file}: ${result.error ?? response.statusText}`); return false; }
     } catch (error) {
@@ -2150,9 +2161,14 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       .then(() => sessionStore<{ active: number; docs: Omit<Doc, "id" | "undo" | "redo" | "sel" | "float">[] }>("readonly", (objects) => objects.get("open")))
       .finally(() => window.setTimeout(sessionDone, 0))
       .then((session) => {
-        if (!session?.docs?.length || docs.current.length) return;
-        docs.current = session.docs.map((saved, index) => ({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: index + 1, undo: [], redo: [], sel: null, float: null }));
-        setActiveId(docs.current[Math.max(0, session.active)]?.id ?? docs.current[0].id);
+        if (!session?.docs?.length) return;
+        // Pictures opened before the session was read (a drop, a paste, a file the desktop app was asked to open)
+        // stay, after the restored ones, and stay in front (2026-10-14: the whole session used to be skipped).
+        const early = docs.current;
+        const restored: Doc[] = [];
+        for (const saved of session.docs) restored.push({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: newDocId([...restored, ...early]), undo: [], redo: [], sel: null, float: null });
+        docs.current = [...restored, ...early];
+        if (!early.length) setActiveId(restored[Math.max(0, session.active)]?.id ?? restored[0].id);
         void rereadSlots();
         // Backgrounds kept from before collisions were read: read their scenes' collisions now.
         for (const item of docs.current) if (item.asset?.kind === "backgrounds" && !item.collision && (!item.asset.project || item.asset.project === projectRef.current?.path)) void loadCollisions(item);

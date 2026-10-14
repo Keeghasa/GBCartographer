@@ -11,7 +11,7 @@ import { Button, Dialog, Slider, Switch } from "./ui/kit";
 import "./BackupsWindow.css";
 
 export interface BackupVersion { id: string; time: number; size: number }
-export interface BackupFile { file: string; versions: BackupVersion[] }
+export interface BackupFile { file: string; versions: BackupVersion[]; current?: number | null }
 
 interface BackupsWindowProps {
   projectName: string;
@@ -19,7 +19,7 @@ interface BackupsWindowProps {
   initialFile?: string;
   onClose: () => void;
   /** Puts a version back; resolves true when it was restored (the parent reloads what it shows). */
-  onRestore: (file: string, version: string) => Promise<boolean>;
+  onRestore: (file: string, version: string, expected: number | null) => Promise<boolean>;
 }
 
 const ago = (time: number) => {
@@ -273,7 +273,7 @@ export default function BackupsWindow({ projectName, initialFile, onClose, onRes
   async function restore() {
     if (!entry || !chosen) return;
     setBusy(true);
-    const done = await onRestore(entry.file, chosen.id);
+    const done = await onRestore(entry.file, chosen.id, entry.current ?? null);
     setBusy(false);
     if (done) { setVersion(null); setStamp((value) => value + 1); }
   }

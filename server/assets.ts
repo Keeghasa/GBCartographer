@@ -413,8 +413,11 @@ export function paletteMentions(project: string, id: string): string[] {
  */
 export function removePalette(project: string, id: string, backup: Backup): { file: string } {
   const folder = join(project, "project", "palettes");
-  const file = existsSync(folder) ? readdirSync(folder).find((entry) => entry.endsWith(".gbsres") && readJson(join(folder, entry))?.id === id) : undefined;
+  const matches = existsSync(folder) ? readdirSync(folder).filter((entry) => entry.endsWith(".gbsres") && readJson(join(folder, entry))?.id === id) : [];
+  const file = matches[0];
   if (!file) throw new AssetWriteError("No palette with that id in the project.", 404);
+  // Two files with one id (a palette file copied by hand): which one GB Studio uses can't be told, so neither goes.
+  if (matches.length > 1) throw new AssetWriteError(`${matches.length} palette files share this id (${matches.join(", ")}): tidy them up in GB Studio first.`, 409);
   expectType(readJson(join(folder, file))!, "palette", join(folder, file));
   const uses = paletteMentions(project, id);
   if (uses.length) throw new AssetWriteError(`It is still used by ${uses.slice(0, 3).join(", ")}${uses.length > 3 ? ` and ${uses.length - 3} more` : ""}.`, 409);
@@ -792,6 +795,22 @@ export function createAsset(project: string, kind: AssetKind, name: string, byte
  * A stamp's tile palettes: `slots` (palette ids, up to 8) and each 8 × 8 tile's slot (-1: no palette), written to
  * Cartographer/stamps/<file>.json (the old one backed up first; unchanged on disk since `expectedMtime` unless forced).
  */
+/**
+ * A stamp's own .json: a new one only made where none is (2026-10-14: one that appeared meanwhile, from another window,
+ * is never overwritten unbacked); an existing one replaced as a sidecar, backed up first.
+ */
+function writeStampJson(meta: string, clean: Record<string, unknown>, backup: Backup): number {
+  if (!existsSync(meta)) {
+    try {
+      writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`, { flag: "wx" });
+      return statSync(meta).mtimeMs;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+  }
+  return writeSidecar(meta, clean, backup);
+}
+
 /** A stamp sidecar's tags: up to 12 short strings. */
 export function stampTags(meta: unknown): string[] {
   const list = (meta as { tags?: unknown } | null)?.tags;
@@ -806,9 +825,7 @@ export function writeStampMeta(path: string, slots: readonly string[], tileColor
   const oldAutotile = readJson(meta)?.autotile;
   const autotile = isAutotile(oldAutotile) ? { autotile: oldAutotile } : {};
   const clean = { _resourceType: "cartographerStamp", slots: slots.slice(0, 8).map((id) => typeof id === "string" ? id : ""), tileColors: tileColors.map((value) => Number.isInteger(value) && value >= 0 && value < 8 ? value : -1), ...(kept.length ? { tags: kept } : {}), ...autotile };
-  if (existsSync(meta)) return { mtime: writeSidecar(meta, clean, backup) };
-  writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`);
-  return { mtime: statSync(meta).mtimeMs };
+  return { mtime: writeStampJson(meta, clean, backup) };
 }
 
 /** Sets a stamp's auto-tile ("box", "wang" or none) in its own sidecar (Cartographer/stamps/<file>.json; backed up first). */
@@ -817,9 +834,7 @@ export function writeStampAutotile(path: string, autotile: AutotileName | null, 
   const old = readJson(meta) ?? { _resourceType: "cartographerStamp", slots: [], tileColors: [] };
   const { autotile: _old, ...rest } = old;
   const clean = { ...rest, ...(autotile ? { autotile } : {}) };
-  if (existsSync(meta)) return { mtime: writeSidecar(meta, clean, backup) };
-  writeFileSync(meta, `${JSON.stringify(clean, null, 2)}\n`);
-  return { mtime: statSync(meta).mtimeMs };
+  return { mtime: writeStampJson(meta, clean, backup) };
 }
 
 /**

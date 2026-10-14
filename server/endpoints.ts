@@ -40,7 +40,7 @@
  *   POST /__cartographer/asset-times          { assets: [{ kind, file }] } their PNG and sidecar times (null: gone)
  *   GET  /__cartographer/backups              this project's backed-up files and their versions (?file= one file)
  *   GET  /__cartographer/backup               one version's bytes (?file=&version=; version=current: the file now)
- *   POST /__cartographer/backup-restore       { file, version } puts that version back (the current file is backed up first)
+ *   POST /__cartographer/backup-restore       { file, version, expected?, force? } puts that version back (the current file is backed up first; 409 if it changed since `expected`)
  * GB Cartographer writes asset PNGs, a background's or tileset's tileColors, a sprite's paletteIndex, palette files,
  * a scene's palette lists and the project's default palettes, and in its own Cartographer/ folder saved stamps and
  * the Map Room's layouts; nothing else.
@@ -50,7 +50,7 @@ import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
-import { backupPath, listBackups, projectBackupDir, restoreBackup } from "./backups";
+import { backupPath, listBackups, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
 import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, renameOwn, writeOwnSettings, writePanel, writeUnsaved } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -211,11 +211,11 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
       return true;
     }
     if (url.pathname === "/__cartographer/backup-restore" && req.method === "POST") {
-      const body = JSON.parse((await readBody(req)).toString("utf8")) as { file?: unknown; version?: unknown };
       try {
-        reply(res, 200, { ok: true, mtime: restoreBackup(options.backupDir, project, String(body.file ?? ""), String(body.version ?? "")) });
+        const body = JSON.parse((await readBody(req)).toString("utf8")) as { file?: unknown; version?: unknown; expected?: unknown; force?: unknown };
+        reply(res, 200, { ok: true, mtime: restoreBackup(options.backupDir, project, String(body.file ?? ""), String(body.version ?? ""), typeof body.expected === "number" ? body.expected : null, body.force === true) });
       } catch (error) {
-        reply(res, 404, { error: (error as Error).message });
+        reply(res, error instanceof RestoreChangedError ? 409 : error instanceof SyntaxError ? 400 : 404, { error: (error as Error).message });
       }
       return true;
     }

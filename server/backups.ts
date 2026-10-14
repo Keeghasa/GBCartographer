@@ -38,7 +38,8 @@ export function ownFolderReadme(project: string) {
 }
 
 export interface BackupVersion { id: string; time: number; size: number }
-export interface BackupFile { file: string; versions: BackupVersion[] }
+/** `current`: the project file's modification time when listed (null: gone), so a restore can tell it changed since. */
+export interface BackupFile { file: string; versions: BackupVersion[]; current?: number | null }
 
 /** The folder holding one project's backups: <project>/Cartographer/backups (`backupDir`: where older ones may wait). */
 export function projectBackupDir(backupDir: string, project: string): string {
@@ -153,14 +154,18 @@ export function listBackups(backupDir: string, project: string, file?: string): 
     if (list.length) found.push({ file: relative(root, folder).split(sep).join("/"), versions: list });
     for (const entry of entries) if (entry.isDirectory()) walk(join(folder, entry.name));
   };
+  const now = (entry: BackupFile): BackupFile => { const target = resolve(project, ...entry.file.split("/")); return { ...entry, current: inside(project, target) && existsSync(target) ? statSync(target).mtimeMs : null }; };
   if (file) {
     const folder = join(root, ...file.split("/"));
     const list = existsSync(folder) && !file.split("/").includes("..") ? versions(folder) : [];
-    return list.length ? [{ file, versions: list }] : [];
+    return list.length ? [now({ file, versions: list })] : [];
   }
   walk(root);
-  return found.sort((a, b) => b.versions[0].time - a.versions[0].time);
+  return found.sort((a, b) => b.versions[0].time - a.versions[0].time).map(now);
 }
+
+/** The file being restored changed on disk after the backups were listed. */
+export class RestoreChangedError extends Error { constructor() { super("The file changed on disk since the backups were listed."); } }
 
 /** The path of one backed-up version, or null when there is no such version. */
 export function backupPath(backupDir: string, project: string, file: string, version: string): string | null {
@@ -173,10 +178,12 @@ export function backupPath(backupDir: string, project: string, file: string, ver
  * Puts a backed-up version back in the project: the current file is backed up first (so the restore can be
  * undone), then replaced through a temporary file. Returns the restored file's new modification time.
  */
-export function restoreBackup(backupDir: string, project: string, file: string, version: string): number {
+export function restoreBackup(backupDir: string, project: string, file: string, version: string, expected: number | null = null, force = false): number {
   const source = backupPath(backupDir, project, file, version);
   const target = resolve(project, ...file.split("/"));
   if (!source || !inside(project, target)) throw new Error("No such backup");
+  // Like every other write (2026-10-14): a file changed on disk since the list was read (GB Studio saved it) needs a yes.
+  if (!force && expected !== null && existsSync(target) && Math.abs(statSync(target).mtimeMs - expected) > 1) throw new RestoreChangedError();
   // The version is copied out before the current file is backed up: that backup may push the oldest version out.
   mkdirSync(dirname(target), { recursive: true });
   const temp = `${target}.restoring`;
@@ -184,9 +191,10 @@ export function restoreBackup(backupDir: string, project: string, file: string, 
   backupFile(backupDir, project, target);
   try {
     renameSync(temp, target);
-  } catch {
-    copyFileSync(temp, target);
+  } catch (error) {
+    // Never copied into the file itself (it could be left half written): the current file stays, the error is said.
     try { unlinkSync(temp); } catch { /* nothing more to do */ }
+    throw error;
   }
   return statSync(target).mtimeMs;
 }
