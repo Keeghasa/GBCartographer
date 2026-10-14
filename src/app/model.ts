@@ -45,6 +45,8 @@ export type AssetKind = typeof ASSET_KINDS[number][0];
 export const hasSlots = (kind: AssetKind) => kind === "backgrounds" || kind === "sprites" || kind === "tilesets";
 /** Kinds GB Studio draws as sprites: key green is see-through in the file. */
 export const isKeyed = (kind: AssetKind) => kind === "sprites" || kind === "emotes";
+/** How long an animated tile shows each frame, everywhere it plays (2026-10-14: much slower than the old half second). */
+export const ANIM_FRAME_MS = 1200;
 export const UNDO_LIMIT = 60;
 export const UNDO_BYTES = 96 * 1024 * 1024;
 

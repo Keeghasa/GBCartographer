@@ -13,7 +13,7 @@ import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
 import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
-import { ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
+import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
 import { TOOLS } from "./app/tools";
@@ -2302,7 +2302,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   });
 
   // An animated stamp in hand (RPG Maker water, or an animated tile): every tile of the picture that is one of frame
-  // 1's tiles shows the other frames in turn over it, 2 steps a second (the author: slower); frame 1 shows the
+  // 1's tiles shows the other frames in turn over it, ANIM_FRAME_MS each (the author: much slower); frame 1 shows the
   // picture itself. Nothing is written: Save keeps frame 1.
   const held = tool === "stamp" ? stampInHand() : null;
   const atlasHeld = held?.auto === "atlasAnim" || held?.auto === "xpAnim" || (held?.auto === "anim" && held.animSheet) ? held : null;
@@ -2334,7 +2334,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         if (at) context.drawImage(sheet, (at[0] + frame * frameColumns) * CELL, at[1] * CELL, CELL, CELL, tx * CELL, ty * CELL, CELL, CELL);
       }
     };
-    const timer = window.setInterval(draw, 500);
+    const timer = window.setInterval(draw, ANIM_FRAME_MS);
     return () => { window.clearInterval(timer); context.clearRect(0, 0, canvas.width, canvas.height); };
   }, [atlasPlaying, atlasHeld, doc]);
 
