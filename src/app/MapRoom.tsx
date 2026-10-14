@@ -11,7 +11,7 @@ import { Download, Map as MapIcon, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { countUniqueTiles, gbStudioShade } from "../paint";
 import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, useConfirm } from "../ui/kit";
-import { PxSnake } from "../ui/setIcons";
+import { LogoMark } from "../ui/LogoMark";
 import { copyEdge, edgeMatch, OFFSET, OPPOSITE, SIDES, type Picture, type Side } from "./mapEdges";
 import { MapWizard, type MapPlan } from "./MapWizard";
 import type { Asset, Project } from "./model";
@@ -261,7 +261,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
 
         <section ref={setGridArea} className="k-well mr-grid" aria-label="Screens">
           {!map ? (
-            <div className="mr-empty"><span className="mr-mascot"><PxSnake size={48} /></span><span className="k-muted">Make a map to start: New map on the left.</span></div>
+            <div className="mr-empty"><span className="mr-mascot"><LogoMark size={48} /></span><span className="k-muted">Make a map to start: New map on the left.</span></div>
           ) : (
             <div className="mr-cells" style={{ gridTemplateColumns: `repeat(${maxX - minX + 1}, ${W * scale}px)`, gridAutoRows: `${H * scale}px` }}>
               {Array.from({ length: (maxY - minY + 1) * (maxX - minX + 1) }, (_, at) => {

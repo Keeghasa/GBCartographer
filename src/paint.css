@@ -20,7 +20,7 @@
 /* The current sprite frame's slices on the sheet. */
 .gbp-frame-slice { position: absolute; box-sizing: border-box; outline: 2px solid var(--acc-hi, #9bd07e); outline-offset: -1px; pointer-events: none; }
 
-/* The empty stage, with the mascot (a Pixelarticons snake): a slow bob, still when motion is reduced. */
+/* The empty stage, with the mascot (the app's map logo, 2026-10-14; was a snake): a slow bob, still when motion is reduced. */
 .gbp-empty { height: 100%; display: grid; place-content: center; justify-items: center; gap: 10px; color: #d7dbe2; }
 .gbp-empty p { margin: 8px 0 0; }
 .gbp-mascot { display: grid; place-items: center; color: var(--acc-text, #a9dc8f); animation: gbp-bob 2.4s ease-in-out infinite; }

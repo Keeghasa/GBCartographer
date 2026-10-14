@@ -49,7 +49,7 @@ import { framesOf, saveFile } from "./app/files";
 import { ToolColumn } from "./app/ToolColumn";
 import { PicturePane } from "./app/PicturePane";
 import { usePainting } from "./app/usePainting";
-import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxRobotHappy, PxSnake } from "./ui/setIcons";
+import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxRobotHappy } from "./ui/setIcons";
 import { PalettesPane } from "./app/PalettesPane";
 import { FramesStrip } from "./app/FramesStrip";
 import { StampsStrip } from "./app/StampsStrip";
@@ -2811,7 +2811,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             </div>
           ) : (
             <div className="gbp-empty">
-              <span className="gbp-mascot" title="Nothing open yet"><PxSnake size={48} /></span>
+              <span className="gbp-mascot" title="Nothing open yet"><LogoMark size={48} /></span>
               <p>{project ? `Pick a picture of ${project.name} on the left.` : "Drop PNG files here, or"}</p>
               {!project && <Button icon={<FolderOpen />} onClick={() => void pickFiles()}>Open PNG files</Button>}
             </div>
