@@ -31,6 +31,17 @@
 .stm-live:not(:disabled):hover .stm-live-name::after { content: "."; color: var(--k-acc); }
 .stm-meta { display: block; margin-top: 4px; font: 400 10.5px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); }
 
+/* The three sections: palettes, pictures for the GB Studio project, GB Cartographer's own stamps (a dashed rule, a
+   different place on disk). */
+.stm-section { display: flex; flex-direction: column; gap: var(--k-2); }
+.stm-section + .stm-section { margin-top: var(--k-3); }
+.stm-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--k-3); flex-wrap: wrap; padding-top: var(--k-2); border-top: 1px solid var(--k-edge-2); }
+.stm-section--stamps .stm-section-head { border-top-style: dashed; border-top-color: rgba(var(--k-acc-rgb), .55); }
+.stm-section-title { font: 800 22px var(--k-font); letter-spacing: -.03em; color: var(--k-ink); }
+.stm-section-note { font: 400 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); }
+.stm-where { margin: -2px 0 0; font: 400 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); }
+.stm-where--stamps { color: var(--k-acc); }
+
 /* A category */
 .stm-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--k-ink-3); font: 500 12px 'JetBrains Mono', ui-monospace, monospace; cursor: pointer; }
 .stm-back:hover { color: var(--k-acc); }

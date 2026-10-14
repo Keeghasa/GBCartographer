@@ -145,6 +145,16 @@ const CATEGORIES: { id: CategoryId; name: string; about: string; icon: ReactNode
   { id: "autotiles", name: "Autotiles", about: "Paint an area and the edges draw themselves.", icon: <Blocks /> },
   { id: "animated", name: "Animated tiles", about: "Water, lava and flowers that play their frames.", icon: <Waves /> },
 ];
+/**
+ * Where each category's pieces live (the author, 2026-10-14: "see the distinction between what lives in the stamp
+ * folder and what lives in the GB Studio project"): palettes, pictures GB Studio uses, and GB Cartographer's own stamps.
+ */
+const SECTIONS: { id: string; title: string; note: string; ids: CategoryId[] }[] = [
+  { id: "palettes", title: "Palettes", note: "Go into the project's palettes (project/palettes), or into Mine on this computer.", ids: ["palettes"] },
+  { id: "pictures", title: "Pictures for your GB Studio project", note: "Added as new PNGs in the project's assets folders, where GB Studio picks them up.", ids: ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"] },
+  { id: "stamps", title: "Stamps: GB Cartographer's own", note: "Added to Cartographer/stamps in the project, for painting with in GB Cartographer. GB Studio never reads them.", ids: ["objects", "repeat", "autotiles", "animated"] },
+];
+const isStampCategory = (id: CategoryId) => SECTIONS[2].ids.includes(id);
 const categoryOf = (asset: WireAsset): CategoryId => asset.kind === "stamps" ? stampGroup({ autotile: asset.autotile, tags: asset.group === "Patterns" ? ["pattern"] : [] }) : asset.kind as CategoryId;
 const PALETTE_COUNT = SHELVES.reduce((sum, shelf) => sum + shelf.sets.reduce((n, set) => n + set.palettes.length, 0), 0);
 /** How many frames an animated stamp's sheet holds side by side. */
@@ -178,9 +188,11 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   const home = () => { setCategory(null); setQuery(""); };
 
   /** The home: a tile per category, sized by what it holds. */
-  const mosaic = (
-    <div className="stm-mosaic">
-      {CATEGORIES.map((item) => {
+  const mosaic = SECTIONS.map((section) => (
+    <section key={section.id} className={`stm-section stm-section--${section.id}`}>
+      <header className="stm-section-head"><span className="stm-section-title">{section.title}</span><span className="stm-section-note">{section.note}</span></header>
+      <div className="stm-mosaic">
+      {CATEGORIES.filter((item) => section.ids.includes(item.id)).map((item) => {
         const n = count(item.id), size = n >= 30 ? "stm-live--4" : n >= 15 ? "stm-live--3" : n >= 6 ? "stm-live--2" : "";
         const collage = item.id === "palettes"
           ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 24).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
@@ -193,8 +205,9 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
           </button>
         );
       })}
-    </div>
-  );
+      </div>
+    </section>
+  ));
 
   const artTiles = (list: typeof pieces) => (
     <div className="stm-tiles">
@@ -209,7 +222,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
               <Button size="sm" variant="ghost" title="Open it as a new picture (Save asks where it goes)" onClick={() => onOpenArt(asset, art)}>Open</Button>
             </span>
             <b className="stm-tile-name">{asset.name}</b>
-            <small className="stm-tile-meta">{KIND_NAMES[asset.kind] ?? "Stamp"} · {art.width} × {art.height}</small>
+            <small className="stm-tile-meta">{asset.kind === "stamps" ? "Stamp · Cartographer/stamps" : `${KIND_NAMES[asset.kind] ?? asset.kind} · assets/${asset.kind}`} · {art.width} × {art.height}</small>
           </article>
         );
       })}
@@ -273,6 +286,7 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
         <h1 className="stm-h1"><span className="stm-icon stm-icon--big">{current.icon}</span><b>{current.name}</b></h1>
         {current.id !== "palettes" && <span className="stm-credit"><Credit {...groupCredit} /></span>}
       </div>
+      <p className={`stm-where${isStampCategory(current.id) ? " stm-where--stamps" : ""}`}>{SECTIONS.find((section) => section.ids.includes(current.id))!.note}</p>
       <p className="stm-about">{current.id === "palettes" ? current.about : current.id === "fonts" ? `${current.about} ${GROUP_INTROS.Fonts}` : `${current.about} ${ART_ABOUT}`}</p>
       {current.id === "palettes" ? paletteShelves(SHELVES) : artTiles(pieces.filter((piece) => piece.category === current.id))}
     </>;
