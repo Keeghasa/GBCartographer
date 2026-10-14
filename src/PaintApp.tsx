@@ -2075,7 +2075,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     (window as PickerWindow).gbc?.closeWindow?.();
   }
 
-  /** Save to GB Studio project: every unsaved project picture and edited palette, then close (stays open if any failed). */
+  /** Save to GB Studio Project: every unsaved project picture and edited palette, then close (stays open if any failed). */
   async function saveAndClose() {
     const tabs = closing?.tabs;
     const tab = tabs?.length === 1 ? tabs[0] : undefined;
