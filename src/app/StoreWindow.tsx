@@ -219,7 +219,8 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
               <Button size="sm" variant="ghost" title="Open it as a new picture (Save asks where it goes)" onClick={() => onOpenArt(asset, art)}>Open</Button>
             </span>
             <b className="stm-tile-name">{asset.name}</b>
-            <small className="stm-tile-meta stm-tile-by" title={`${(asset.credit ?? AUTHOR_CREDIT).author} · ${(asset.credit ?? AUTHOR_CREDIT).license}`}>by {(asset.credit ?? AUTHOR_CREDIT).author} · {(asset.credit ?? AUTHOR_CREDIT).license}</small>
+            <small className="stm-tile-meta stm-tile-by">by {(asset.credit ?? AUTHOR_CREDIT).author} · {(asset.credit ?? AUTHOR_CREDIT).license}</small>
+            {asset.credit?.source && <span className="stm-tile-source"><SiteButton url={asset.credit.source} title={`Where ${asset.name} comes from: visit to support its maker`} /></span>}
             <small className="stm-tile-meta">{asset.kind === "stamps" ? "Stamp · Cartographer/stamps" : `${KIND_NAMES[asset.kind] ?? asset.kind} · assets/${asset.kind}`} · {art.width} × {art.height}</small>
           </article>
         );
