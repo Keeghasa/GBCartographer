@@ -13,6 +13,7 @@ import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
 import { APPROVED, TEMP_ASSETS } from "./temp";
 import { AUTHORED } from "./authored";
+import { OPENGAMEART } from "./opengameart";
 import { setCatalogArt } from "./areas";
 import { CLEAR, canvas, type Canvas } from "./pen";
 import { acrossTemplate, animTemplate, flowerTileTemplate, atlasWaterTemplate, boxTemplate, cornerTemplate, downTemplate, edgesTemplate, pathTemplate, roadTemplate, shoreTemplate, wallFaceTemplate, wangTemplate, xpCliffTemplate, xpGroundTemplate, xpWaterTemplate } from "./autotiles";
@@ -106,6 +107,8 @@ const ALL: WireAsset[] = [
   { id: "scene-room", name: "Point-and-click room", group: "Scenes", kind: "backgrounds", make: scenes.room },
   // The temp assets the author approved (swipe review, 2026-10-13): XP area auto-tiles and seamless patterns.
   ...TEMP_ASSETS.filter((asset) => APPROVED.has(asset.id)).map((asset): WireAsset => ({ id: asset.id, name: asset.name, group: asset.family === "xp" ? "XP auto-tiles" : "Patterns", kind: "stamps", about: asset.about, make: asset.make, ...(asset.autotile ? { autotile: asset.autotile } : {}) })),
+  // CC0 packs from OpenGameArt (the author's pick, 2026-10-14), each piece credited to its maker.
+  ...OPENGAMEART.map(({ rows, ...piece }): WireAsset => ({ ...piece, make: () => fromAuthored(rows) })),
 ];
 
 /** The catalog: the author's hand-edited versions (from the Asset Catalog project) in place of the code-drawn art. */
