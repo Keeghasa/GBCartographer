@@ -1,8 +1,8 @@
 {
  "collections": [
   {
-   "name": "Game Boy",
-   "about": "GB Studio's default greens, common Game Boy screen colors, and a sprite palette with the see-through green first.",
+   "name": "GB Studio Palettes",
+   "about": "GB Studio's own default greens, the Game Boy screens' colors, and a sprite palette with the see-through green first.",
    "license": "Free to use",
    "source": "https://github.com/chrismaltby/gb-studio",
    "palettes": [
@@ -815,6 +815,603 @@
       "#FFF200",
       "#E500FF",
       "#000000"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Scenery",
+   "shelf": "GB Cartographer Palettes",
+   "about": "Backgrounds: buildings, plants, water, machines, with dawn and night versions.",
+   "author": "Keeghasa",
+   "license": "CC0",
+   "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
+   "palettes": [
+    {
+     "name": "Computer Dawn",
+     "colors": [
+      "#B5B5D6",
+      "#999DC1",
+      "#5F60A3",
+      "#18133F"
+     ]
+    },
+    {
+     "name": "Cactus Night",
+     "colors": [
+      "#63525A",
+      "#406065",
+      "#1A3974",
+      "#111145"
+     ]
+    },
+    {
+     "name": "Warm Dawn",
+     "colors": [
+      "#F7E6CE",
+      "#D08487",
+      "#8A3876",
+      "#1C1743"
+     ]
+    },
+    {
+     "name": "Warm Night",
+     "colors": [
+      "#686492",
+      "#5B4037",
+      "#471117",
+      "#140A3C"
+     ]
+    },
+    {
+     "name": "Lilac Machine",
+     "colors": [
+      "#EFBD7B",
+      "#9C8CF7",
+      "#311931",
+      "#000000"
+     ]
+    },
+    {
+     "name": "Whitewash",
+     "colors": [
+      "#EFBD7B",
+      "#F7E6F7",
+      "#3A5A94",
+      "#3A0808"
+     ]
+    },
+    {
+     "name": "Blue Building",
+     "colors": [
+      "#DEB57B",
+      "#5A7BBD",
+      "#213A63",
+      "#080021"
+     ]
+    },
+    {
+     "name": "Dust",
+     "colors": [
+      "#DECEA5",
+      "#8C8C73",
+      "#424242",
+      "#191919"
+     ]
+    },
+    {
+     "name": "Adobe",
+     "colors": [
+      "#EFBD7B",
+      "#E6A58C",
+      "#94214A",
+      "#210821"
+     ]
+    },
+    {
+     "name": "Shallows",
+     "colors": [
+      "#EFBD7B",
+      "#9CADDE",
+      "#213194",
+      "#101942"
+     ]
+    },
+    {
+     "name": "Duneberry",
+     "colors": [
+      "#EFBD7B",
+      "#6B8CA5",
+      "#BD4A10",
+      "#00103A"
+     ]
+    },
+    {
+     "name": "Redvine",
+     "colors": [
+      "#EFBD7B",
+      "#6BA54A",
+      "#A52929",
+      "#211010"
+     ]
+    },
+    {
+     "name": "Pipes",
+     "colors": [
+      "#DEB57B",
+      "#94C5C5",
+      "#3A4A84",
+      "#211029"
+     ]
+    },
+    {
+     "name": "Mauve House",
+     "colors": [
+      "#DEB57B",
+      "#944A52",
+      "#5A213A",
+      "#080029"
+     ]
+    },
+    {
+     "name": "Berry Stalk Flat",
+     "colors": [
+      "#DEB57B",
+      "#DEB57B",
+      "#BD4A10",
+      "#00103A"
+     ]
+    },
+    {
+     "name": "Berry Stalk",
+     "colors": [
+      "#DEB57B",
+      "#6B8CA5",
+      "#BD4A10",
+      "#00103A"
+     ]
+    },
+    {
+     "name": "Stalk Pipes",
+     "colors": [
+      "#CEE6E6",
+      "#6B8CA5",
+      "#3A5252",
+      "#00103A"
+     ]
+    },
+    {
+     "name": "Spring Edge",
+     "colors": [
+      "#E6F6A4",
+      "#74B0F2",
+      "#C6DE4A",
+      "#0E1208"
+     ]
+    },
+    {
+     "name": "Spring Sign",
+     "colors": [
+      "#E6F6A4",
+      "#C6DE4A",
+      "#86A62C",
+      "#0E1208"
+     ]
+    },
+    {
+     "name": "Spring Sky",
+     "colors": [
+      "#D8ECFF",
+      "#74B0F2",
+      "#4F8EE0",
+      "#1C2C50"
+     ]
+    },
+    {
+     "name": "Spring Tree",
+     "colors": [
+      "#D2ECB0",
+      "#74B0F2",
+      "#5E8A3C",
+      "#1E3418"
+     ]
+    },
+    {
+     "name": "Elephant",
+     "colors": [
+      "#C8D0F0",
+      "#9098C8",
+      "#304860",
+      "#202850"
+     ]
+    },
+    {
+     "name": "Honey",
+     "colors": [
+      "#F8D898",
+      "#D8C048",
+      "#987028",
+      "#503820"
+     ]
+    },
+    {
+     "name": "Lagoon",
+     "colors": [
+      "#80E080",
+      "#288098",
+      "#2152A5",
+      "#202850"
+     ]
+    },
+    {
+     "name": "Concrete",
+     "colors": [
+      "#DED6BD",
+      "#8C8C8C",
+      "#424242",
+      "#191919"
+     ]
+    },
+    {
+     "name": "Neon Machine",
+     "colors": [
+      "#F81098",
+      "#989898",
+      "#404040",
+      "#101010"
+     ]
+    },
+    {
+     "name": "Raygun",
+     "colors": [
+      "#FFCEBD",
+      "#A52119",
+      "#2163AD",
+      "#21105A"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Screens & UI",
+   "shelf": "GB Cartographer Palettes",
+   "about": "Title screens, menus, terminals and space.",
+   "author": "Keeghasa",
+   "license": "CC0",
+   "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
+   "palettes": [
+    {
+     "name": "Sunset Title",
+     "colors": [
+      "#D6AD7B",
+      "#F2700D",
+      "#732121",
+      "#00004A"
+     ]
+    },
+    {
+     "name": "Starfield",
+     "colors": [
+      "#FFFFFF",
+      "#60C38B",
+      "#DE7322",
+      "#00004A"
+     ]
+    },
+    {
+     "name": "Midnight Static",
+     "colors": [
+      "#FFFFFF",
+      "#F7AD42",
+      "#00004A",
+      "#00004A"
+     ]
+    },
+    {
+     "name": "Terminal",
+     "colors": [
+      "#F8F8F8",
+      "#7DDFB5",
+      "#000000",
+      "#000000"
+     ]
+    },
+    {
+     "name": "Midnight Blue",
+     "colors": [
+      "#FFFFFF",
+      "#FFB500",
+      "#0010FF",
+      "#08003A"
+     ]
+    },
+    {
+     "name": "Midnight Red",
+     "colors": [
+      "#FFFFFF",
+      "#FFB500",
+      "#B51010",
+      "#08003A"
+     ]
+    },
+    {
+     "name": "Earthrise",
+     "colors": [
+      "#E8F8E0",
+      "#B0F088",
+      "#5098E0",
+      "#000048"
+     ]
+    },
+    {
+     "name": "Neon Stars",
+     "colors": [
+      "#E8F800",
+      "#10B8F0",
+      "#C80878",
+      "#000048"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Characters",
+   "shelf": "GB Cartographer Palettes",
+   "about": "Sprite palettes for people and creatures (in GB Studio a sprite palette's first color is see-through).",
+   "author": "Keeghasa",
+   "license": "CC0",
+   "source": "https://github.com/Keeghasa/GBCartographer/blob/main/src/palettes/library.json",
+   "palettes": [
+    {
+     "name": "Gold",
+     "colors": [
+      "#F7DE63",
+      "#D6847B",
+      "#AD5210",
+      "#000000"
+     ]
+    },
+    {
+     "name": "Lobster",
+     "colors": [
+      "#BDD6E6",
+      "#FF7B08",
+      "#8C3A19",
+      "#421010"
+     ]
+    },
+    {
+     "name": "Steel Gray",
+     "colors": [
+      "#C5C5CE",
+      "#6B739C",
+      "#000000",
+      "#191908"
+     ]
+    },
+    {
+     "name": "Ruddy",
+     "colors": [
+      "#F7E6C5",
+      "#BD7B6B",
+      "#A52921",
+      "#311952"
+     ]
+    },
+    {
+     "name": "Purple",
+     "colors": [
+      "#DEB5DE",
+      "#6B316B",
+      "#000000",
+      "#101021"
+     ]
+    },
+    {
+     "name": "Red",
+     "colors": [
+      "#F7CECE",
+      "#C54242",
+      "#000000",
+      "#192119"
+     ]
+    },
+    {
+     "name": "Baby Blue",
+     "colors": [
+      "#E6F7F7",
+      "#3194AD",
+      "#000000",
+      "#19193A"
+     ]
+    },
+    {
+     "name": "Yellow",
+     "colors": [
+      "#E6DECE",
+      "#F78C29",
+      "#000000",
+      "#191929"
+     ]
+    },
+    {
+     "name": "Green",
+     "colors": [
+      "#E6FFCE",
+      "#94BD73",
+      "#000000",
+      "#102919"
+     ]
+    },
+    {
+     "name": "Teal Hero",
+     "colors": [
+      "#EFEFF7",
+      "#427B8C",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Tabby",
+     "colors": [
+      "#F4F0E4",
+      "#C4B8A4",
+      "#847868",
+      "#3C3430"
+     ]
+    },
+    {
+     "name": "Indigo",
+     "colors": [
+      "#EFEFF7",
+      "#524294",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Wine",
+     "colors": [
+      "#EFEFF7",
+      "#5A1921",
+      "#000000",
+      "#191008"
+     ]
+    },
+    {
+     "name": "Chestnut",
+     "colors": [
+      "#EFEFF7",
+      "#7B4A29",
+      "#000000",
+      "#100821"
+     ]
+    },
+    {
+     "name": "Slate",
+     "colors": [
+      "#F7F7F7",
+      "#7B94AD",
+      "#000000",
+      "#212131"
+     ]
+    },
+    {
+     "name": "Sage",
+     "colors": [
+      "#D6DEB5",
+      "#94BD73",
+      "#000000",
+      "#081900"
+     ]
+    },
+    {
+     "name": "Ash",
+     "colors": [
+      "#EFEFEF",
+      "#7B7B7B",
+      "#000000",
+      "#000000"
+     ]
+    },
+    {
+     "name": "Invertigo",
+     "colors": [
+      "#000000",
+      "#7B7B7B",
+      "#000000",
+      "#EFEFEF"
+     ]
+    },
+    {
+     "name": "Brick Red",
+     "colors": [
+      "#F7F7F7",
+      "#943131",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Plum",
+     "colors": [
+      "#EFEFF7",
+      "#6B316B",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Copper",
+     "colors": [
+      "#EFEFF7",
+      "#AD6321",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Leaf",
+     "colors": [
+      "#EFEFF7",
+      "#94BD73",
+      "#000000",
+      "#191008"
+     ]
+    },
+    {
+     "name": "Lavender",
+     "colors": [
+      "#EFEFF7",
+      "#7B73A5",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Caramel",
+     "colors": [
+      "#EFEFF7",
+      "#B57342",
+      "#000000",
+      "#211910"
+     ]
+    },
+    {
+     "name": "Orchid",
+     "colors": [
+      "#EFEFF7",
+      "#944294",
+      "#000000",
+      "#190808"
+     ]
+    },
+    {
+     "name": "Pine",
+     "colors": [
+      "#EFEFF7",
+      "#216B4A",
+      "#000000",
+      "#191910"
+     ]
+    },
+    {
+     "name": "Sky Blue",
+     "colors": [
+      "#D8F0FF",
+      "#6FB8E8",
+      "#000000",
+      "#101021"
+     ]
+    },
+    {
+     "name": "Lemon",
+     "colors": [
+      "#F8F0C0",
+      "#E8C030",
+      "#000000",
+      "#302010"
      ]
     }
    ]
