@@ -36,6 +36,12 @@ interface Props {
 
 const SHELVES = storeShelves();
 const GRAPHICS_CREDIT = { author: "Keeghasa (GB Cartographer)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/tree/main/src/graphics" };
+/** Shelves made from other people's work carry their own credit (each piece's own line names its maker too). */
+const GROUP_CREDITS: Record<string, typeof GRAPHICS_CREDIT> = {
+  Fonts: { author: "GGBotNet, datagoblin (adapted)", license: "CC0", source: "https://github.com/Keeghasa/GBCartographer/blob/main/src/graphics/fonts.ts" },
+};
+/** What the catalog's art is (2026-10-14: the art that ships, made to be painted over). */
+const ART_ABOUT = "GB Cartographer's own art, free to use: take it in as it is, or paint over it your own way.";
 /** What each Art section holds, in a line. */
 const GROUP_INTROS: Record<string, string> = {
   People: "Walking characters in GB Studio's classic six-frame strip: GB Studio sets up their animations by itself.",
@@ -46,9 +52,10 @@ const GROUP_INTROS: Record<string, string> = {
   Avatars: "16 × 16 faces for dialogue boxes.",
   UI: "GB Studio's window frame (ui/frame.png) and menu cursor (ui/cursor.png).",
   "Tile sheets": "16 × 16 pieces to build backgrounds from, eight to a row.",
-  Scenes: "Whole backgrounds to start from: title, menu, town, house, shop, cave, overworld and more.",
-  "Map screens": "A village cut into six screens that join at their edges, ready for the Map Room.",
-  "Outdoor pieces": "The author's ledge, trees and water as auto-tiles: paint an area and the mound wraps it, the forest fills it with single trees round the edge, the water's shores fit and its frames play.",
+  Scenes: "Whole backgrounds to start from: a title screen, a logo splash, a town and a platformer level.",
+  Fonts: "GB Studio font sheets (8 × 8 letters from the space character on): one fixed width, one variable width.",
+  "Map screens": "A village, whole and cut into six screens that join at their edges, ready for the Map Room.",
+  "Outdoor pieces": "The author's cliffs, trees and water as auto-tiles: paint an area and the cliff gets its face, the forest fills it with single trees round the edge, the water's shores fit and its frames play.",
 };
 const KIND_NAMES: Record<string, string> = { sprites: "Sprite", emotes: "Emote", avatars: "Avatar", ui: "UI", tilesets: "Tileset", backgrounds: "Background", fonts: "Font" };
 /** Sites the store links to, in their own colors (a Source button wears its site's). */
@@ -206,8 +213,8 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
           </>}
           {showArt && (
             <section className="k-stack">
-              <header className="st-head"><span className="st-title">{needle ? `Art matching “${query}”` : group}</span><Credit {...GRAPHICS_CREDIT} /></header>
-              <p className="k-muted k-small st-about">{needle ? "Placeholder art drawn in plain shapes, ready to paint over your own way." : GROUP_INTROS[group] ?? "Placeholder art drawn in plain shapes, ready to paint over your own way."}</p>
+              <header className="st-head"><span className="st-title">{needle ? `Art matching “${query}”` : group}</span><Credit {...(needle ? GRAPHICS_CREDIT : GROUP_CREDITS[group] ?? GRAPHICS_CREDIT)} /></header>
+              <p className="k-muted k-small st-about">{needle ? ART_ABOUT : GROUP_INTROS[group] ?? ART_ABOUT}</p>
               {arts.length === 0 && <p className="k-muted k-small">Nothing matches “{query}”.</p>}
               <div className="st-sets st-sets--art">
                 {arts.map(({ asset, art }) => (

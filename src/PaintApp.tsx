@@ -69,13 +69,21 @@ import { CollisionStrip } from "./app/CollisionStrip";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
 import { applyUnsaved, fingerprint, unsavedOf, type UnsavedPicture } from "./app/unsaved";
 
-/** A new picture's id: one above every open one (a counter would restart when the module reloads in development). */
-const newDocId = (docs: readonly { id: number }[]) => docs.reduce((top, item) => Math.max(top, item.id), 0) + 1;
+/**
+ * A new picture's id: never one used before in this page (2026-10-14: a reused id let a reload still in flight for a
+ * closed tab land on the new tab that took its id), and above every open one (the counter restarts when the module
+ * reloads in development).
+ */
+let lastDocId = 0;
+const newDocId = (docs: readonly { id: number }[]) => (lastDocId = Math.max(lastDocId, docs.reduce((top, item) => Math.max(top, item.id), 0)) + 1);
 
 export default function PaintApp() {
   const docs = useRef<Doc[]>([]);
+  /** The active tab's id as of the latest change (the session timer's writeSession is from an older render). */
+  const activeRef = useRef(-1);
   const [, bump] = useReducer((count: number) => count + 1, 0);
   const [activeId, setActiveId] = useState(0);
+  activeRef.current = activeId;
   const [tool, setToolState] = useState<ToolId>("pencil");
   const [shade, setShade] = useState(3);
   const [brush, setBrush] = useState(1);
@@ -284,7 +292,7 @@ export default function PaintApp() {
   function writeSession() {
     window.clearTimeout(sessionTimer.current);
     const value = {
-      active: docs.current.findIndex((item) => item.id === activeId),
+      active: docs.current.findIndex((item) => item.id === activeRef.current),
       docs: docs.current.map(({ name, width, height, pixels, cells, priority, hasAlpha, palettes, dirty, handle, asset, keyGreen, keyMagenta, resized, zoom, float, collision }) => {
         // A floating piece is kept dropped in place, with its tile palettes.
         const flat = pixels.slice(), flatCells = cells.slice();
@@ -301,13 +309,16 @@ export default function PaintApp() {
   /** Unsaved project pictures written to Cartographer/unsaved: "kind/file" → fingerprint of what was written. */
   const unsavedKept = useRef<{ project: string; kept: Map<string, string> } | null>(null);
   const unsavedBusy = useRef(false);
+  /** A sync asked for while one ran: it runs again when that one ends (so the last change is never skipped). */
+  const unsavedAgain = useRef(false);
   const ownLoadedFor = useRef<string | null>(null);
   const sessionLoaded = useRef<Promise<void>>(Promise.resolve());
 
   /** Writes each unsaved project picture that changed since last time, and takes away the ones no longer unsaved. */
   async function syncUnsaved() {
     const here = projectRef.current?.path;
-    if (!here || unsavedBusy.current || unsavedKept.current?.project !== here) return;
+    if (!here || unsavedKept.current?.project !== here) return;
+    if (unsavedBusy.current) { unsavedAgain.current = true; return; }
     unsavedBusy.current = true;
     try {
       const kept = unsavedKept.current.kept, live = new Set<string>();
@@ -331,6 +342,7 @@ export default function PaintApp() {
     } finally {
       unsavedBusy.current = false;
     }
+    if (unsavedAgain.current) { unsavedAgain.current = false; await syncUnsaved(); }
   }
 
   /**
@@ -511,6 +523,8 @@ export default function PaintApp() {
         // A background's tile colors (GB Studio's per-tile palettes) dress the cells when the scene's palettes are known.
         const dressed = info?.tileColors.length ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
         const old = replace !== undefined ? docs.current.findIndex((item) => item.id === replace) : -1;
+        // The tab this was reloading for was closed while the file was read: nothing to replace, and no new tab.
+        if (replace !== undefined && old < 0) continue;
         const id = old >= 0 ? replace! : newDocId(docs.current);
         if (old < 0) last = id;
         // Backgrounds and tilesets: each tile's priority flag (bit 7: draws over sprites).
@@ -656,7 +670,7 @@ export default function PaintApp() {
       } else if (native) {
         if (!await native.chooseProject()) return;
       } else {
-        const path = window.prompt("Path of the GB Studio project: its .gbsproj file, or the folder that holds it:", project?.path ?? "");
+        const path = await askText({ title: "Open a GB Studio project", label: "Path of its .gbsproj file, or the folder that holds it", initial: project?.path ?? "", confirm: "Open" });
         if (!path) return;
         const response = await fetch("./__cartographer/project", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) });
         const result = await response.json() as { ok?: boolean; error?: string };
@@ -2071,6 +2085,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
 
   async function finishClose() {
     await writeSession();
+    // The drafts too, before the window goes (2026-10-14: a discarded draft could come back on the next launch):
+    // wait out a sync already running, then sync once more with what is open now.
+    for (let waited = 0; unsavedBusy.current && waited < 5000; waited += 50) await new Promise((resolve) => window.setTimeout(resolve, 50));
+    await syncUnsaved();
     setClosing(null);
     (window as PickerWindow).gbc?.closeWindow?.();
   }
@@ -2677,7 +2695,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         <span className="k-spacer" />
         <span className="k-seg app-zoom" role="group" aria-label="Zoom">
           <IconButton label="Zoom out" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(-1)}><Minus /></IconButton>
-          <button type="button" className="app-zoom-fit" disabled={!doc} title="Fit the picture to the window · Ctrl+0" onClick={() => fitView()}><b className={doc ? undefined : "k-muted"}>{doc ? `${doc.zoom * 100}%` : "–"}</b></button>
+          <button type="button" className="app-zoom-fit" disabled={!doc} aria-label="Fit the picture to the window" title="Fit the picture to the window · Ctrl+0" onClick={() => fitView()}><b className={doc ? undefined : "k-muted"}>{doc ? `${doc.zoom * 100}%` : "–"}</b></button>
           <IconButton label="Zoom in" size="sm" variant="ghost" disabled={!doc} onClick={() => zoomBy(1)}><Plus /></IconButton>
         </span>
         <span className="k-seg" role="group" aria-label="View">
@@ -2826,7 +2844,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         {doc && <span title={doc.asset ? `${doc.asset.kind === "stamps" ? "Cartographer/stamps" : `assets/${doc.asset.kind}`}/${doc.asset.file}` : doc.name}>{doc.width} × {doc.height} · {Math.ceil(doc.width / CELL)} × {Math.ceil(doc.height / CELL)} tiles</span>}
         {doc && (
           <Tooltip content={`Unique 8 × 8 tiles, as GB Studio counts them (${budget.flips ? "identical and flipped tiles merge" : "identical tiles merge"}). Click for ${project ? "the project's health report" : "the Picture tab"}.`}>
-            <button className={`app-tiles ${tileCount > budget.limit ? "over" : ""}`} onClick={() => { if (project) setShowHealth(true); else setSideTab("picture"); }}>
+            <button type="button" aria-label={`Tiles: ${tileCount} of ${budget.limit}; open the project check-up`} className={`app-tiles ${tileCount > budget.limit ? "over" : ""}`} onClick={() => { if (project) setShowHealth(true); else setSideTab("picture"); }}>
               TILES<span className="k-meter-track"><span className="k-meter-fill" style={{ display: "block", width: `${Math.min(1, tileCount / budget.limit) * 100}%` }} /></span><span>{tileCount} / {budget.limit}</span>
             </button>
           </Tooltip>

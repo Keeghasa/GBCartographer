@@ -93,6 +93,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
   const [busy, setBusy] = useState(false);
   // A font sheet can start with glyphs drawn from a font file.
   const [font, setFont] = useState<LoadedFont | null>(null);
+  const [fontError, setFontError] = useState("");
   const [fontSize, setFontSize] = useState(8);
   const [baseline, setBaseline] = useState(7);
   const fromFont = where === "fonts" && font ? renderFontSheet(font, fontSize, baseline) : null;
@@ -115,11 +116,11 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
       if (!file) return;
       try {
         const loaded = await loadFontFile(file);
-        setFont(loaded);
+        setFont(loaded); setFontError("");
         setSize([128, 112]);
         if (!name.trim()) setName(loaded.name);
       } catch {
-        window.alert(`${file.name} could not be read as a font.`);
+        setFontError(`${file.name} could not be read as a font.`);
       }
     };
     input.click();
@@ -171,7 +172,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
             <span className="k-label">Glyphs</span>
             <div className="k-row">
               <Button icon={<FilePlus />} pressed={!font} onClick={() => setFont(null)}>Blank</Button>
-              <Button icon={<Type />} pressed={!!font} title="Draw characters 32–255 from a TTF or OTF font, 1 bit, 8 × 8 each" onClick={() => void pickFont()}>{font ? `From ${font.name}` : "From a font file…"}</Button>
+              <Button icon={<Type />} pressed={!!font} title="Draw characters 32–255 from a TTF or OTF font, 1 bit, 8 × 8 each" onClick={() => void pickFont()}>{font ? `From ${font.name}` : "From a font file…"}</Button>{fontError && <span className="k-small" role="alert" style={{ color: "var(--k-bad)" }}>{fontError}</span>}
             </div>
             {fromFont && <>
               <canvas ref={fontPreview} className="npw-font-preview" />

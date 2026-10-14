@@ -336,18 +336,32 @@ function expectType(meta: Record<string, unknown>, type: string, file: string) {
   if (found !== undefined && found !== type) throw new AssetWriteError(`${basename(file)} is a "${String(found)}" file, not a "${type}": GB Cartographer leaves it alone.`, 400);
 }
 
+/**
+ * Puts new contents in place in one step: written beside it, then renamed over it, the rename tried a few times
+ * (Windows can hold a file open for a moment). The file itself is never written into (2026-10-14: a failed write in
+ * place could leave it half written); if the rename keeps failing, the old file stays and the error goes to the caller.
+ */
+function replaceFile(path: string, contents: string | Uint8Array) {
+  const temp = `${path}.saving`;
+  try {
+    writeFileSync(temp, contents);
+    for (let tries = 0; ; tries += 1) {
+      try { renameSync(temp, path); return; } catch (error) {
+        if (tries >= 4) throw error;
+        const until = Date.now() + 60; while (Date.now() < until) { /* a short wait before trying again */ }
+      }
+    }
+  } catch (error) {
+    try { if (existsSync(temp)) unlinkSync(temp); } catch { /* nothing more to do */ }
+    throw error;
+  }
+}
+
 /** Writes a sidecar back as GB Studio writes it (two-space JSON, no trailing newline), after copying the old one to the backup folder. */
 function writeSidecar(sidecar: string, meta: Record<string, unknown>, backup: Backup): number {
   backupFile(backup.dir, backup.project, sidecar);
   const text = JSON.stringify(meta, null, 2);
-  const temp = `${sidecar}.saving`;
-  try {
-    writeFileSync(temp, text);
-    renameSync(temp, sidecar);
-  } catch {
-    try { if (existsSync(temp)) unlinkSync(temp); } catch { /* nothing more to do */ }
-    writeFileSync(sidecar, text);
-  }
+  replaceFile(sidecar, text);
   return statSync(sidecar).mtimeMs;
 }
 
@@ -823,14 +837,7 @@ export function writeAsset(path: string, bytes: Buffer, backup: Backup, expected
   const mtime = statSync(path).mtimeMs;
   if (!force && expectedMtime !== null && Math.abs(mtime - expectedMtime) > 1) throw new AssetWriteError("The file changed on disk since it was opened.", 409, mtime);
   const copy = backupFile(backup.dir, backup.project, path);
-  const temp = `${path}.saving`;
-  try {
-    writeFileSync(temp, bytes);
-    renameSync(temp, path);
-  } catch {
-    try { if (existsSync(temp)) unlinkSync(temp); } catch { /* nothing more to do */ }
-    writeFileSync(path, bytes);
-  }
+  replaceFile(path, bytes);
   return { mtime: statSync(path).mtimeMs, backup: copy };
 }
 

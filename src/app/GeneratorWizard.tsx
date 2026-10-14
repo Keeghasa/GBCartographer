@@ -128,7 +128,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
               options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
-          {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff XP for caves, Stone wall for dungeons) or one of the project's auto-tile stamps: Wall face (F) for floor, walls and nothing; Wang (W) or Wang edges (E) for the rock">
+          {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff XP for caves, Stone wall for dungeons, or a forest) or one of the project's auto-tile stamps set to Wang (47) for the rock">
             <Select label="Walls" value={tilesFile || `cat:${wallsOf(cave)}`} onChange={(file) => { if (file.startsWith("cat:")) { setTilesFile(""); setC({ walls: file.slice(4) as CaveWalls }); } else setTilesFile(file); }}
               options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["wallface", "wang", "edges"], "").slice(1)]} />
             <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W or E stamps") : "Stamps marked F, W or E (Asset Catalog → Auto-tiles) can draw it"}</span>
