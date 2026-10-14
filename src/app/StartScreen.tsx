@@ -101,7 +101,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       ) : (
         <section className="ss-empty"><h2>Open a GB Studio project to start.</h2><p className="k-muted">Its backgrounds, sprites, tilesets and fonts open here and save back. Projects you open show up here next time.</p></section>
       )}
-      <p className="ss-alpha" role="note"><TriangleAlert size={16} aria-hidden /><span><b>Experimental alpha.</b> Only use it on GB Studio projects you have backed up: Save writes into the project. Close GB Studio while you work. Free during the alpha.</span></p>
+      <p className="ss-alpha" role="note"><TriangleAlert size={16} aria-hidden /><span><b>Experimental alpha.</b> Only use it on GB Studio projects you have backed up: Save writes into the project. Close GB Studio while you work.</span></p>
       <footer className="ss-foot"><span>Save writes only the PNG, tile and slice palettes, palette files and palette slots into your project. The old file is kept in Backups.</span><Button variant="ghost" size="sm" onClick={onAbout}>About · {__APP_VERSION__}</Button></footer>
     </div>
   );

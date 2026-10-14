@@ -8,8 +8,6 @@ palettes straight back into the project.
 > **Experimental alpha.** Only use GB Cartographer on GB Studio projects you have backed up (a copy, or version
 > control). It writes into your project when you save, features and file handling are still changing, and there
 > will be bugs. Close GB Studio while you work, and please report problems in the repository's issues.
->
-> GB Cartographer is free during the alpha.
 
 ![GB Cartographer with GB Studio's sample project open: "Paint and Color directly in app" painted over the wide parallax background in its scene's palettes, the project's backgrounds on the left and the palettes on the right](docs/screenshot-paint-directly.png)
 
