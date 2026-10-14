@@ -5,7 +5,7 @@
  * can put it in a project's assets/<kind>/ as a new PNG (sprites in the classic 16-pixel-tall layout, which GB Studio
  * animates by itself). Later: auto-tiles and animated tiles (water, flowers).
  */
-import type { WireAsset } from "./types";
+import { AUTHOR_CREDIT, type WireAsset } from "./types";
 import { FONTS } from "./fonts";
 import { scenes, tileSheet, ui, villageMap, villageScreen } from "./scenes";
 import { animated, avatar, emote, emotes, things, walker, type Look } from "./sprites";
@@ -127,5 +127,9 @@ export const GRAPHICS: WireAsset[] = [...CATALOG, ...FRAME_BOXES];
 
 // The wizards, the village and the tile sheets draw with the catalog's versions (the author's edits) of the sheets.
 setCatalogArt((id) => GRAPHICS.find((asset) => asset.id === id)?.make() ?? null);
+
+/** Who made a project picture that came from the catalog (matched by kind and name; null when it's not a catalog piece). */
+const CREDITS = new Map(GRAPHICS.map((asset) => [`${asset.kind}/${asset.name.toLowerCase()}`, asset.credit ?? AUTHOR_CREDIT]));
+export const catalogCredit = (kind: string, name: string) => CREDITS.get(`${kind}/${name.toLowerCase()}`) ?? null;
 
 export const GRAPHIC_GROUPS = [...new Set(GRAPHICS.map((asset) => asset.group))];

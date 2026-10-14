@@ -21,6 +21,7 @@ import { readStored, store } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
 import { AnimThumb } from "./AnimThumb";
 import { Chip, IconButton } from "../ui/kit";
+import { catalogCredit } from "../graphics/library";
 
 interface ProjectPanelProps {
   project: Project;
@@ -173,10 +174,13 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
             const fit = { aspectRatio: String(Math.min(2, Math.max(0.8, asset.width / Math.max(1, asset.height)))) };
             const stamp = asset.kind === "stamps", font = asset.kind === "fonts";
             const isPinned = pinned.has(hideKey(asset));
+            // A piece taken from the Asset Catalog names its maker (matched by its kind and name).
+            const credit = catalogCredit(asset.kind, asset.name);
             const card = (
               <button key={asset.file} aria-pressed={state.active} onContextMenu={(event) => { event.preventDefault(); onMenu(asset, event.clientX, event.clientY); }} className={`k-card k-card--button app-card ${state.open && !state.active ? "open" : ""}`} title={`${asset.file} · ${asset.width} × ${asset.height} px${state.open ? " · open" : ""}${stamp ? " · click to stamp with it" : ""}`} onClick={() => stamp ? onUseStamp(asset) : font ? onUseFont(asset) : onOpen(asset)}>
                 {thumbOf(asset, fit)}
                 <b className={state.dirty ? "dirty" : ""}>{asset.name}</b>
+                {credit && <small className="app-card-by" title={`${credit.author} · ${credit.license}`}>by {credit.author}</small>}
                 <small>{asset.width} × {asset.height}</small>
               </button>
             );

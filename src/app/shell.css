@@ -51,6 +51,7 @@
 .app-card b::first-line { font-size: var(--k-text-sm); line-height: 18px; color: var(--k-ink); }
 .app-card b.dirty::after { content: " *"; }
 .app-card small { color: var(--k-ink-3); font-size: 10px; font-variant-numeric: tabular-nums; }
+.app-card small.app-card-by { color: var(--k-ink-2); overflow-wrap: anywhere; }
 .app-card.open { background: var(--k-ctl-2); }
 /* Each card's hover buttons, top right: hide (archive) on every card; on a saved stamp also edit (pencil). */
 .app-card-slot { position: relative; display: flex; min-width: 0; } .app-card-slot > .app-card { flex: 1; }
