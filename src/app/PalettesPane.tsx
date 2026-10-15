@@ -97,7 +97,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
         </section>
       )}
       <section className="app-section">
-        <div className="app-section-head"><span className="k-eyebrow">All palettes</span><span className="k-row"><span className="k-muted k-xs">{palettes.length}</span><HelpTip label="About the palette brush">{helpFor(doc, sceneSlots.length > 0)}</HelpTip></span></div>
+        <div className="app-section-head"><h2 className="k-heading">All palettes</h2><span className="k-row"><span className="k-muted k-xs">{palettes.length}</span><HelpTip label="About the palette brush">{helpFor(doc, sceneSlots.length > 0)}</HelpTip></span></div>
         <input type="search" className="k-input" placeholder="Filter palettes" aria-label="Filter palettes by name" value={filter} onChange={(event) => onFilter(event.target.value)} />
         <div className="app-list gbp-palettes" role="listbox" aria-label="Palettes">
           {shown.map(({ palette, index, slot, slots, named }) => (

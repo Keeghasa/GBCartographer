@@ -50,7 +50,7 @@ function GreenPicture({ src }: { src: string }) {
 }
 
 /** One recent project: its name and path, its backgrounds behind it. */
-function RecentRow({ index, name, path, onOpen }: { index: number; name: string; path: string; onOpen: () => void }) {
+function RecentRow({ name, path, onOpen }: { name: string; path: string; onOpen: () => void }) {
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const [shown, setShown] = useState(0);
   const cells = useRef<(HTMLSpanElement | null)[]>([]);
@@ -76,7 +76,6 @@ function RecentRow({ index, name, path, onOpen }: { index: number; name: string;
           </span>
         ))}
       </span>
-      <span className="ss-n">{String(index + 1).padStart(2, "0")}</span>
       <span className="ss-name"><b>{name}</b><span>{homeShort(path)}{backgrounds.length ? ` · ${backgrounds.length === 8 ? "8+" : backgrounds.length} background${backgrounds.length === 1 ? "" : "s"}` : ""}</span></span>
     </button>
   );
@@ -86,7 +85,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
   return (
     <div className="ss-splash k">
       <header className="ss-bar">
-        <span className="ss-brand"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={32} height={32} />GB Cartographer <Chip tone="acc">ALPHA</Chip></span>
+        <span className="ss-brand"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={32} height={32} /><span className="k-wordmark">GB Cartographer</span> <Chip tone="acc">ALPHA</Chip></span>
         <nav className="ss-ways">
           <Button variant="primary" icon={<FolderTree />} onClick={onChooseProject} title="The folder with the .gbsproj file: backgrounds, sprites, tilesets and fonts open here and save back">Open a project</Button>
           {onDemo && <Button icon={<Gamepad2 />} onClick={onDemo} title="A small project with CC0 and MIT art, credited inside; opens a copy you can paint in">Try the demo</Button>}
@@ -96,7 +95,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       {recent.length > 0 ? (
         <section className="ss-recent">
           <div className="ss-head"><span>Recent projects</span><span>Hover to see a project's backgrounds in color · move across to pick one</span></div>
-          {recent.map((item, index) => <RecentRow key={item.path} index={index} name={item.name} path={item.path} onOpen={() => onOpenRecent(item.path)} />)}
+          {recent.map((item) => <RecentRow key={item.path} name={item.name} path={item.path} onOpen={() => onOpenRecent(item.path)} />)}
         </section>
       ) : (
         <section className="ss-empty"><h2>Open a GB Studio project to start.</h2><p className="k-muted">Its backgrounds, sprites, tilesets and fonts open here and save back. Projects you open show up here next time.</p></section>

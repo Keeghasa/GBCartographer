@@ -2668,8 +2668,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     <div className="app k" onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event)}>
       <header className="app-bar">
         {served
-          ? <Menu open={Boolean(projectMenu)} onOpenChange={(open) => setProjectMenu(open ? { x: 0, y: 0 } : null)} items={projectItems} trigger={<button className="app-brand" title="Projects: open, switch or close"><LogoMark size={22} />GB Cartographer<Chip tone="acc" title="Alpha release: expect bugs, and keep your GB Studio project backed up">ALPHA</Chip><ChevronDown size={14} /></button>} />
-          : <span className="app-brand"><LogoMark size={22} />GB Cartographer<Chip tone="acc">ALPHA</Chip></span>}
+          ? <Menu open={Boolean(projectMenu)} onOpenChange={(open) => setProjectMenu(open ? { x: 0, y: 0 } : null)} items={projectItems} trigger={<button className="app-brand" title="Projects: open, switch or close"><LogoMark size={22} /><span className="k-wordmark">GB Cartographer</span><Chip tone="acc" title="Alpha release: expect bugs, and keep your GB Studio project backed up">ALPHA</Chip><ChevronDown size={14} /></button>} />
+          : <span className="app-brand"><LogoMark size={22} /><span className="k-wordmark">GB Cartographer</span><Chip tone="acc">ALPHA</Chip></span>}
         <span className="k-seg" role="group" aria-label="File">
           <Button icon={<FilePlus />} title={project ? `A new blank picture: in ${project.name} or just here` : "A new blank picture"} onClick={() => setShowNew(true)}><span className="app-bar-label">New</span></Button>
           <Button icon={<FolderOpen />} title="Open PNG files · Ctrl+O (or drop them on the window)" onClick={() => void pickFiles()}><span className="app-bar-label">Open</span></Button>

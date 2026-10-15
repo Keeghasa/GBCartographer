@@ -8,9 +8,8 @@
 .ss-head { display: flex; justify-content: space-between; gap: var(--k-4); margin-bottom: 10px; font: 500 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); text-transform: uppercase; letter-spacing: .08em; }
 .ss-head span:last-child { text-transform: none; letter-spacing: 0; }
 .ss-recent { display: flex; flex-direction: column; }
-.ss-row { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 16px; min-height: 128px; padding: 14px 0; color: var(--k-ink); background: none; border: 0; border-top: 1px solid var(--k-edge-2); border-radius: 0; text-align: left; cursor: pointer; font: inherit; }
+.ss-row { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 1fr; align-items: center; gap: 16px; min-height: 128px; padding: 14px 0; color: var(--k-ink); background: none; border: 0; border-top: 1px solid var(--k-edge-2); border-radius: 0; text-align: left; cursor: pointer; font: inherit; }
 .ss-row:last-child { border-bottom: 1px solid var(--k-edge-2); }
-.ss-n { font: 500 12px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); padding-left: 4px; }
 .ss-name { display: flex; flex-direction: column; min-width: 0; }
 .ss-name b { font: 800 46px/1 var(--k-font); letter-spacing: -.045em; color: var(--k-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s, transform .3s var(--k-ease); }
 .ss-name span { margin-top: 6px; font: 400 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); transition: transform .3s var(--k-ease); }

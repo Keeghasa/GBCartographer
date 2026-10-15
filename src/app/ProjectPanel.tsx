@@ -20,7 +20,7 @@ import { HiddenWindow } from "./HiddenWindow";
 import { readStored, store } from "./storage";
 import { AutotileToggles } from "./AutotileToggles";
 import { AnimThumb } from "./AnimThumb";
-import { Chip, IconButton } from "../ui/kit";
+import { IconButton } from "../ui/kit";
 import { catalogCredit } from "../graphics/library";
 
 interface ProjectPanelProps {
@@ -156,7 +156,8 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         <IconButton variant="ghost" aria-label={`Messages${unreadMessages ? ` (${unreadMessages} new)` : ""}`} label={`Messages: everything GB Cartographer said${unreadMessages ? ` · ${unreadMessages} new` : ""}`} onClick={onMessages}><MessageSquareText size={18} />{unreadMessages > 0 && <span className="app-badge">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}</IconButton>
       </nav>
       {open && <aside className="k-panel app-project" aria-label="GB Studio project">
-        <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span><Chip>{label}</Chip></div>
+        <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span></div>
+        <h2 className="k-heading">{label}</h2>
         <input type="search" className="k-input" placeholder={`Filter ${label.toLowerCase()}`} aria-label={`Filter ${label.toLowerCase()} by name`} value={filter} onChange={(event) => setFilter(event.target.value)} />
         <div className="app-cards gbp-assets" role="list">
           {folderShows && (

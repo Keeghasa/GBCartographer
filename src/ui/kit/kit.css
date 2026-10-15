@@ -40,8 +40,9 @@
 .k-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .6); }
 .k-btn:disabled { opacity: .4; box-shadow: none; cursor: default; }
 .k-btn--sm { height: var(--k-ctl-h-sm); padding: 0 var(--k-2); font-size: var(--k-text-sm); }
-.k-btn--primary, .k-btn[data-state="on"], .k-btn[aria-pressed="true"] { color: var(--k-on-acc); background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); border-color: var(--k-acc-hi); box-shadow: var(--k-glow); font-weight: 600; }
-.k-btn--primary:hover:not(:disabled), .k-btn[data-state="on"]:hover:not(:disabled), .k-btn[aria-pressed="true"]:hover:not(:disabled) { color: var(--k-on-acc); background: linear-gradient(#b0e094, var(--k-acc)); border-color: #b0e094; }
+/* Flat green (the author, 2026-10-14: "flatten the color on these buttons"): no gradient, no glow. */
+.k-btn--primary, .k-btn[data-state="on"], .k-btn[aria-pressed="true"] { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); box-shadow: none; font-weight: 600; }
+.k-btn--primary:hover:not(:disabled), .k-btn[data-state="on"]:hover:not(:disabled), .k-btn[aria-pressed="true"]:hover:not(:disabled) { color: var(--k-on-acc); background: #9bd07e; border-color: #9bd07e; }
 .k-btn--ghost { background: transparent; border-color: transparent; box-shadow: none; }
 .k-btn--danger { color: #f08aa0; background: var(--k-bad-soft); border-color: rgba(240, 138, 160, .2); }
 /* A link out to another site, in that site's own color (set --k-brand on the button). */
@@ -54,7 +55,7 @@
 /* A group of buttons in one well (segmented control, toggle group). */
 .k-seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-group); }
 .k-seg .k-btn { background: transparent; border-color: transparent; box-shadow: none; height: calc(var(--k-ctl-h) - 4px); }
-.k-seg .k-btn[data-state="on"], .k-seg .k-btn[aria-pressed="true"] { background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); }
+.k-seg .k-btn[data-state="on"], .k-seg .k-btn[aria-pressed="true"] { background: var(--k-acc); box-shadow: none; }
 .k-seg--fill { display: flex; } .k-seg--fill .k-btn { flex: 1; }
 
 /* ---- tabs ------------------------------------------------------------------------------------------------ */
@@ -72,7 +73,11 @@
 .k-well { background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: var(--k-r-card); }
 
 /* Section headings ("eyebrow") and plain text roles. */
-.k-eyebrow { color: var(--k-ink-3); font: 600 var(--k-text-xs) var(--k-font); letter-spacing: .1em; text-transform: uppercase; }
+.k-eyebrow { color: var(--k-ink-3); font: 500 10.5px 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
+/* The neo-grotesk type (the author, 2026-10-14): a bold, tight heading with the lit green full stop, and the wordmark. */
+.k-heading { flex: none; margin: 0; font: 800 17px/1.1 var(--k-font); letter-spacing: -.035em; color: var(--k-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-heading::after, .k-wordmark::after { content: "."; color: var(--k-acc); }
+.k-wordmark { font: 800 17px/1 var(--k-font); letter-spacing: -.05em; white-space: nowrap; }
 .k-muted { color: var(--k-ink-3); } .k-small { font-size: var(--k-text-sm); } .k-xs { font-size: var(--k-text-xs); }
 .k-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .k-stack { display: flex; flex-direction: column; gap: var(--k-3); } .k-stack--tight { gap: var(--k-2); } .k-stack--loose { gap: var(--k-5); }

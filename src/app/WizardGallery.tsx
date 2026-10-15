@@ -22,10 +22,8 @@ export interface WizardCard {
   onStart: () => void;
 }
 
-/** The mosaic, row by row: the picture fitter and the overworld big; the cave, day-and-night and palette set in three;
- * the budget fixer and the check-up in two. */
+/** The order the wizards show in, three to a row. */
 const ORDER: WizardThumb[] = ["picture", "world", "cave", "dns", "paletteSet", "budget", "checkup"];
-const SIZE: Record<WizardThumb, string> = { picture: "wg-tile--half", world: "wg-tile--half", cave: "wg-tile--third", dns: "wg-tile--third", paletteSet: "wg-tile--third", budget: "wg-tile--half", checkup: "wg-tile--half" };
 const still = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** A wizard's loop, frame by frame (the last frame only, when the system asks for less motion). */
@@ -78,7 +76,7 @@ export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose
         <h1 className="wg-h1"><b>Wizards</b></h1>
         <div className="wg-mosaic">
           {sorted.map((card) => (
-            <button key={card.thumb} type="button" className={`wg-tile ${SIZE[card.thumb]}`} disabled={Boolean(card.blocked)} title={card.blocked ?? card.needs ?? card.about}
+            <button key={card.thumb} type="button" className="wg-tile" disabled={Boolean(card.blocked)} title={card.blocked ?? card.needs ?? card.about}
               onClick={() => { onClose(); card.onStart(); }}>
               <span className="wg-art"><Thumb id={card.thumb} playing={!card.blocked} /></span>
               <span className="wg-text">
