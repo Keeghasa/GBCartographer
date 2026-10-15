@@ -78,7 +78,15 @@ export function AboutWindow({ onClose }: { onClose: () => void }) {
             {LICENCES.map(([what, licence]) => <div key={what}><dt>{what}</dt><dd>{licence}</dd></div>)}
           </dl>
         </div>
-        <p className="k-muted k-small ab-note">GB Studio is by Chris Maltby and contributors. GB Cartographer is not affiliated with GB Studio or Nintendo.</p>
+        <div className="k-stack k-stack--tight">
+          <span className="k-eyebrow">Privacy</span>
+          <p className="k-small ab-note">GB Cartographer runs on your computer: no accounts, analytics, ads or tracking, and it never sends your pictures or projects anywhere. Your work stays in your GB Studio project (GB Cartographer's own things in its Cartographer folder); settings, recent projects and Mine palettes stay in the app's data folder. It goes online only to fetch the OpenDyslexic font from jsDelivr when you pick it, and links open in your browser when you click them. itch.io handles purchases under its own privacy policy.</p>
+        </div>
+        <div className="k-stack k-stack--tight">
+          <span className="k-eyebrow">Terms of use</span>
+          <p className="k-small ab-note">Free software under the MIT license, provided as is, without warranty. It backs files up before changing them, but keep your own backups of your projects. What you make with it is yours, and the bundled graphics are CC0, free to use in your games. Buying it on itch.io pays for the ready-made installers and supports development; refunds follow itch.io's process.</p>
+        </div>
+        <p className="k-muted k-small ab-note">GB Studio is by Chris Maltby and contributors. GB Cartographer is not affiliated with or endorsed by GB Studio, Nintendo or itch.io. Game Boy is a trademark of Nintendo.</p>
       </div>
     </Dialog>
   );
