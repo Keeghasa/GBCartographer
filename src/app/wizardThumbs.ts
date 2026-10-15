@@ -25,10 +25,10 @@ function wearBox(out: Generated, x: number, y: number, w: number, h: number, wea
   for (let ty = y / 8; ty < (y + h) / 8; ty += 1) for (let tx = x / 8; tx < (x + w) / 8; tx += 1) out.cells![ty * TILES_WIDE + tx] = wear;
 }
 /** The top-left 160 × 96 of a bigger picture, `step` pixels apart (2: half size), cells following. */
-function crop(source: Generated, step = 1, from = 0): Generated {
+function crop(source: Generated, step = 1, from = 0, fromX = 0): Generated {
   const out: Generated = { ...canvas(W, H), cells: new Uint8Array(TILES_WIDE * (H / 8)), palettes: source.palettes };
-  for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) out.pixels[y * W + x] = source.pixels[(from + y * step) * source.width + x * step] ?? 0;
-  if (source.cells) for (let ty = 0; ty < H / 8; ty += 1) for (let tx = 0; tx < TILES_WIDE; tx += 1) out.cells![ty * TILES_WIDE + tx] = source.cells[Math.floor((from + ty * 8 * step) / 8) * Math.ceil(source.width / 8) + Math.floor(tx * 8 * step / 8)] ?? 0;
+  for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) out.pixels[y * W + x] = source.pixels[(from + y * step) * source.width + fromX + x * step] ?? 0;
+  if (source.cells) for (let ty = 0; ty < H / 8; ty += 1) for (let tx = 0; tx < TILES_WIDE; tx += 1) out.cells![ty * TILES_WIDE + tx] = source.cells[Math.floor((from + ty * 8 * step) / 8) * Math.ceil(source.width / 8) + Math.floor((fromX + tx * 8 * step) / 8)] ?? 0;
   return out;
 }
 /** A small landscape: sky, a sun, hills, a house. */
@@ -118,7 +118,22 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     if (merged === 3) p.text(14, 70, "UNDER THE LIMIT", 2);
     return out;
   }
-  if (id === "cave") return crop(drawCave({ style: pick("cave", "dungeon", "cave"), columns: 1, rows: 1, cell: 16, seed: 11 + frame, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone", ...(look === 2 ? { walls: "pines" as const } : {}) }), 1, 24);
+  if (id === "cave") {
+    // A bigger map (the author, 2026-10-14): 2 × 2 screens, its middle shown at full size, cycling two each of a cave,
+    // a dungeon (Room Border), brick walls and a pine forest.
+    const kinds = [{ style: "cave" as const }, { style: "dungeon" as const }, { style: "cave" as const, walls: "brick" as const }, { style: "cave" as const, walls: "pines" as const }];
+    const kind = kinds[Math.floor(frame / 2) % kinds.length];
+    const map = drawCave({ columns: 2, rows: 2, cell: 16, seed: 11 + frame * 7, fill: 45, smooth: 4, rooms: 7, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone", ...kind });
+    // The window with the best mix of walls and floor: the one whose most common shade covers the least of it.
+    let best = { x: 0, y: 0, score: Infinity };
+    for (let y = 0; y + H <= map.height; y += 16) for (let x = 0; x + W <= map.width; x += 16) {
+      const counts = [0, 0, 0, 0, 0];
+      for (let py = y; py < y + H; py += 4) for (let px = x; px < x + W; px += 4) counts[Math.min(4, map.pixels[py * map.width + px])] += 1;
+      const score = Math.max(...counts);
+      if (score < best.score) best = { x, y, score };
+    }
+    return crop(map, 1, best.y, best.x);
+  }
   if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: pick(5, 21, 40), water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 1, 72);
   // checkup: a health report, ticked off one by one.
   const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
@@ -142,7 +157,7 @@ export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 
 
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
   picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 1, ms: 1000 }, budget: { count: 6, ms: 700 },
-  cave: { count: 4, ms: 1100 }, world: { count: 1, ms: 1000 }, checkup: { count: 1, ms: 1000 }, snapshot: { count: 24, ms: 110 },
+  cave: { count: 8, ms: 1300 }, world: { count: 1, ms: 1000 }, checkup: { count: 1, ms: 1000 }, snapshot: { count: 24, ms: 110 },
 };
 
 /**
