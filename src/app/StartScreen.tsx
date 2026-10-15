@@ -96,7 +96,7 @@ const wantsIntro = () => {
 };
 
 function Intro({ onDone }: { onDone: () => void }) {
-  useEffect(() => { const timer = window.setTimeout(onDone, 1250); return () => window.clearTimeout(timer); }, [onDone]);
+  useEffect(() => { const timer = window.setTimeout(onDone, 1150); return () => window.clearTimeout(timer); }, [onDone]);
   return (
     <div className="ss-intro" aria-hidden onClick={onDone}>
       <span className="ss-intro-mark"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={96} height={96} /></span>
