@@ -6,7 +6,7 @@
  * console's own.
  */
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Box, Camera as CameraIcon, FolderInput, ImagePlus, Trash2, Upload } from "lucide-react";
+import { Box, Camera as CameraIcon, Download, FolderInput, ImagePlus, Trash2, Upload } from "lucide-react";
 import { toRgba } from "../paint";
 import { Button, Dialog, IconButton, Segmented, Slider, Switch } from "../ui/kit";
 import type { ShotSettings, Stage } from "./snapshot3d";
@@ -107,9 +107,11 @@ function forProject(shot: Shot): { kind: "backgrounds" | "sprites"; shot: Shot }
   return { kind: "backgrounds", shot: { ...shot, width: 160, height: 144, pixels } };
 }
 
-export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => void; onTake: (picture: Shot) => void;
+export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose: () => void; onTake: (picture: Shot) => void;
   /** Writes the shot into the open project as a new background or sprite (null: no project open). */
-  onSend: ((kind: "backgrounds" | "sprites", picture: Shot) => Promise<boolean>) | null }) {
+  onSend: ((kind: "backgrounds" | "sprites", picture: Shot) => Promise<boolean>) | null;
+  /** Saves a PNG wherever the user picks (the desktop app's save dialog, or a download in a browser). */
+  onExport: (blob: Blob, name: string) => Promise<unknown> }) {
   const print = useRef<HTMLCanvasElement>(null), file = useRef<HTMLInputElement>(null);
   const stage = useRef<Stage | null>(null), engine = useRef<typeof import("./snapshot3d") | null>(null);
   const [size, setSize] = useState<Size>("screen");
@@ -238,6 +240,7 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
                     <IconButton label="Open as a new picture" size="sm" variant="primary" onClick={() => { onTake(picture); onClose(); }}><ImagePlus /></IconButton>
                     <IconButton label={onSend ? `Send to the project as a new ${picture.width === 32 ? "sprite" : "background"}` : "Open a project to send pictures to it"} size="sm" disabled={!onSend}
                       onClick={() => { const ready = forProject(picture); void onSend?.(ready.kind, ready.shot).then((made) => { if (made) onClose(); }); }}><FolderInput /></IconButton>
+                    <IconButton label="Save as PNG… (anywhere on your computer)" size="sm" onClick={() => void fetch(picture.url).then((response) => response.blob()).then((blob) => onExport(blob, `${picture.name}.png`))}><Download /></IconButton>
                     <IconButton label="Throw away" size="sm" onClick={() => setPictures((list) => list.filter((item) => item.id !== picture.id))}><Trash2 /></IconButton>
                   </span>
                 </figure>

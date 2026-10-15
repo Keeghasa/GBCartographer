@@ -2896,6 +2896,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onClose={() => setWizard(null)} onAddToProject={addPaletteSet} onAddToMine={(list) => { addToMine(list); say(`Added ${list.length} palettes to Mine (the palette manager).`); }} />
       )}
       {showSnapshot && <SnapshotWindow onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })}
+        onExport={(blob, name) => saveBlob(blob, name, PNG_TYPES)}
         onSend={project ? (kind, shot) => createPicture({ kind, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels }) : null} />}
       {showWizards && <WizardGallery cards={wizardCards} onClose={() => setShowWizards(false)} />}
       {showStore && (
