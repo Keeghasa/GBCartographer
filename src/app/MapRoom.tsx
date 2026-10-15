@@ -61,6 +61,9 @@ function tilesOf(picture: Picture) {
   return countUniqueTiles(shades, picture.width, picture.height, false);
 }
 
+/** The width of the + gutter around a map, in screen pixels. */
+const GUTTER = 26;
+
 export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, say }: { project: Project; onClose: () => void; onOpen: (asset: Asset) => void; onProjectChanged: () => Promise<void>; onExport: (blob: Blob, name: string) => Promise<boolean>; say: (text: string) => void }) {
   const [confirmDialog, confirmBox] = useConfirm();
   const [maps, setMaps] = useState<MapLayout[] | null>(null);
@@ -200,9 +203,10 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   const cells = map?.cells ?? [];
   const xs = cells.map((cell) => cell.x), ys = cells.map((cell) => cell.y);
   const [minX, maxX, minY, maxY] = cells.length ? [Math.min(...xs) - 1, Math.max(...xs) + 1, Math.min(...ys) - 1, Math.max(...ys) + 1] : [0, 0, 0, 0];
-  // Fit: the largest scale (up to 2×) at which every column and row, with their 2 px gaps, fits the grid area.
+  // The ring of + slots around the map is a slim gutter (the author, 2026-10-14: zoom in to the maps), so Fit is the
+  // largest scale (up to 2×) at which the screens, the gutters and the 1 px gaps fit the grid area.
   const columnCount = maxX - minX + 1, rowCount = maxY - minY + 1;
-  const fitScale = areaSize.width ? Math.max(0.25, Math.min(2, (areaSize.width - 2 * (columnCount - 1)) / (columnCount * W), (areaSize.height - 2 * (rowCount - 1)) / (rowCount * H))) : 1;
+  const fitScale = !cells.length ? 1 : areaSize.width ? Math.max(0.25, Math.min(2, (areaSize.width - 2 * GUTTER - (columnCount - 1)) / ((columnCount - 2) * W), (areaSize.height - 2 * GUTTER - (rowCount - 1)) / ((rowCount - 2) * H))) : 1;
   const scale = zoom === "fit" ? fitScale : Number(zoom);
   const nearCell = (x: number, y: number) => !cells.length ? x === 0 && y === 0 : SIDES.some((side) => cellAt(x + OFFSET[side][0], y + OFFSET[side][1]));
   const selectedCell = selected ? cellAt(selected.x, selected.y) : undefined;
@@ -273,7 +277,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
           {!map ? (
             <div className="mr-empty"><span className="mr-mascot"><LogoMark size={48} /></span><span className="k-muted">Make a map to start: New map on the left.</span></div>
           ) : (
-            <div className="mr-cells" style={{ gridTemplateColumns: `repeat(${maxX - minX + 1}, ${W * scale}px)`, gridAutoRows: `${H * scale}px` }}>
+            <div className="mr-cells" style={!cells.length ? { gridTemplateColumns: `${W * scale}px`, gridAutoRows: `${H * scale}px` } : { gridTemplateColumns: `${GUTTER}px repeat(${columnCount - 2}, ${W * scale}px) ${GUTTER}px`, gridTemplateRows: `${GUTTER}px repeat(${rowCount - 2}, ${H * scale}px) ${GUTTER}px` }}>
               {Array.from({ length: (maxY - minY + 1) * (maxX - minX + 1) }, (_, at) => {
                 const x = minX + (at % (maxX - minX + 1)), y = minY + Math.floor(at / (maxX - minX + 1));
                 const cell = cellAt(x, y);
@@ -282,13 +286,13 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
                   return (
                     <button key={`${x},${y}`} type="button" className="mr-cell" aria-pressed={isSelected} onClick={() => { setSelected({ x, y }); setAdding(null); }} onDoubleClick={() => openCell(cell)}>
                       {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" /> : assetOf(cell.file) ? <span className="k-muted k-small">…</span> : <span className="k-small mr-missing" title={`assets/backgrounds/${cell.file} isn't in the project any more (renamed or deleted outside GB Cartographer)`}>Missing<br />{cell.file}</span>}
-                      <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file} · {x}, {y}</span>
+                      <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file}</span>
                       {isSelected && edges.map(({ side, result }) => <i key={side} className={`mr-edge ${side} ${result && result.match === result.total ? "match" : "differ"}`} />)}
                     </button>
                   );
                 }
                 return nearCell(x, y)
-                  ? <button key={`${x},${y}`} type="button" className="mr-add" aria-pressed={adding?.x === x && adding?.y === y} title={`Add a screen at ${x}, ${y}`} onClick={() => { setAdding({ x, y }); setSelected(null); }}><Plus size={20} /></button>
+                  ? <button key={`${x},${y}`} type="button" className={`mr-add${x === minX || x === maxX || y === minY || y === maxY ? " mr-add--edge" : ""}`} aria-pressed={adding?.x === x && adding?.y === y} title={`Add a screen at ${x}, ${y}`} onClick={() => { setAdding({ x, y }); setSelected(null); }}><Plus size={x === minX || x === maxX || y === minY || y === maxY ? 14 : 20} /></button>
                   : <span key={`${x},${y}`} />;
               })}
             </div>

@@ -102,7 +102,7 @@ pick. Make background puts the map and its palettes in your project.
 
 ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png)
 
-![The Map Room with 24 screens, twelve of dungeon and twelve of forest, laid out side by side](docs/media/map-room.png)
+![The Map Room with 24 screens, a dungeon and a forest of twelve each, side by side](docs/media/map-room.png)
 
 ![The Asset Catalog: palettes and art to take into a project, each credited](docs/media/graphics.png)
 

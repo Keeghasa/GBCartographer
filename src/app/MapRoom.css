@@ -49,3 +49,15 @@
 
 /* A screen whose picture is gone (renamed or deleted outside GB Cartographer): said, not hidden. */
 .mr-missing { color: var(--k-warn); text-align: center; overflow-wrap: anywhere; padding: 0 6px; }
+
+/* The map, looked at (the author, 2026-10-14: "zoom in to maps, make maps look better; no text labels unless hover,
+   then it's small"): screens sit 1 px apart on the well, centred; + slots round the edge are a slim dashed gutter. */
+.mr-grid { display: grid; place-items: center; }
+.mr-cells { gap: 1px; }
+.mr-cell { border-width: 1px; border-radius: 2px; background: #0b0d0c; }
+.mr-cell:hover { border-color: rgba(255, 255, 255, .55); }
+.mr-label { left: 3px; bottom: 3px; padding: 0 4px; font: 500 9.5px/1.5 'JetBrains Mono', ui-monospace, monospace; background: rgba(10, 12, 11, .82); opacity: 0; transition: opacity .12s; pointer-events: none; }
+.mr-cell:hover .mr-label, .mr-cell:focus-visible .mr-label { opacity: 1; }
+.mr-add { border-width: 1px; border-radius: 3px; }
+.mr-add--edge { border-color: var(--k-edge); opacity: .55; }
+.mr-add--edge:hover, .mr-add--edge[aria-pressed="true"] { opacity: 1; }
