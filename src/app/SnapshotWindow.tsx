@@ -62,10 +62,28 @@ function Rig({ rig, onMove }: { rig: ShotSettings["rig"]; onMove: (light: Light,
         onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setHeld({ light: id, view }); }}>{letter}</button>
     );
   });
+  // Beams: a line from each light to the model, in the light's color; the model sits in the middle (above) or on the
+  // ground (side); you're at the front (above: bottom; side: left, at eye height).
+  const beams = (view: "top" | "side") => (
+    <svg className="sw-beams" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+      {LIGHTS.map(({ id }) => { const [x, y, z] = rig[id]; const [lx, ly] = view === "top" ? [(x + 1) * 50, (1 - y) * 50] : [(y + 1) * 50, (1 - z) * 100]; const [mx, my] = view === "top" ? [50, 50] : [50, 76];
+        return <line key={id} x1={lx} y1={ly} x2={mx} y2={my} className={`sw-beam sw-beam--${id}`} vectorEffect="non-scaling-stroke" />; })}
+    </svg>
+  );
   return (
     <div className="sw-rigs" onPointerMove={place} onPointerUp={() => setHeld(null)}>
-      <div ref={top} className="sw-rig"><span className="sw-rig-ring" /><span className="sw-rig-model">model</span><span className="sw-rig-camera">▲ you</span><span className="sw-rig-label">above</span>{dots("top")}</div>
-      <div ref={side} className="sw-rig sw-rig--side"><span className="sw-rig-ground" /><span className="sw-rig-model sw-rig-model--side">model</span><span className="sw-rig-you">you ▶</span><span className="sw-rig-label">side</span>{dots("side")}</div>
+      <div ref={top} className="sw-rig">
+        <span className="sw-rig-label">Above</span><span className="sw-rig-ring" />{beams("top")}
+        <span className="sw-rig-model" title="The model"><Box size={16} /></span>
+        <span className="sw-rig-you sw-rig-you--top" title="You (the print's view)"><CameraIcon size={14} /></span>
+        {dots("top")}
+      </div>
+      <div ref={side} className="sw-rig sw-rig--side">
+        <span className="sw-rig-label">Side</span><span className="sw-rig-ground" />{beams("side")}
+        <span className="sw-rig-model sw-rig-model--side" title="The model"><Box size={16} /></span>
+        <span className="sw-rig-you sw-rig-you--side" title="You (the print's view)"><CameraIcon size={14} /></span>
+        {dots("side")}
+      </div>
     </div>
   );
 }
