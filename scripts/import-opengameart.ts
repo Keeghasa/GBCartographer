@@ -47,7 +47,9 @@ interface Cut {
   equal?: boolean;
   /** NES art: each 16 × 16 block uses one of a few 4-color palettes; each palette's colors get the four shades in
    * order, so every section keeps its own contrast (the author, 2026-10-14: Nestor's colors). */
-  nes?: boolean;
+  nes?: boolean | number;
+  /** Rectangles of the sheet to leave out (a label, say), as see-through. */
+  blank?: [number, number, number, number][];
   /** Parts in rows (a grid) instead of one row. */
   rows?: Part[][];
 }
@@ -115,6 +117,12 @@ const CUTS: Cut[] = [
   ...NESTOR_XP.map(([name, x, y]): Cut => ({ id: `oga-nestor-xp-${name.toLowerCase().replace(/ /g, "-")}`, name, kind: "stamps", nes: true, autotile: "xp", parts: one("nestor", x, y, 48, 64), about: XP })),
   { id: "oga-nestor-forest-round", name: "Leafy forest", kind: "stamps", nes: true, autotile: "forest", parts: [at("nestor", 336, 128, 32, 32), at("nestor", 304, 128, 32, 32)], clear: "edge", about: FOREST },
   { id: "oga-nestor-forest-pine", name: "Fir forest", kind: "stamps", nes: true, autotile: "forest", parts: [at("nestor", 352, 160, 32, 32), at("nestor", 320, 160, 32, 32)], clear: "edge", about: FOREST },
+  { id: "oga-nestor-ripple", name: "Rippling water", kind: "stamps", autotile: "anim", nes: true, parts: [0, 16, 32].map((x) => at("nestor", x, 64, 16, 16)), about: "Water in three frames of 16 × 16 side by side (RPG Maker 2000's animation): stamps the first, the card plays them all." },
+  { id: "oga-nestor-falls", name: "Waterfall", kind: "stamps", autotile: "anim", nes: true, parts: [64, 80, 96].map((y) => at("nestor", 48, y, 16, 16)), about: "The falling water in three frames of 16 × 16." },
+  { id: "oga-nestor-falls-foot", name: "Waterfall foot", kind: "stamps", autotile: "anim", nes: true, parts: [64, 80, 96].map((y) => at("nestor", 64, y, 16, 16)), about: "Where the waterfall meets the water, three frames of 16 × 16." },
+  { id: "oga-nestor-splash", name: "Splash", kind: "stamps", autotile: "anim", nes: true, parts: [64, 80, 96, 112].map((y) => at("nestor", 80, y, 16, 16)), clear: "edge", about: "Foam in four frames of 16 × 16." },
+  { id: "oga-nestor-rug-blue", name: "Blue floor 9-slice", kind: "stamps", autotile: "box", nes: true, parts: one("nestor", 288, 16, 48, 48), about: "A framed floor: drag it to any size, the corners stay, the edges and middle repeat." },
+  { id: "oga-nestor-rug-green", name: "Green floor 9-slice", kind: "stamps", autotile: "box", nes: true, parts: one("nestor", 240, 64, 48, 48), about: "A framed floor: drag it to any size, the corners stay, the edges and middle repeat." },
   { id: "oga-nestor-cypress", name: "Cypresses", kind: "stamps", nes: true, parts: one("nestor", 288, 160, 32, 32), clear: "edge" },
   { id: "oga-nestor-bushes", name: "Round bushes", kind: "stamps", nes: true, parts: one("nestor", 368, 128, 16, 32), clear: "edge" },
   { id: "oga-nestor-dead-tree", name: "Bare tree", kind: "stamps", nes: true, parts: one("nestor", 384, 16, 32, 32), clear: "edge" },
@@ -125,11 +133,13 @@ const CUTS: Cut[] = [
   { id: "oga-gaunt-tiles", name: "Gauntness walls", kind: "tilesets", parts: one("gaunt", 0, 240, 640, 392), about: "Five dungeon wall styles in three looks each, plus doors, pipes and floors." },
 
   // Stonelands (Chasersgaming): the sheet, its trees and props.
-  { id: "oga-stone-tiles", name: "Stonelands", kind: "tilesets", parts: one("stone", 0, 24, 280, 232), about: "Grassland, rocks, fences, logs, water and a waterfall, 8 × 8 tiles." },
-  { id: "oga-stone-grove", name: "Grove", kind: "stamps", parts: one("stone", 0, 176, 72, 56), clear: "edge" },
-  { id: "oga-stone-tree", name: "Tall tree", kind: "stamps", parts: one("stone", 88, 176, 24, 48), clear: "edge" },
-  { id: "oga-stone-signs", name: "Arrow signs", kind: "stamps", parts: one("stone", 48, 24, 64, 32), clear: "edge" },
-  { id: "oga-stone-boxes", name: "Wooden boxes", kind: "stamps", parts: one("stone", 72, 216, 40, 32), clear: "edge" },
+  { id: "oga-stone-tiles", name: "Stonelands", kind: "tilesets", nes: 8, parts: one("stone", 0, 24, 280, 232), blank: [[192, 24, 48, 40], [272, 24, 8, 40], [240, 56, 32, 8]], about: "Grassland, rocks, fences, logs, water and a waterfall, 8 × 8 tiles." },
+  { id: "oga-stone-falls", name: "Stonelands waterfall", kind: "stamps", autotile: "anim", nes: 8, parts: [240, 248, 256, 264].map((x) => at("stone", x, 24, 8, 8)), about: "The waterfall in four frames of 8 × 8 side by side: stamps the first, the card plays them all." },
+  { id: "oga-stone-falls-down", name: "Stonelands falls (ladder style)", kind: "stamps", autotile: "down", nes: 8, rows: [16, 24, 48].map((y) => [at("stone", 240, y, 8, 8)]), parts: [], about: "Drag down: the top and the foam at the bottom cap it, the falling water repeats." },
+  { id: "oga-stone-grove", name: "Grove", kind: "stamps", nes: 8, parts: one("stone", 0, 176, 72, 56), clear: "edge" },
+  { id: "oga-stone-tree", name: "Tall tree", kind: "stamps", nes: 8, parts: one("stone", 88, 176, 24, 48), clear: "edge" },
+  { id: "oga-stone-signs", name: "Arrow signs", kind: "stamps", nes: 8, parts: one("stone", 48, 24, 64, 32), clear: "edge" },
+  { id: "oga-stone-boxes", name: "Wooden boxes", kind: "stamps", nes: 8, parts: one("stone", 72, 216, 40, 32), clear: "edge" },
 
   // NES Graphics 2 (ETTiNGRiNDER): three items and five wall tiles.
   { id: "oga-nes2-shield", name: "Crest shield", kind: "sprites", parts: one("nes2", 3, 1, 16, 16), clear: "edge", about: "One frame." },
@@ -224,7 +234,8 @@ function convert(cut: Cut): string[] {
       if (sx >= png.width || sy >= png.height) continue;
       const i = (sy * png.width + sx) * 4;
       const color = (png.pixels[i] << 16) | (png.pixels[i + 1] << 8) | png.pixels[i + 2];
-      if (png.pixels[i + 3] >= 128 && color !== key) own[y * part.w + x] = color;
+      const blanked = cut.blank?.some(([bx, by, bw, bh]) => sx >= bx && sy >= by && sx < bx + bw && sy < by + bh);
+      if (png.pixels[i + 3] >= 128 && color !== key && !blanked) own[y * part.w + x] = color;
     }
     // The background color where it touches the piece's edge (flood from the border) is see-through too.
     if (cut.clear === "edge") {
@@ -310,9 +321,10 @@ function convert(cut: Cut): string[] {
 /** Shades NES art section by section: the palettes its 16 × 16 blocks use, each palette's colors ranked by brightness. */
 function nesShades(cut: Cut, rgb: Int32Array, width: number, height: number): string[] {
   const blocks: { x: number; y: number; colors: Set<number> }[] = [];
-  for (let by = 0; by < height; by += 16) for (let bx = 0; bx < width; bx += 16) {
+  const B = typeof cut.nes === "number" ? cut.nes : 16;
+  for (let by = 0; by < height; by += B) for (let bx = 0; bx < width; bx += B) {
     const colors = new Set<number>();
-    for (let y = by; y < Math.min(height, by + 16); y += 1) for (let x = bx; x < Math.min(width, bx + 16); x += 1) if (rgb[y * width + x] !== -1) colors.add(rgb[y * width + x]);
+    for (let y = by; y < Math.min(height, by + B); y += 1) for (let x = bx; x < Math.min(width, bx + B); x += 1) if (rgb[y * width + x] !== -1) colors.add(rgb[y * width + x]);
     blocks.push({ x: bx, y: by, colors });
   }
   // The palettes: the biggest color sets first; a block whose colors fit one already found uses it.
@@ -328,11 +340,10 @@ function nesShades(cut: Cut, rgb: Int32Array, width: number, height: number): st
   for (const palette of palettes) {
     const ranked = [...palette].sort((a, b) => luma(b) - luma(a));
     const map = new Map<number, number>();
-    const lo = luma(ranked[ranked.length - 1]), hi = luma(ranked[0]);
     let last = -1;
     ranked.forEach((color, index) => {
-      // Four colors take 0–3; fewer keep their brightness spacing, in order.
-      let level = ranked.length === 4 || hi === lo ? index : Math.round(((hi - luma(color)) / (hi - lo)) * 3);
+      // Four colors take 0–3; fewer sit at their own brightness (light water stays light), in order.
+      let level = ranked.length === 4 ? index : Math.round((1 - luma(color) / 255) * 3);
       level = Math.min(Math.max(level, last + 1), 3 - (ranked.length - 1 - index));
       map.set(color, last = level);
     });
@@ -345,7 +356,7 @@ function nesShades(cut: Cut, rgb: Int32Array, width: number, height: number): st
     for (let x = 0; x < width; x += 1) {
       const color = rgb[y * width + x];
       if (color === -1) { row += solid ? String(cut.under ?? 0) : "."; continue; }
-      const block = blocks.find((item) => item.x === (x & ~15) && item.y === (y & ~15))!;
+      const block = blocks.find((item) => item.x === x - (x % B) && item.y === y - (y % B))!;
       row += String(shadeIn.get(paletteOf(block.colors)!)!.get(color));
     }
     rows.push(row);
