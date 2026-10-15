@@ -57,6 +57,14 @@ function Rig({ rig, onMove }: { rig: ShotSettings["rig"]; onMove: (light: Light,
   );
 }
 
+/** The models the window comes with (the author, 2026-10-14): the house drawn in code, and a CC0 duck. */
+type BuiltIn = "house" | "duck";
+const BUILT_IN: Record<BuiltIn, { label: string; name: string; url?: string; credit?: { text: string; href: string } }> = {
+  house: { label: "House", name: "Sample house" },
+  duck: { label: "Rubber duck", name: "Rubber Duck Toy", url: `${import.meta.env.BASE_URL}models/rubber-duck/rubber_duck_toy.gltf`,
+    credit: { text: "Rubber Duck Toy by Plat251 · Poly Haven · CC0", href: "https://polyhaven.com/a/rubber_duck_toy" } },
+};
+
 type Shot = { name: string; width: number; height: number; pixels: Uint8Array };
 
 /** A shot made ready for the project: a background at least a screen big (a smaller shot centred on one), or a sprite. */
@@ -80,6 +88,7 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
   const [dither, setDither] = useState(false), [outline, setOutline] = useState(true);
   const [model, setModel] = useState("Sample house"), [triangles, setTriangles] = useState(0), [problem, setProblem] = useState<string | null>(null);
   const [pictures, setPictures] = useState<Picture[]>([]);
+  const [builtIn, setBuiltIn] = useState<BuiltIn | null>("house");
   const [, setTick] = useState(0);
   const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite" };
   const shades = useRef<Uint8Array | null>(null);
@@ -114,9 +123,20 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
     try {
       const loaded = await engine.current.loadModel(picked);
       stage.current.show(loaded.model);
-      setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
+      setBuiltIn(null); setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
     } catch (error) {
       setProblem(`${picked.map((file) => file.name).join(", ")} didn't open: ${error instanceof Error ? error.message : String(error)}. A .glb works best (from Blender: File → Export → glTF 2.0, binary).`);
+    }
+  }
+
+  async function pick(which: BuiltIn) {
+    if (!engine.current || !stage.current) return;
+    const item = BUILT_IN[which];
+    try {
+      stage.current.show(item.url ? await engine.current.loadBuiltIn(item.url) : engine.current.sampleModel());
+      setBuiltIn(which); setModel(item.name); setTriangles(stage.current.triangles()); setProblem(null);
+    } catch (error) {
+      setProblem(`${item.name} didn't open: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -135,7 +155,9 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
         <aside className="k-card sw-controls">
           <div className="sw-group">
             <div className="sw-head"><h2 className="k-heading">Model</h2><Button size="sm" icon={<Upload />} onClick={() => file.current?.click()}>Load…</Button></div>
+            <Segmented label="Built-in models" fill size="sm" value={builtIn ?? ("" as BuiltIn)} onChange={(value) => void pick(value)} options={(Object.keys(BUILT_IN) as BuiltIn[]).map((value) => ({ value, label: BUILT_IN[value].label }))} />
             <div className="sw-drop">{model} · {triangles.toLocaleString()} triangles</div>
+            {builtIn && BUILT_IN[builtIn].credit && <a className="k-xs sw-credit" href={BUILT_IN[builtIn].credit!.href} target="_blank" rel="noreferrer">{BUILT_IN[builtIn].credit!.text}</a>}
             {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a .glb, .gltf or .obj anywhere here, with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
             <input ref={file} type="file" accept=".glb,.gltf,.bin,.obj,.mtl,.png,.jpg,.jpeg" multiple hidden onChange={(event) => { void open([...(event.target.files ?? [])]); event.target.value = ""; }} />
           </div>

@@ -1,0 +1,4 @@
+Rubber Duck Toy by Plat251, from Poly Haven: https://polyhaven.com/a/rubber_duck_toy
+License: CC0 1.0 (public domain) - https://polyhaven.com/license
+Slimmed for GB Cartographer: the mesh as published, its color texture at 256 x 256; the normal, roughness and
+occlusion maps left out (the four shades come from light and color).

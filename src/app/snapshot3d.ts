@@ -205,3 +205,8 @@ export async function loadModel(files: File[]): Promise<{ model: THREE.Object3D;
     setTimeout(() => urls.forEach((url) => URL.revokeObjectURL(url)), 5000);
   }
 }
+
+/** A built-in model from the app's own files (public/models), by its .gltf's URL. */
+export async function loadBuiltIn(url: string): Promise<THREE.Object3D> {
+  return (await new GLTFLoader().loadAsync(url)).scene;
+}

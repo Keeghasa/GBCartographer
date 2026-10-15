@@ -50,3 +50,5 @@
 .sw-drop { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; border-style: solid; border-color: var(--k-edge); }
 .sw-shot figcaption { font-weight: 800; letter-spacing: -.02em; }
 @media (max-width: 760px) { .sw-h1 { font-size: 40px; } }
+.sw-credit { color: var(--k-ink-3); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.sw-credit:hover { color: var(--k-acc); }
