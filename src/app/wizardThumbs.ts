@@ -75,13 +75,17 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     // palette a blend of the two versions it lies between (the wizard itself makes only the four).
     const [day, dawn, sunset, night] = (() => { const base = pick("DWC-1-Cliffs", "DWC-4-Foliage", "DWC-6-MauveBldg"); return [base, `${base} D`, `${base} S`, `${base} N`]; })().map(palette);
     const stops = [dawn, day, sunset, night], per = WIZARD_FRAMES.dns.count / stops.length;
-    const at = frame / per, from = stops[Math.floor(at) % stops.length], to = stops[(Math.floor(at) + 1) % stops.length];
+    const blendAt = (phase: number) => {
+      const at = ((phase % stops.length) + stops.length) % stops.length, from = stops[Math.floor(at)], to = stops[(Math.floor(at) + 1) % stops.length];
+      return from.colors.map((color, i) => mix(color, to.colors[i], ease(at % 1)));
+    };
     const mix = (a: string, b: string, t: number) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
     const ease = (t: number) => t * t * (3 - 2 * t);
-    // The scene: the cave wizard's forest (the author's pick, 2026-10-14), in its shades, worn in one blended palette.
+    // The scene: the cave wizard's forest (the author's pick, 2026-10-14), in four vertical slices (the author: dawn,
+    // day, sunset, night side by side), each starting at its own part of the day and going round from there.
     const out = crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, walls: "pines" }), 1, 24);
-    out.cells = new Uint8Array((W / 8) * (H / 8)).fill(1);
-    out.palettes = [{ name: "Time of day", colors: from.colors.map((color, i) => mix(color, to.colors[i], ease(at % 1))) }];
+    out.cells = new Uint8Array((W / 8) * (H / 8)).map((_, cell) => 1 + Math.floor((cell % TILES_WIDE) / (TILES_WIDE / 4)));
+    out.palettes = [0, 1, 2, 3].map((slice) => ({ name: `Time of day ${slice + 1}`, colors: blendAt(frame / per + slice) }));
     return out;
   }
   if (id === "paletteSet") {
@@ -91,7 +95,7 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
       ["DWC-1-Cliffs", "DWC-2-Computer", "DWC-3-Cactus", "DWC-4-Foliage", "DWC-5-Warm", "DWC-6-MauveBldg", "DWC-7-Warm", "DWC-1-Cliffs N"]);
     const out = blank([names[7], ...names]), p = new Pen(out);
     p.fill(3);
-    names.forEach((_, at) => { if (at >= frame) return; const x = 16 + at * 16; for (let shade = 0; shade < 4; shade += 1) p.rect(x, 16 + shade * 16, 16, 16, shade); p.box(x, 16, 16, 64, 3); wearBox(out, x, 16, 16, 64, at + 2); });
+    names.forEach((_, at) => { const x = 16 + at * 16; for (let shade = 0; shade < 4; shade += 1) p.rect(x, 16 + shade * 16, 16, 16, shade); p.box(x, 16, 16, 64, 3); wearBox(out, x, 16, 16, 64, at + 2); });
     return out;
   }
   if (id === "budget") {
@@ -108,21 +112,19 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     [0, 1, 2].forEach((at) => brick(14 + at * 22, 18, at < merged ? -1 : at));
     p.line(82, 26, 100, 26, 3); p.line(96, 22, 100, 26, 3); p.line(96, 30, 100, 26, 3);
     brick(114, 18, -1);
-    const meter = (y: number, full: number, over: boolean) => {
-      p.panel(14, y, 116, 10, 0, 3); p.rect(16, y + 2, full, 6, over ? 3 : 2); p.rect(110, y - 2, 2, 14, 3);
-    };
     const count = [412, 401, 390, 380][merged];
-    p.text(14, 46, `${count}/384`, count > 384 ? 3 : 2); meter(56, Math.round(count / 412 * 112), count > 384);
-    if (merged === 3) p.text(14, 72, "UNDER THE LIMIT", 2);
+    // The bricks and the count (the author, 2026-10-14: no bars).
+    p.text(14, 52, `${count}/384 TILES`, count > 384 ? 3 : 2);
+    if (merged === 3) p.text(14, 70, "UNDER THE LIMIT", 2);
     return out;
   }
   if (id === "cave") return crop(drawCave({ style: pick("cave", "dungeon", "cave"), columns: 1, rows: 1, cell: 16, seed: 11 + frame, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone", ...(look === 2 ? { walls: "pines" as const } : {}) }), 1, 24);
-  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: pick(5, 21, 40) + frame, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
+  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: pick(5, 21, 40), water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 1, 72);
   // checkup: a health report, ticked off one by one.
   const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
   p.fill(0);
   p.round(8, 6, 144, 84, 0, 2);
-  [96, 72, 104, 64].map((width, row) => [row < frame, width] as const).forEach(([done, width], row) => {
+  [96, 72, 104, 64].map((width, row) => [row < 3, width] as const).forEach(([done, width], row) => {
     const y = 16 + row * 18;
     p.panel(18, y, 10, 10, done ? 1 : 0, 3);
     if (done) { p.line(20, y + 5, 22, y + 7, 3); p.line(22, y + 7, 26, y + 2, 3); }
@@ -139,8 +141,8 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
 export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 2, world: 0, cave: 0, dns: 0, paletteSet: 2, budget: 2, checkup: 2 };
 
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
-  picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
-  cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 }, snapshot: { count: 24, ms: 110 },
+  picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 1, ms: 1000 }, budget: { count: 6, ms: 700 },
+  cave: { count: 4, ms: 1100 }, world: { count: 1, ms: 1000 }, checkup: { count: 1, ms: 1000 }, snapshot: { count: 24, ms: 110 },
 };
 
 /**

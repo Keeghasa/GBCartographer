@@ -149,7 +149,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
   const last = palettes.length;
 
   return (
-    <WizardPage title="A palette set" icon={<PaletteIcon size={18} />} busy={busy} onClose={onClose}
+    <WizardPage title="Palette set" icon={<PaletteIcon size={18} />} busy={busy} onClose={onClose}
       line={["Eight palettes at once", last ? `${last} palette${last === 1 ? "" : "s"} · lightest first` : "pick a source"]}
       footer={<>
         {projectName && slotsWhere && !done.project ? <Checkbox checked={slots} onChange={setSlots}>Put them in slots 1–{Math.min(8, last || 8)} of {slotsWhere}</Checkbox> : <span />}

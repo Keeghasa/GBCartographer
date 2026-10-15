@@ -2674,7 +2674,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       blocked: sceneOpen || project ? null : "Open a project background or sprite sheet first",
       needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
       onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
-    { thumb: "paletteSet", name: "A palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
+    { thumb: "paletteSet", name: "Palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
     { thumb: "snapshot", name: "3D Snapshot", icon: <Box />, about: "Turn a 3D model (.glb, .gltf or .obj), light it, and take its picture in the four shades: a screen, a smaller picture or a sprite.", blocked: null, onStart: () => setShowSnapshot(true) },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
     { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms drawn with the catalog’s cliffs and floors, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
