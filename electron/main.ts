@@ -8,7 +8,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer, type Server } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import { handleCartographerRequest } from "../server/endpoints";
 import { loadProjectFolder, projectFolder, projectFolderFor, projectProblem, saveProjectFolder, setProjectFolder } from "../server/project";
 
@@ -26,9 +26,11 @@ function startServer(): Promise<{ server: Server; url: string }> {
   const server = createServer((req, res) => {
     void handleCartographerRequest(req, res, serverOptions()).then((handled) => {
       if (handled) return;
-      const path = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+      let path = "/";
+      try { path = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname); } catch { res.statusCode = 400; res.end("Bad request"); return; }
       const file = normalize(join(DIST, path === "/" ? "index.html" : path));
-      if (!file.startsWith(DIST) || !existsSync(file) || statSync(file).isDirectory()) {
+      // Only files inside dist/ itself (a plain prefix test would let dist-electron/ through).
+      if ((file !== DIST && !file.startsWith(DIST + sep)) || !existsSync(file) || statSync(file).isDirectory()) {
         res.statusCode = 404;
         res.end("Not found");
         return;
@@ -54,8 +56,11 @@ function startServer(): Promise<{ server: Server; url: string }> {
   });
 }
 
+// The server starts once and every window uses it: a second server on macOS (window closed, Dock clicked) would land
+// on another port, another origin, and the open pictures and settings would look gone.
+let serving: Promise<{ server: Server; url: string }> | null = null;
 async function createWindow() {
-  const target = DEV_URL ?? (await startServer()).url;
+  const target = DEV_URL ?? (await (serving ??= startServer())).url;
   console.log(`${APP_NAME} serving ${target}`);
   const window = new BrowserWindow({
     width: 1440,
@@ -67,9 +72,18 @@ async function createWindow() {
     backgroundColor: "#000000",
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, "preload.cjs") },
   });
+  // Links open in the browser, web links only (a file:, smb: or custom-scheme link could run programs on Windows).
+  const web = (url: string) => { try { return ["https:", "http:", "mailto:"].includes(new URL(url).protocol); } catch { return false; } };
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    if (web(url)) void shell.openExternal(url);
     return { action: "deny" };
+  });
+  // The window never navigates away from the app (a dropped file or a plain link would replace the page and its
+  // unsaved work): other places open in the browser instead.
+  window.webContents.on("will-navigate", (event, url) => {
+    if (new URL(url).origin === new URL(target).origin) return;
+    event.preventDefault();
+    if (web(url)) void shell.openExternal(url);
   });
   // Closing: the page writes its session and says whether anything is unsaved. If so it shows Unsaved changes
   // (save to the project, keep in GB Cartographer, discard, or cancel) and closes the window itself through the

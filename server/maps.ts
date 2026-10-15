@@ -60,8 +60,21 @@ function save(project: string, maps: MapLayout[]) {
  * Saves all of a project's maps (through a temporary file), the previous maps.json backed up first. Refuses
  * anything that isn't a list of maps.
  */
+/** Whether maps.json is there but can't be read in full (damaged, or holding maps this version can't read). */
+function damaged(project: string): boolean {
+  const file = mapsFile(project);
+  if (!existsSync(file)) return false;
+  try {
+    const data = JSON.parse(readFileSync(file, "utf8")) as { maps?: unknown };
+    return !Array.isArray(data.maps) || !data.maps.every(isMap);
+  } catch { return true; }
+}
+
 export function writeMaps(project: string, maps: unknown, backup: { dir: string; project: string }): MapLayout[] {
   if (!Array.isArray(maps) || !maps.every(isMap)) throw new Error("Not a list of maps");
+  // A maps.json that couldn't be read in full is never written over with the part that could (the author's maps
+  // would quietly shrink): it has to be put right, or restored from the backups, first.
+  if (damaged(project)) throw new Error("Cartographer/maps.json couldn't be read in full, so it wasn't written over: restore it from Backups (or fix it), then try again.");
   const clean = maps.map((map) => ({ id: map.id, name: map.name.trim() || "Map", screen: { width: 160, height: 144 }, overlap: map.overlap === 2 ? 2 : 1, cells: map.cells.map(({ x, y, file }) => ({ x, y, file })) }));
   if (existsSync(mapsFile(project))) backupFile(backup.dir, backup.project, mapsFile(project));
   save(project, clean);

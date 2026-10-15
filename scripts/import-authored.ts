@@ -3,7 +3,9 @@
  * Asset Catalog project is where the library's art is decided). For each catalog graphic whose file in the project
  * was saved by GB Cartographer (it has a backup there, so it was edited by hand), the file's pixels are written into
  * src/graphics/authored.ts, which the library uses in place of the code-drawn version.
- * Usage: npm run import-authored -- "<Asset Catalog folder>"
+ * Usage: npm run import-authored -- "<Asset Catalog folder>" [--drop]
+ * An edit already in authored.ts whose file isn't found this time (renamed, moved, its backups not there yet) is
+ * kept and named, never dropped quietly (2026-10-14: a rename once lost three); --drop lets those go.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
@@ -12,10 +14,10 @@ import { GRAPHICS, codeDrawn } from "../src/graphics/library";
 import { AUTHORED } from "../src/graphics/authored";
 import { decodePng } from "../src/gb/png";
 
-const folder = process.argv[2];
+const folder = process.argv[2], drop = process.argv.includes("--drop");
 if (!folder) throw new Error("Give the Asset Catalog project folder.");
 const GREENS = [[224, 248, 207], [134, 192, 108], [48, 104, 80], [7, 24, 33]];
-const out: string[] = [];
+const out: string[] = [], found = new Set<string>();
 for (const asset of GRAPHICS) {
   const rel = asset.kind === "stamps" ? join("Cartographer", "stamps", `${asset.name}.png`) : join("assets", asset.kind, `${asset.name}.png`);
   const file = join(folder, rel);
@@ -38,7 +40,13 @@ for (const asset of GRAPHICS) {
   // one already taken as the author's stays theirs.
   const code = AUTHORED[asset.id] ? null : codeDrawn(asset.id);
   if (code && code.width === png.width && code.height === png.height && rows.join("") === Array.from(code.pixels, (v) => v > 3 ? "." : String(v)).join("")) continue;
+  found.add(asset.id);
   out.push(`  ${JSON.stringify(asset.id)}: [\n${rows.map((row) => `    ${JSON.stringify(row)},`).join("\n")}\n  ],`);
+}
+const missing = Object.keys(AUTHORED).filter((id) => !found.has(id) && !out.some((entry) => entry.startsWith(`  ${JSON.stringify(id)}:`)));
+if (missing.length) {
+  console.warn(`${drop ? "Dropped" : "Kept (not found in the project this time; --drop lets them go)"}: ${missing.join(", ")}`);
+  if (!drop) for (const id of missing) out.push(`  ${JSON.stringify(id)}: [\n${AUTHORED[id].map((row) => `    ${JSON.stringify(row)},`).join("\n")}\n  ],`);
 }
 writeFileSync("src/graphics/authored.ts", `/**
  * The author's own versions of library graphics, edited by hand in the Asset Catalog project and brought back by

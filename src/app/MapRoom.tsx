@@ -114,14 +114,24 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   }, [map, backgrounds]);
   const pictureOf = (file: string) => loaded.get(keyOf(file));
 
+  // Saves go one at a time, each built on the newest list (two quick edits used to race, the second undoing the first).
+  const latest = useRef<MapLayout[] | null>(null);
+  latest.current = maps;
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   async function save(next: MapLayout[]): Promise<boolean> {
+    latest.current = next;
     const response = await fetch("./__cartographer/maps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maps: next }) });
     const result = await response.json() as { ok?: boolean; error?: string; maps?: MapLayout[] };
     if (!response.ok || !result.maps) { say(`Could not keep the map: ${result.error ?? response.statusText}`); return false; }
+    latest.current = result.maps;
     setMaps(result.maps);
     return true;
   }
-  const updateMap = (change: (layout: MapLayout) => MapLayout) => map && maps && void save(maps.map((item) => item.id === map.id ? change(item) : item));
+  const updateMap = (change: (layout: MapLayout) => MapLayout) => {
+    if (!map) return;
+    const id = map.id;
+    queue.current = queue.current.then(() => latest.current && save(latest.current.map((item) => item.id === id ? change(item) : item))).catch(() => null);
+  };
 
   /**
    * Makes the map the wizard planned: each new screen as a new PNG (one at a time, never replacing a file), then the
