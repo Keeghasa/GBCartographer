@@ -8,7 +8,8 @@ import { basename, join } from "node:path";
 import { OWN_FOLDER, ownFolderReadme } from "./assets";
 import { backupFile, legacyBackupDir } from "./backups";
 
-export interface MapCell { x: number; y: number; file: string }
+/** A piece: its square, its file, and (dropped with tile snapping) a nudge in whole 8 px tiles inside the square. */
+export interface MapCell { x: number; y: number; file: string; dx?: number; dy?: number }
 export interface MapLayout { id: string; name: string; screen: { width: number; height: number }; /** Tiles neighbouring screens share at each edge (1 or 2). */ overlap?: number; cells: MapCell[] }
 
 /** Where a project's maps are kept: <project>/Cartographer/maps.json. */
@@ -45,7 +46,7 @@ export function readMaps(dataDir: string, project: string): MapLayout[] {
 function isMap(value: unknown): value is MapLayout {
   const map = value as MapLayout;
   return Boolean(map) && typeof map.id === "string" && typeof map.name === "string" && Array.isArray(map.cells)
-    && map.cells.every((cell) => Number.isInteger(cell?.x) && Number.isInteger(cell?.y) && typeof cell?.file === "string" && /^[^/\\]+\.png$/i.test(cell.file));
+    && map.cells.every((cell) => Number.isInteger(cell?.x) && Number.isInteger(cell?.y) && (cell.dx === undefined || (Number.isInteger(cell.dx) && cell.dx >= 0 && cell.dx < 20)) && (cell.dy === undefined || (Number.isInteger(cell.dy) && cell.dy >= 0 && cell.dy < 18)) && typeof cell?.file === "string" && /^[^/\\]+\.png$/i.test(cell.file));
 }
 
 function save(project: string, maps: MapLayout[]) {
@@ -75,7 +76,7 @@ export function writeMaps(project: string, maps: unknown, backup: { dir: string;
   // A maps.json that couldn't be read in full is never written over with the part that could (the author's maps
   // would quietly shrink): it has to be put right, or restored from the backups, first.
   if (damaged(project)) throw new Error("Cartographer/maps.json couldn't be read in full, so it wasn't written over: restore it from Backups (or fix it), then try again.");
-  const clean = maps.map((map) => ({ id: map.id, name: map.name.trim() || "Map", screen: { width: 160, height: 144 }, overlap: map.overlap === 2 ? 2 : 1, cells: map.cells.map(({ x, y, file }) => ({ x, y, file })) }));
+  const clean = maps.map((map) => ({ id: map.id, name: map.name.trim() || "Map", screen: { width: 160, height: 144 }, overlap: map.overlap === 2 ? 2 : 1, cells: map.cells.map(({ x, y, file, dx, dy }) => ({ x, y, file, ...(dx ? { dx } : {}), ...(dy ? { dy } : {}) })) }));
   if (existsSync(mapsFile(project))) backupFile(backup.dir, backup.project, mapsFile(project));
   save(project, clean);
   return clean;

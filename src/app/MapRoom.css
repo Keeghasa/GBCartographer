@@ -61,3 +61,13 @@
 .mr-add { border-width: 1px; border-radius: 3px; }
 .mr-add--edge { border-color: var(--k-edge); opacity: .55; }
 .mr-add--edge:hover, .mr-add--edge[aria-pressed="true"] { opacity: 1; }
+
+/* Pieces of any size on a free canvas (the author, 2026-10-15): each piece sits at its true size; drag one to move it
+   (an outline shows where it lands), drag the empty map to pan, Ctrl / ⌘ + wheel or a pinch to zoom. */
+.mr-grid { display: flex; place-items: initial; }
+.mr-canvas { position: relative; flex: none; margin: auto; cursor: grab; touch-action: none; }
+.mr-canvas:active { cursor: grabbing; }
+.mr-canvas > .mr-cell, .mr-canvas > .mr-add, .mr-drop { position: absolute; }
+.mr-canvas > .mr-cell { cursor: grab; touch-action: none; }
+.mr-cell--drag { z-index: 3; opacity: .85; cursor: grabbing; box-shadow: 0 10px 30px rgba(0, 0, 0, .55); }
+.mr-drop { z-index: 2; pointer-events: none; border: 2px dashed var(--k-acc); border-radius: 3px; background: rgba(var(--k-acc-rgb), .12); }

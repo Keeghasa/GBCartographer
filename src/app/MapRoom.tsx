@@ -1,5 +1,6 @@
 /**
- * The Map Room: grids of screens for adventure-style maps. Each screen is an ordinary project background (160 × 144);
+ * The Map Room: maps for adventure-style games, laid out from backgrounds of any size on a grid of 160 × 144 squares
+ * (mapLayout.ts: a piece takes the squares its picture reaches; dropping one on others bumps them right).
  * the layout is GB Cartographer's own, kept in the project's Cartographer/maps.json (server/maps.ts), which GB Studio
  * doesn't read.
  * A new screen next to others can start with their edge tiles, so neighbouring screens line up; edges that differ
@@ -9,20 +10,21 @@
  */
 import { Download, Map as MapIcon, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { countUniqueTiles, gbStudioShade } from "../paint";
 import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, useConfirm } from "../ui/kit";
 import { LogoMark } from "../ui/LogoMark";
+import { ATLAS_ZOOM_STEPS, attachMiddlePan, attachWheelZoom, nextStep } from "../ui/wheelZoom";
+import { bounds, footprint, H, occupant, pixelOf, place, snap, W, type MapCell, type Size } from "./mapLayout";
 import { copyEdge, edgeMatch, OFFSET, OPPOSITE, SIDES, type Picture, type Side } from "./mapEdges";
 import { MapWizard, type MapPlan } from "./MapWizard";
 import type { Asset, Project } from "./model";
 import { defaultName } from "./names";
 import "./MapRoom.css";
 
-interface MapCell { x: number; y: number; file: string }
 interface MapLayout { id: string; name: string; screen: { width: number; height: number }; overlap?: number; cells: MapCell[] }
 interface Loaded { picture: Picture; preview: HTMLImageElement }
 
-const W = 160, H = 144;
 const SIDE_NAMES: Record<Side, string> = { north: "North", south: "South", east: "East", west: "West" };
 const query = (file: string) => new URLSearchParams({ kind: "backgrounds", file });
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -72,8 +74,14 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   const [adding, setAdding] = useState<{ x: number; y: number } | null>(null);
   // The New map wizard is open.
   const [making, setMaking] = useState(false);
-  // "fit" (the default): screens scaled so the whole grid fits the area; 1× and 2× are pixel sizes.
-  const [zoom, setZoom] = useState<"fit" | "1" | "2">("fit");
+  // "fit" (the default): the whole map fits the area; a number is a scale, set by 1× / 2× or the wheel / a pinch.
+  const [zoom, setZoom] = useState<"fit" | number>("fit");
+  const zoomRef = useRef(1);
+  // A piece being dragged: which, where the pointer went down, how far it has moved, and whether tiles snap.
+  const [drag, setDrag] = useState<{ cell: MapCell; x0: number; y0: number; dx: number; dy: number; moving: boolean; tiles: boolean } | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  // Dragging the empty map pans it.
+  const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const [gridArea, setGridArea] = useState<HTMLElement | null>(null);
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
@@ -96,7 +104,22 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
     if (gone.length) say(`${map.name}: ${gone.length === 1 ? "a screen points" : `${gone.length} screens point`} at ${gone.length === 1 ? "a picture" : "pictures"} no longer in the project (${gone.slice(0, 4).map((cell) => cell.file).join(", ")}${gone.length > 4 ? "…" : ""}). They're marked: swap their background or take them off the map.`);
   }, [map?.id]);
   const overlap = map?.overlap === 2 ? 2 : 1;
+  // A piece by its square (its top-left); sizes come from the project's list, so the layout never waits on pictures.
   const cellAt = (x: number, y: number) => map?.cells.find((cell) => cell.x === x && cell.y === y);
+  const sizeOf = (file: string): Size | undefined => { const asset = assetOf(file); return asset ? { width: asset.width, height: asset.height } : undefined; };
+  /**
+   * The piece next to a W × H block at (x, y) on `side`, when the two line up square for square (same row for east
+   * and west, same column for north and south, no tile nudge): edges are matched and copied only between those.
+   */
+  const neighbourOf = (x: number, y: number, w: number, h: number, side: Side): MapCell | undefined => {
+    if (!map) return undefined;
+    const probe = side === "east" ? [x + w, y] : side === "west" ? [x - 1, y] : side === "north" ? [x, y - 1] : [x, y + h];
+    const found = occupant(map.cells, sizeOf, probe[0], probe[1]);
+    if (!found || found.dx || found.dy) return undefined;
+    const f = footprint(found, sizeOf(found.file));
+    const lined = side === "east" ? found.x === x + w && found.y === y : side === "west" ? f.x + f.w === x && found.y === y : side === "north" ? found.x === x && f.y + f.h === y : found.x === x && found.y === y + h;
+    return lined ? found : undefined;
+  };
 
   useEffect(() => {
     void fetch("./__cartographer/maps", { cache: "no-cache" }).then((response) => response.json() as Promise<{ maps?: MapLayout[] }>).then((result) => { setMaps(result.maps ?? []); setMapId(result.maps?.[0]?.id ?? ""); });
@@ -186,7 +209,8 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   /** Copies the shared edge between the selected screen and its neighbour on `side`, one way. */
   async function copyAcross(side: Side, toNeighbour: boolean) {
     if (!selected) return;
-    const mine = cellAt(selected.x, selected.y), theirs = cellAt(selected.x + OFFSET[side][0], selected.y + OFFSET[side][1]);
+    const mine = cellAt(selected.x, selected.y), print = mine && footprint(mine, sizeOf(mine.file));
+    const theirs = print ? neighbourOf(print.x, print.y, print.w, print.h, side) : undefined;
     if (!mine || !theirs) return;
     const a = pictureOf(mine.file), b = pictureOf(theirs.file);
     if (!a || !b) return;
@@ -199,33 +223,93 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
     setBusy(false);
   }
 
+  // Wheel / pinch zooms round the cursor; the middle button pans (as in the painter).
+  useEffect(() => {
+    if (!gridArea) return;
+    const stopZoom = attachWheelZoom(gridArea, () => zoomRef.current, (direction) => {
+      const next = nextStep(ATLAS_ZOOM_STEPS, zoomRef.current, direction);
+      flushSync(() => setZoom(next));
+      return next;
+    }, () => canvasRef.current);
+    const stopPan = attachMiddlePan(gridArea);
+    return () => { stopZoom(); stopPan(); };
+  }, [gridArea]);
+
   if (!maps) return null;
   const cells = map?.cells ?? [];
-  const xs = cells.map((cell) => cell.x), ys = cells.map((cell) => cell.y);
-  const [minX, maxX, minY, maxY] = cells.length ? [Math.min(...xs) - 1, Math.max(...xs) + 1, Math.min(...ys) - 1, Math.max(...ys) + 1] : [0, 0, 0, 0];
-  // The ring of + slots around the map is a slim gutter (the author, 2026-10-14: zoom in to the maps), so Fit is the
-  // largest scale (up to 2×) at which the screens, the gutters and the 1 px gaps fit the grid area.
-  const columnCount = maxX - minX + 1, rowCount = maxY - minY + 1;
-  const fitScale = !cells.length ? 1 : areaSize.width ? Math.max(0.25, Math.min(2, (areaSize.width - 2 * GUTTER - (columnCount - 1)) / ((columnCount - 2) * W), (areaSize.height - 2 * GUTTER - (rowCount - 1)) / ((rowCount - 2) * H))) : 1;
-  const scale = zoom === "fit" ? fitScale : Number(zoom);
-  const nearCell = (x: number, y: number) => !cells.length ? x === 0 && y === 0 : SIDES.some((side) => cellAt(x + OFFSET[side][0], y + OFFSET[side][1]));
+  const box = bounds(cells, sizeOf);
+  // The + slots round the map are a slim gutter (the author, 2026-10-14), so Fit is the largest scale (up to 2×) at
+  // which the pieces and the gutters fit the area.
+  const fitScale = areaSize.width ? Math.max(0.125, Math.min(2, (areaSize.width - 2 * GUTTER - 8) / (box.w * W), (areaSize.height - 2 * GUTTER - 8) / (box.h * H))) : 1;
+  const scale = zoom === "fit" ? fitScale : zoom;
+  zoomRef.current = scale;
+  // Map pixels to the canvas: the gutter, then the map from its top-left square.
+  const left = (px: number) => GUTTER + (px - box.x * W) * scale, top = (py: number) => GUTTER + (py - box.y * H) * scale;
+  const occupied = (x: number, y: number) => Boolean(occupant(cells, sizeOf, x, y));
+  // Empty squares beside a piece get a +; outside the map's bounds they're the slim gutter.
+  const slots: { x: number; y: number; edge: "w" | "e" | "n" | "s" | null }[] = [];
+  if (!cells.length) slots.push({ x: 0, y: 0, edge: null });
+  else for (let y = box.y - 1; y <= box.y + box.h; y += 1) for (let x = box.x - 1; x <= box.x + box.w; x += 1) {
+    if (occupied(x, y) || !SIDES.some((side) => occupied(x + OFFSET[side][0], y + OFFSET[side][1]))) continue;
+    slots.push({ x, y, edge: x < box.x ? "w" : x >= box.x + box.w ? "e" : y < box.y ? "n" : y >= box.y + box.h ? "s" : null });
+  }
+  const slotStyle = ({ x, y, edge }: (typeof slots)[number]) => {
+    const l = left(x * W), t = top(y * H), w = W * scale, h = H * scale;
+    if (edge === "w") return { left: 0, top: t, width: GUTTER - 2, height: h };
+    if (edge === "e") return { left: left((box.x + box.w) * W) + 2, top: t, width: GUTTER - 2, height: h };
+    if (edge === "n") return { left: l, top: 0, width: w, height: GUTTER - 2 };
+    if (edge === "s") return { left: l, top: top((box.y + box.h) * H) + 2, width: w, height: GUTTER - 2 };
+    return { left: l, top: t, width: w, height: h };
+  };
   const selectedCell = selected ? cellAt(selected.x, selected.y) : undefined;
-  const edges = selectedCell ? SIDES.flatMap((side) => {
-    const neighbour = cellAt(selectedCell.x + OFFSET[side][0], selectedCell.y + OFFSET[side][1]);
+  const selectedPrint = selectedCell ? footprint(selectedCell, sizeOf(selectedCell.file)) : null;
+  const edges = selectedCell && selectedPrint && !selectedCell.dx && !selectedCell.dy ? SIDES.flatMap((side) => {
+    const neighbour = neighbourOf(selectedPrint.x, selectedPrint.y, selectedPrint.w, selectedPrint.h, side);
     if (!neighbour) return [];
     const a = pictureOf(selectedCell.file), b = pictureOf(neighbour.file);
     return [{ side, neighbour, result: a && b ? edgeMatch(a.picture, b.picture, side, overlap) : null }];
   }) : [];
 
+  /** Dragging a piece: past 4 px it moves; let go and it lands on the nearest square (Alt: the nearest tile). */
+  const startDrag = (event: React.PointerEvent, cell: MapCell) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* still drags while over the piece */ }
+    setDrag({ cell, x0: event.clientX, y0: event.clientY, dx: 0, dy: 0, moving: false, tiles: event.altKey });
+  };
+  const moveDrag = (event: React.PointerEvent) => {
+    if (!drag) return;
+    const dx = event.clientX - drag.x0, dy = event.clientY - drag.y0;
+    setDrag({ ...drag, dx, dy, tiles: event.altKey, moving: drag.moving || Math.hypot(dx, dy) > 4 });
+  };
+  const dropAt = (current: NonNullable<typeof drag>) => {
+    const from = pixelOf(current.cell);
+    return { ...snap(from.x + current.dx / scale, from.y + current.dy / scale, current.tiles), file: current.cell.file };
+  };
+  const endDrag = () => {
+    if (!drag) return;
+    const current = drag;
+    setDrag(null);
+    if (!current.moving) { setSelected({ x: current.cell.x, y: current.cell.y }); setAdding(null); return; }
+    const at = dropAt(current);
+    if (at.x === current.cell.x && at.y === current.cell.y && (at.dx ?? 0) === (current.cell.dx ?? 0) && (at.dy ?? 0) === (current.cell.dy ?? 0)) return;
+    updateMap((item) => {
+      const moving = item.cells.find((cell) => cell.x === current.cell.x && cell.y === current.cell.y && cell.file === current.cell.file);
+      return moving ? { ...item, cells: place(item.cells, moving, at, sizeOf) } : item;
+    });
+    setSelected({ x: at.x, y: at.y });
+  };
   async function exportMap() {
     if (!map || !cells.length) return;
-    const left = Math.min(...xs), top = Math.min(...ys);
     const canvas = document.createElement("canvas");
-    Object.assign(canvas, { width: (Math.max(...xs) - left + 1) * W, height: (Math.max(...ys) - top + 1) * H });
+    Object.assign(canvas, { width: box.w * W, height: box.h * H });
     const context = canvas.getContext("2d")!;
     context.fillStyle = "#000";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    for (const cell of cells) { const image = pictureOf(cell.file)?.preview; if (image) context.drawImage(image, 0, 0, W, H, (cell.x - left) * W, (cell.y - top) * H, W, H); }
+    for (const cell of cells) {
+      const image = pictureOf(cell.file)?.preview, at = pixelOf(cell);
+      if (image) context.drawImage(image, at.x - box.x * W, at.y - box.y * H);
+    }
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (blob && await onExport(blob, `${map.name}.png`)) say(`Exported ${map.name}.png (${canvas.width} × ${canvas.height})`);
   }
@@ -240,12 +324,12 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
         <span className="k-muted k-small">Edge overlap</span>
         <Segmented size="sm" label="Edge overlap" value={String(overlap) as "1" | "2"} onChange={(value) => updateMap((item) => ({ ...item, overlap: Number(value) }))} options={[{ value: "1", label: "1 tile" }, { value: "2", label: "2 tiles" }]} />
       </span>
-      <Segmented size="sm" label="Zoom" value={zoom} onChange={setZoom} options={[{ value: "fit", label: "Fit", title: "Scale the screens so the whole map fits" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
+      <Segmented size="sm" label="Zoom" value={zoom === "fit" ? "fit" : zoom === 1 ? "1" : zoom === 2 ? "2" : ("" as "fit")} onChange={(value) => setZoom(value === "fit" ? "fit" : Number(value))} options={[{ value: "fit", label: "Fit", title: "The whole map in the window (Ctrl / ⌘ + wheel or a pinch zooms; drag the empty map to move round)" }, { value: "1", label: "1×" }, { value: "2", label: "2×" }]} />
     </>
   );
   const footer = (
     <>
-      {map ? <span className="k-muted k-small mr-legend"><i className="match" /> edge matches · <i className="differ" /> edge differs · click a screen to select, double-click to paint it</span>
+      {map ? <span className="k-muted k-small mr-legend"><i className="match" /> edge matches · <i className="differ" /> edge differs · click a piece to select, drag to move it (Alt: by tiles; pieces in the way move right), double-click to paint it</span>
         : <span className="k-muted k-small">Each screen stays a normal background PNG.</span>}
       <span className="k-spacer" />
       {map && <Button variant="danger" icon={<Trash2 />} title="Only the layout goes; every PNG stays in the project" onClick={async () => { if (await confirmBox(`Delete the map ${map.name}? Only the layout goes; every PNG stays in the project.`, { yes: "Delete the map", danger: true })) { void save(maps.filter((item) => item.id !== map.id)); setMapId(""); } }}>Delete this map</Button>}
@@ -277,31 +361,43 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
           {!map ? (
             <div className="mr-empty"><span className="mr-mascot"><LogoMark size={48} /></span><span className="k-muted">Make a map to start: New map on the left.</span></div>
           ) : (
-            <div className="mr-cells" style={!cells.length ? { gridTemplateColumns: `${W * scale}px`, gridAutoRows: `${H * scale}px` } : { gridTemplateColumns: `${GUTTER}px repeat(${columnCount - 2}, ${W * scale}px) ${GUTTER}px`, gridTemplateRows: `${GUTTER}px repeat(${rowCount - 2}, ${H * scale}px) ${GUTTER}px` }}>
-              {Array.from({ length: (maxY - minY + 1) * (maxX - minX + 1) }, (_, at) => {
-                const x = minX + (at % (maxX - minX + 1)), y = minY + Math.floor(at / (maxX - minX + 1));
-                const cell = cellAt(x, y);
-                if (cell) {
-                  const isSelected = selected?.x === x && selected?.y === y;
-                  return (
-                    <button key={`${x},${y}`} type="button" className="mr-cell" aria-pressed={isSelected} onClick={() => { setSelected({ x, y }); setAdding(null); }} onDoubleClick={() => openCell(cell)}>
-                      {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" /> : assetOf(cell.file) ? <span className="k-muted k-small">…</span> : <span className="k-small mr-missing" title={`assets/backgrounds/${cell.file} isn't in the project any more (renamed or deleted outside GB Cartographer)`}>Missing<br />{cell.file}</span>}
-                      <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file}</span>
-                      {isSelected && edges.map(({ side, result }) => <i key={side} className={`mr-edge ${side} ${result && result.match === result.total ? "match" : "differ"}`} />)}
-                    </button>
-                  );
-                }
-                return nearCell(x, y)
-                  ? <button key={`${x},${y}`} type="button" className={`mr-add${x === minX || x === maxX || y === minY || y === maxY ? " mr-add--edge" : ""}`} aria-pressed={adding?.x === x && adding?.y === y} title={`Add a screen at ${x}, ${y}`} onClick={() => { setAdding({ x, y }); setSelected(null); }}><Plus size={x === minX || x === maxX || y === minY || y === maxY ? 14 : 20} /></button>
-                  : <span key={`${x},${y}`} />;
+            <div ref={canvasRef} className="mr-canvas" style={{ width: 2 * GUTTER + box.w * W * scale, height: 2 * GUTTER + box.h * H * scale }}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || event.target !== event.currentTarget || !gridArea) return;
+                pan.current = { x: event.clientX, y: event.clientY, left: gridArea.scrollLeft, top: gridArea.scrollTop };
+                try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* still pans while over the map */ }
+              }}
+              onPointerMove={(event) => { if (pan.current && gridArea) { gridArea.scrollLeft = pan.current.left - (event.clientX - pan.current.x); gridArea.scrollTop = pan.current.top - (event.clientY - pan.current.y); } }}
+              onPointerUp={() => { pan.current = null; }}>
+              {slots.map((slot) => (
+                <button key={`+${slot.x},${slot.y}`} type="button" className={`mr-add${slot.edge ? " mr-add--edge" : ""}`} style={slotStyle(slot)} aria-pressed={adding?.x === slot.x && adding?.y === slot.y} title={`Add a screen at ${slot.x}, ${slot.y}`} onClick={() => { setAdding({ x: slot.x, y: slot.y }); setSelected(null); }}><Plus size={slot.edge ? 14 : 20} /></button>
+              ))}
+              {cells.map((cell) => {
+                const at = pixelOf(cell), size = sizeOf(cell.file) ?? { width: W, height: H };
+                const isSelected = selected?.x === cell.x && selected?.y === cell.y;
+                const dragging = drag?.moving && drag.cell === cell;
+                return (
+                  <button key={`${cell.x},${cell.y},${cell.file}`} type="button" className={`mr-cell${dragging ? " mr-cell--drag" : ""}`} aria-pressed={isSelected}
+                    style={{ left: left(at.x), top: top(at.y), width: size.width * scale, height: size.height * scale, ...(dragging ? { transform: `translate(${drag!.dx}px, ${drag!.dy}px)` } : {}) }}
+                    onPointerDown={(event) => startDrag(event, cell)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => setDrag(null)}
+                    onDoubleClick={() => openCell(cell)}>
+                    {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" draggable={false} /> : assetOf(cell.file) ? <span className="k-muted k-small">…</span> : <span className="k-small mr-missing" title={`assets/backgrounds/${cell.file} isn't in the project any more (renamed or deleted outside GB Cartographer)`}>Missing<br />{cell.file}</span>}
+                    <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file}</span>
+                    {isSelected && edges.map(({ side, result }) => <i key={side} className={`mr-edge ${side} ${result && result.match === result.total ? "match" : "differ"}`} />)}
+                  </button>
+                );
               })}
+              {drag?.moving && (() => {
+                const at = dropAt(drag), print = footprint(at, sizeOf(drag.cell.file)), px = pixelOf(at);
+                return <span className="mr-drop" style={{ left: left(px.x), top: top(px.y), width: (sizeOf(drag.cell.file)?.width ?? W) * scale, height: (sizeOf(drag.cell.file)?.height ?? H) * scale }} title={`${print.w} × ${print.h}`} />;
+              })()}
             </div>
           )}
         </section>
 
         <aside className="mr-side" aria-label="Screen">
           {map && adding ? (
-            <AddScreen key={`${map.id}|${adding.x},${adding.y}`} map={map} at={adding} backgrounds={backgrounds} neighbours={SIDES.flatMap((side) => { const cell = cellAt(adding.x + OFFSET[side][0], adding.y + OFFSET[side][1]); return cell ? [{ side, cell }] : []; })} pictureOf={pictureOf} assetOf={assetOf} overlap={overlap} busy={busy}
+            <AddScreen key={`${map.id}|${adding.x},${adding.y}`} map={map} at={adding} backgrounds={backgrounds} neighbours={SIDES.flatMap((side) => { const cell = neighbourOf(adding.x, adding.y, 1, 1, side); return cell ? [{ side, cell }] : []; })} pictureOf={pictureOf} assetOf={assetOf} overlap={overlap} busy={busy}
               onCancel={() => setAdding(null)}
               onCreate={async (choice) => {
                 setBusy(true);
@@ -324,7 +420,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
               }} />
           ) : map && selectedCell ? (
             <div className="k-stack">
-              <span className="k-eyebrow">Screen at {selectedCell.x}, {selectedCell.y}</span>
+              <span className="k-eyebrow">{selectedPrint && (selectedPrint.w > 1 || selectedPrint.h > 1) ? `${selectedPrint.w} × ${selectedPrint.h} squares` : "Screen"} at {selectedCell.x}, {selectedCell.y}{selectedCell.dx || selectedCell.dy ? ` (+${selectedCell.dx ?? 0}, +${selectedCell.dy ?? 0} tiles)` : ""}</span>
               {pictureOf(selectedCell.file) && <img className="mr-thumb" src={pictureOf(selectedCell.file)!.preview.src} alt="" />}
               {!assetOf(selectedCell.file) && <p className="k-small mr-missing" role="note">assets/backgrounds/{selectedCell.file} isn't in the project any more: it was renamed or deleted outside GB Cartographer. Swap background below to point this screen at another picture, or remove it from the map. Nothing else changes.</p>}
               <div className="k-stack" style={{ gap: 2 }}>
@@ -344,7 +440,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
               </Field>
               <hr className="k-divider" />
               <span className="k-eyebrow">Edges</span>
-              {!edges.length && <p className="k-muted k-small mr-p">No neighbours yet.</p>}
+              {!edges.length && <p className="k-muted k-small mr-p">{selectedCell.dx || selectedCell.dy ? "Moved by tiles, so its edges aren't matched." : "No neighbours that line up with it."}</p>}
               {edges.map(({ side, neighbour, result }) => (
                 <div key={side} className="k-card mr-edge-card">
                   <div className="k-row">
