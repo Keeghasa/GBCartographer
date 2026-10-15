@@ -1,12 +1,13 @@
 /**
  * Thumbnails for the Wizards gallery (2026-10-10): a 160 × 96 picture for each wizard, drawn with the wireframe
  * pen and worn in library palettes (SpicyGame's, Chorbi's, the Overworld set), so each shows what its wizard does.
+ * Since 2026-10-14 (the author: "reimagine wizards with new gifs") each is a short loop of frames: the wizard at work.
  */
 import library from "../palettes/library.json";
 import { Pen, canvas } from "../graphics/pen";
 import { drawCave, drawWorld, type Generated } from "./generators";
 
-export type WizardThumb = "picture" | "dns" | "paletteSet" | "newBackground" | "budget" | "cave" | "world" | "checkup";
+export type WizardThumb = "picture" | "dns" | "paletteSet" | "budget" | "cave" | "world" | "checkup";
 
 const W = 160, H = 96, TILES_WIDE = W / 8;
 const palette = (name: string) => {
@@ -38,13 +39,15 @@ function landscape(p: Pen, x: number) {
   p.panel(x + 46, 52, 18, 14, 1); p.peak(x + 44, 42, 22, 11, 2); p.rect(x + 53, 58, 4, 8, 3);
 }
 
-export function wizardThumb(id: WizardThumb): Generated {
+export function wizardThumb(id: WizardThumb, frame = 0): Generated {
   if (id === "picture") {
     // A "photo" (dithered) on the left turning into flat pixels on the right.
     const out = blank(["V20-2-Fire"]), p = new Pen(out);
     landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
-    for (let y = 0; y < H; y += 1) for (let x = 0; x < 80; x += 1) if ((x + y) % 3 === 0 && out.pixels[y * W + x] < 3) out.pixels[y * W + x] += 1;
-    p.rect(79, 0, 2, H, 3); p.peak(74, 40, 12, 8, 0);
+    // The photo (dithered) right of the wipe, fitted pixels left of it; the wipe sweeps across frame by frame.
+    const wipe = 8 + frame * 24;
+    for (let y = 0; y < H; y += 1) for (let x = wipe; x < W; x += 1) if ((x + y) % 3 === 0 && out.pixels[y * W + x] < 3) out.pixels[y * W + x] += 1;
+    if (wipe < W) { p.rect(wipe - 1, 0, 2, H, 3); p.peak(wipe - 6, 40, 12, 8, 0); }
     return out;
   }
   if (id === "dns") {
@@ -52,7 +55,8 @@ export function wizardThumb(id: WizardThumb): Generated {
     const out = blank(["DWC-1-Cliffs", "DWC-1-Cliffs D", "DWC-1-Cliffs S", "DWC-1-Cliffs N"]), p = new Pen(out);
     landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
     for (let y = 0; y < 12; y += 4) p.dot(10 + y * 10, 6 + y, 1);
-    wearBox(out, 0, 0, 40, 96, 1); wearBox(out, 40, 0, 40, 96, 2); wearBox(out, 80, 0, 40, 96, 3); wearBox(out, 120, 0, 40, 96, 4);
+    // Day, dawn, sunset, night in turn: the whole scene wears one version a frame.
+    wearBox(out, 0, 0, 160, 96, 1 + (frame % 4));
     return out;
   }
   if (id === "paletteSet") {
@@ -60,16 +64,7 @@ export function wizardThumb(id: WizardThumb): Generated {
     const names = ["V20-1-Skin", "V20-2-Fire", "V20-3-Foliage", "V20-4-Water", "V20-5-Stone", "V20-6-Rose", "V20-7-Wood", "V20-8-UI"];
     const out = blank(["V20-8-UI", ...names]), p = new Pen(out);
     p.fill(3);
-    names.forEach((_, at) => { const x = 16 + at * 16; for (let shade = 0; shade < 4; shade += 1) p.rect(x, 16 + shade * 16, 16, 16, shade); p.box(x, 16, 16, 64, 3); wearBox(out, x, 16, 16, 64, at + 2); });
-    return out;
-  }
-  if (id === "newBackground") {
-    // A blank background two screens wide, its screens and tiles marked.
-    const out = blank(["OW-1-Grass"]), p = new Pen(out);
-    p.fill(0);
-    for (let x = 0; x < W; x += 8) for (let y = 0; y < H; y += 8) p.dot(x, y, 1);
-    p.box(4, 8, 152, 80, 3); p.rect(80, 8, 1, 80, 2);
-    p.text(30, 44, "SCREEN 1", 2); p.text(102, 44, "SCREEN 2", 2);
+    names.forEach((_, at) => { if (at >= frame) return; const x = 16 + at * 16; for (let shade = 0; shade < 4; shade += 1) p.rect(x, 16 + shade * 16, 16, 16, shade); p.box(x, 16, 16, 64, 3); wearBox(out, x, 16, 16, 64, at + 2); });
     return out;
   }
   if (id === "budget") {
@@ -81,23 +76,26 @@ export function wizardThumb(id: WizardThumb): Generated {
       q.panel(0, 0, 16, 16, 1, 3); q.rect(0, 7, 16, 2, 3); q.rect(7, 0, 2, 7, 3); q.rect(3, 9, 2, 7, 3); q.rect(11, 9, 2, 7, 3);
       if (chip >= 0) q.rect(2 + chip * 4, 2, 2, 2, 2);
     };
-    brick(14, 18, 0); brick(36, 18, 1); brick(58, 18, 2);
+    // Frame by frame the near twins become one tile, and the meter drops under the limit.
+    const merged = Math.min(frame, 3);
+    [0, 1, 2].forEach((at) => brick(14 + at * 22, 18, at < merged ? -1 : at));
     p.line(82, 26, 100, 26, 3); p.line(96, 22, 100, 26, 3); p.line(96, 30, 100, 26, 3);
     brick(114, 18, -1);
     const meter = (y: number, full: number, over: boolean) => {
       p.panel(14, y, 116, 10, 0, 3); p.rect(16, y + 2, full, 6, over ? 3 : 2); p.rect(110, y - 2, 2, 14, 3);
     };
-    p.text(14, 46, "412/384", 3); meter(56, 112, true);
-    p.text(14, 72, "380/384", 2); meter(82, 90, false);
+    const count = [412, 401, 390, 380][merged];
+    p.text(14, 46, `${count}/384`, count > 384 ? 3 : 2); meter(56, Math.round(count / 412 * 112), count > 384);
+    if (merged === 3) p.text(14, 72, "UNDER THE LIMIT", 2);
     return out;
   }
-  if (id === "cave") return crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone" }), 1, 24);
-  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: 5, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
+  if (id === "cave") return crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11 + frame, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone" }), 1, 24);
+  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: 5 + frame, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
   // checkup: a health report, ticked off one by one.
   const out = blank(["V20-8-UI"]), p = new Pen(out);
   p.fill(0);
   p.round(8, 6, 144, 84, 0, 2);
-  [[true, 96], [true, 72], [false, 104], [false, 64]].forEach(([done, width], row) => {
+  [96, 72, 104, 64].map((width, row) => [row < frame, width] as const).forEach(([done, width], row) => {
     const y = 16 + row * 18;
     p.panel(18, y, 10, 10, done ? 1 : 0, 3);
     if (done) { p.line(20, y + 5, 22, y + 7, 3); p.line(22, y + 7, 26, y + 2, 3); }
@@ -105,3 +103,9 @@ export function wizardThumb(id: WizardThumb): Generated {
   });
   return out;
 }
+
+/** How many frames each wizard's loop has, and how long each shows (ms). */
+export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
+  picture: { count: 8, ms: 260 }, dns: { count: 4, ms: 900 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
+  cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 },
+};

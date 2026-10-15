@@ -1,9 +1,32 @@
-/* The Wizards gallery: a card per wizard, its thumbnail on top. */
-.wg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--k-3); overflow: auto; height: 100%; align-content: start; padding: 2px; }
-.wg-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: var(--k-2); color: inherit; text-align: left; font: inherit; cursor: pointer; }
-.wg-card:hover:not(:disabled) { border-color: rgba(var(--k-acc-rgb), .6); }
-.wg-card:disabled { opacity: .55; cursor: default; }
-.wg-thumb { display: block; width: 100%; aspect-ratio: 160 / 96; border-radius: 8px; image-rendering: pixelated; }
-.wg-name { display: flex; align-items: center; gap: 6px; padding: 0 2px; font-weight: 600; color: var(--k-ink); }
-.wg-name svg { width: 15px; height: 15px; color: var(--k-acc); }
-.wg-about { padding: 0 2px 2px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* The Wizards gallery as a mosaic (2026-10-14, the Asset Catalog's neo-grotesk look): big, tight Inter for names,
+   small mono labels, flat tiles that play each wizard's loop. Colors come from the kit. */
+.wg { display: flex; flex-direction: column; gap: var(--k-3); min-height: 100%; padding: 0 4px 24px 0; }
+.wg-head { display: flex; justify-content: space-between; gap: var(--k-4); flex-wrap: wrap; padding-bottom: var(--k-2); border-bottom: 2px solid var(--k-ink); font: 500 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); text-transform: uppercase; letter-spacing: .08em; }
+.wg-head span:last-child { text-transform: none; letter-spacing: 0; }
+.wg-h1 { margin: 0; font: 800 64px/.95 var(--k-font); letter-spacing: -.05em; color: var(--k-ink); }
+.wg-h1 b::after { content: "."; color: var(--k-acc); }
+
+.wg-mosaic { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+.wg-tile { position: relative; overflow: hidden; display: flex; flex-direction: column; grid-column: span 4; padding: 0; border: 0; border-radius: 6px; background: var(--k-panel-2, #161c17); color: var(--k-ink); text-align: left; font: inherit; cursor: pointer; }
+.wg-tile--half { grid-column: span 6; }
+.wg-tile--third { grid-column: span 4; }
+.wg-tile:disabled { cursor: default; opacity: .5; }
+.wg-art { position: relative; aspect-ratio: 160 / 96; overflow: hidden; background: #0e110f; }
+.wg-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; transition: transform .4s var(--k-ease); }
+.wg-tile:not(:disabled):hover .wg-thumb, .wg-tile:focus-visible .wg-thumb { transform: scale(1.04); }
+.wg-text { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px 12px; }
+.wg-top { display: flex; justify-content: space-between; align-items: center; }
+.wg-icon { display: inline-grid; place-items: center; color: var(--k-acc); }
+.wg-icon svg { width: 16px; height: 16px; }
+.wg-num { font: 500 10.5px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); }
+.wg-name { font: 800 20px/1.05 var(--k-font); letter-spacing: -.035em; }
+.wg-tile--half .wg-name { font-size: 28px; }
+.wg-tile:not(:disabled):hover .wg-name::after { content: "."; color: var(--k-acc); }
+.wg-about { font: 400 10.5px/1.45 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+
+@media (max-width: 760px) {
+  .wg-mosaic { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wg-tile, .wg-tile--half, .wg-tile--third { grid-column: span 2; }
+  .wg-h1 { font-size: 40px; }
+}

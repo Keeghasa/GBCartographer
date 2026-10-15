@@ -29,7 +29,6 @@ import { PictureWizard } from "./app/PictureWizard";
 import { DnsWizard } from "./app/DnsWizard";
 import { BudgetFixer } from "./app/BudgetFixer";
 import { CheckupWizard } from "./app/CheckupWizard";
-import { NewBackgroundWizard, type NewBackground } from "./app/NewBackgroundWizard";
 import { PaletteSetWizard } from "./app/PaletteSetWizard";
 import { GeneratorWizard, type GeneratorMode } from "./app/GeneratorWizard";
 import { StoreWindow } from "./app/StoreWindow";
@@ -154,7 +153,7 @@ export default function PaintApp() {
   /** The wizard open (W2…W8 from the Wizards menu), if any. */
   /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
   const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing these tabs, not the window. */ tabs?: Doc[] } | null>(null);
-  const [wizard, setWizard] = useState<"dns" | "paletteSet" | "newBackground" | "budget" | "checkup" | GeneratorMode | null>(null);
+  const [wizard, setWizard] = useState<"dns" | "paletteSet" | "budget" | "checkup" | GeneratorMode | null>(null);
   /** A wizard waiting for a project picture with palette slots to open (Dawn, sunset and night picked with none open). */
   const [wizardAfterOpen, setWizardAfterOpen] = useState<"dns" | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
@@ -1035,27 +1034,6 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     for (const [slot, paletteId] of ids.entries()) {
       await fetch(`./__cartographer/gbstudio-palette-slot?${assetQuery(asset)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot, paletteId }) }).catch(() => null);
     }
-  }
-
-  /** W4: a blank background, and with a library set its palettes added and put in the default slots. */
-  async function createBackground({ name, width, height, palettes: set }: NewBackground): Promise<boolean> {
-    if (set?.length && !await confirmBox(`Add the ${set.length} palettes to the project and put them in its default background slots 1–${set.length}?\n\nEvery scene without its own palettes uses the defaults (the old ones are backed up).`)) return false;
-    if (!await createPicture({ kind: "backgrounds", name, width, height })) return false;
-    if (!set?.length) return true;
-    if (!await okToWriteProjectJson()) return true;
-    const ids: string[] = [];
-    for (const palette of set) {
-      const existing = projectRef.current?.palettes.find((item) => item.name === palette.name && item.colors.join() === palette.colors.join());
-      const id = existing?.id ?? await writeProjectPalette(palette);
-      if (id) ids.push(id);
-    }
-    await loadProject();
-    const asset = projectRef.current?.assets.find((item) => item.kind === "backgrounds" && item.name === name);
-    if (asset) await putInSlots(asset, ids);
-    await rereadSlots();
-    setSlotsVersion((value) => value + 1);
-    say(`Made ${name} with ${ids.length} palettes in the default slots.`);
-    return true;
   }
 
   /** Takes a palette nothing uses out of the project (it moves to the backups). */
@@ -2679,7 +2657,6 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
       onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
     { thumb: "paletteSet", name: "A palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
-    { thumb: "newBackground", name: "New background", icon: <FilePlus />, about: "A blank background sized in screens, with a palette set in its slots.", blocked: needProject, onStart: () => setWizard("newBackground") },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
     { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms drawn with the catalog’s cliffs and floors, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
     { thumb: "world", name: "Overworld", icon: <Mountain />, about: "An RPG-style overworld: water, forest, mountains, towns and roads, in the palettes you pick.", blocked: null, onStart: () => setWizard("world") },
@@ -2928,7 +2905,6 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
           takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
-      {wizard === "newBackground" && project && <NewBackgroundWizard projectName={project.name} palettes={project.palettes} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setWizard(null)} onCreate={createBackground} />}
       {wizard === "budget" && doc && (
         <BudgetFixer picture={{ name: doc.name, pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }}
           limit={budget.limit} flips={budget.flips} onClose={() => setWizard(null)} onApply={(pixels) => { dropFloat(doc); pushUndo(doc); doc.pixels.set(pixels); touch(doc); say(`${doc.name}: merged near tiles; ${countUniqueTiles(doc.pixels, doc.width, doc.height, budget.flips)} unique tiles now. Undo brings them back.`); }} />
