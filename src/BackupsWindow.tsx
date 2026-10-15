@@ -4,8 +4,8 @@
  * tiles differ, project JSON as a short list of what changed, the raw text on request) and can be put back; the
  * restore itself is backed up first, so it can be undone from here too.
  */
-import { FolderOpen, History } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { FolderOpen, History, Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { decodeTileColors } from "./gb/gbstudio";
 import { Button, Dialog, Slider, Switch } from "./ui/kit";
 import "./BackupsWindow.css";
@@ -110,6 +110,43 @@ function PictureCompare({ backupUrl, nowUrl, time }: { backupUrl: string; nowUrl
       </div>
       <div className="k-well bw-summary">{diff}</div>
     </>
+  );
+}
+
+/**
+ * A picture's versions as a filmstrip (the author, 2026-10-14: "a cool scroll through the old images"): every saved
+ * version oldest to newest and the file now at the end, to scroll through and pick, and Play flips through them as a
+ * time-lapse. The thumbnails load only here, lazily, so the rest of the app never pays for them.
+ */
+function Filmstrip({ file, versions, chosen, onPick, nowUrl }: { file: string; versions: BackupVersion[]; chosen: string; onPick: (id: string) => void; nowUrl: string }) {
+  const strip = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const order = [...versions].reverse();
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setInterval(() => {
+      const at = order.findIndex((item) => item.id === chosen);
+      if (at >= order.length - 1) { setPlaying(false); return; }
+      onPick(order[at + 1].id);
+    }, 450);
+    return () => window.clearInterval(timer);
+  });
+  // The picked version scrolls into the middle of the strip.
+  useEffect(() => { strip.current?.querySelector<HTMLElement>("[aria-pressed=true]")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); }, [chosen]);
+  return (
+    <div className="bw-film">
+      <button type="button" className="bw-film-play" aria-label={playing ? "Pause" : "Play the versions as a time-lapse"} title={playing ? "Pause" : "Play: flip through every version, oldest to newest"}
+        onClick={() => { if (!playing && order[order.length - 1]?.id === chosen) onPick(order[0].id); setPlaying(!playing); }}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
+      <div ref={strip} className="bw-film-strip" onWheel={(event) => { if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) event.currentTarget.scrollLeft += event.deltaY; }}>
+        {order.map((item, index) => (
+          <button type="button" key={item.id} className="bw-frame" aria-pressed={item.id === chosen} title={`${when(item.time)} · ${ago(item.time)}`} onClick={() => { setPlaying(false); onPick(item.id); }}>
+            <img loading="lazy" src={`./__cartographer/backup?${new URLSearchParams({ file, version: item.id })}`} alt={`Version ${index + 1}`} />
+            <small>{index + 1} · {ago(item.time)}</small>
+          </button>
+        ))}
+        <span className="bw-frame bw-frame--now" title="The file as it is now"><img loading="lazy" src={nowUrl} alt="Now" /><small>now</small></span>
+      </div>
+    </div>
   );
 }
 
@@ -313,6 +350,7 @@ export default function BackupsWindow({ projectName, initialFile, onClose, onRes
                 )}
                 <span className="k-hint">{when(chosen.time)} · {ago(chosen.time)} · {kb(chosen.size)} · <span title={entry.file}>{about.kind}, {entry.file}</span></span>
               </div>
+              {about.picture && entry.versions.length > 1 && <Filmstrip file={entry.file} versions={entry.versions} chosen={chosen.id} onPick={setVersion} nowUrl={nowUrl} />}
               {about.picture ? <PictureCompare backupUrl={backupUrl} nowUrl={nowUrl} time={chosen.time} /> : <TextCompare backupUrl={backupUrl} nowUrl={nowUrl} time={chosen.time} />}
             </>
           ) : <p className="k-muted k-small bw-note">{files?.length ? "Pick a file." : ""}</p>}

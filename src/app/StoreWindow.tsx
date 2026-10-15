@@ -185,21 +185,24 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   async function addArt(asset: WireAsset, art: Canvas) { setBusy(true); try { if (await onAddArt(asset, art)) setAdded((was) => new Set(was).add(asset.id)); } finally { setBusy(false); } }
   const home = () => { setCategory(null); setQuery(""); };
 
-  /** The home: a tile per category, sized by what it holds. */
+  /** The home: a tile per category in an even grid. */
   const mosaic = SECTIONS.map((section) => (
     <section key={section.id} className={`stm-section stm-section--${section.id}`}>
       <header className="stm-section-head"><span className="stm-section-title">{section.title}</span><span className="stm-section-note">{section.note}</span></header>
-      <div className="stm-mosaic">
+      <div className="stm-grid">
       {CATEGORIES.filter((item) => section.ids.includes(item.id)).map((item) => {
-        const n = count(item.id), size = n >= 30 ? "stm-live--4" : n >= 15 ? "stm-live--3" : n >= 6 ? "stm-live--2" : "";
+        const n = count(item.id);
         const collage = item.id === "palettes"
           ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 24).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
           : pieces.filter((piece) => piece.category === item.id).slice(0, 18).map(({ asset, art }) => <img key={asset.id} src={pictureUrl(asset.id, art)} alt="" draggable={false} />);
+        // A grid like the Wizards' (the author, 2026-10-14): the collage on top, the name, count and line below.
         return (
-          <button key={item.id} type="button" className={`stm-live ${size}`} disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>
-            <span className="stm-collage" aria-hidden>{collage}</span>
-            <span className="stm-live-top"><span className="stm-icon">{item.icon}</span><span className="stm-big">{n || "–"}</span></span>
-            <span><span className="stm-live-name">{item.name}</span><span className="stm-meta">{n ? item.about : "None yet"}</span></span>
+          <button key={item.id} type="button" className="stm-cat" disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>
+            <span className="stm-cat-art" aria-hidden><span className="stm-cat-collage">{collage}</span></span>
+            <span className="stm-cat-text">
+              <span className="stm-cat-name"><span className="stm-icon">{item.icon}</span>{item.name}<span className="stm-cat-count">{n || "–"}</span></span>
+              <span className="stm-meta">{n ? item.about : "None yet"}</span>
+            </span>
           </button>
         );
       })}

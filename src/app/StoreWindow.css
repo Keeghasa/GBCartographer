@@ -91,3 +91,19 @@
 }
 .stm-tile-by { color: var(--k-ink-2); }
 .stm-tile-source { position: relative; display: flex; margin-top: 4px; }
+
+/* The home as an even grid, like the Wizards (the author, 2026-10-14): three across, the collage on top. */
+.stm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stm-cat { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 0; border: 0; border-radius: 6px; background: var(--k-panel-2, #161c17); color: var(--k-ink); text-align: left; font: inherit; cursor: pointer; }
+.stm-cat:disabled { opacity: .45; cursor: default; }
+.stm-cat-art { position: relative; aspect-ratio: 160 / 96; overflow: hidden; background: #0e110f; }
+.stm-cat-collage { position: absolute; inset: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3px; padding: 3px; transition: transform .4s var(--k-ease); }
+.stm-cat-collage img { height: 56px; image-rendering: pixelated; background: #e0f8cf; }
+.stm-cat-collage .stm-chip { height: 56px; }
+.stm-cat:not(:disabled):hover .stm-cat-collage { transform: scale(1.04); }
+.stm-cat-text { display: flex; flex-direction: column; gap: 3px; padding: 10px 14px 12px; }
+.stm-cat-name { display: flex; align-items: center; gap: 8px; font: 800 20px/1.05 var(--k-font); letter-spacing: -.035em; }
+.stm-cat-name .stm-icon svg { width: 16px; height: 16px; }
+.stm-cat-count { margin-left: auto; font: 500 12px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); letter-spacing: 0; }
+.stm-cat:not(:disabled):hover .stm-cat-name { color: var(--k-acc); }
+@media (max-width: 760px) { .stm-grid { grid-template-columns: 1fr; } }

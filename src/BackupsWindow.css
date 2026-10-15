@@ -21,3 +21,15 @@
 .bw-color i { width: 14px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px var(--k-edge-2); }
 .bw-raw { margin: 0; max-height: 320px; overflow: auto; padding: 10px 12px; color: var(--k-ink-2); background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: 6px; font-size: var(--k-text-xs); line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
 .bw-filter { flex: none; margin-bottom: var(--k-1); }
+
+/* The filmstrip: every version of a picture side by side, scrolled sideways (the wheel scrolls it too), Play on the left. */
+.bw-film { display: flex; align-items: stretch; gap: var(--k-2); }
+.bw-film-play { flex: none; display: grid; place-items: center; width: 40px; border: 1px solid var(--k-edge); border-radius: 8px; background: var(--k-ctl); color: var(--k-ink); cursor: pointer; }
+.bw-film-play:hover { background: var(--k-hover); color: var(--k-hover-ink); }
+.bw-film-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; scroll-snap-type: x proximity; mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+.bw-frame { flex: none; display: flex; flex-direction: column; gap: 4px; padding: 6px; width: 132px; border: 1px solid var(--k-edge); border-radius: 8px; background: var(--k-panel-2, #161c17); color: var(--k-ink-3); font: inherit; cursor: pointer; scroll-snap-align: center; transition: transform .15s var(--k-ease), border-color .15s; }
+.bw-frame img { width: 100%; height: 84px; object-fit: contain; image-rendering: pixelated; background: repeating-conic-gradient(#d9ddd2 0 25%, #eef1ea 0 50%) 0 0 / 10px 10px; border-radius: 4px; }
+.bw-frame small { font: 500 10px 'JetBrains Mono', ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bw-frame:hover { border-color: rgba(var(--k-acc-rgb), .5); transform: translateY(-2px); }
+.bw-frame[aria-pressed="true"] { border-color: var(--k-acc); box-shadow: 0 0 0 1px var(--k-acc); color: var(--k-ink); transform: translateY(-3px) scale(1.04); }
+.bw-frame--now { cursor: default; border-style: dashed; }
