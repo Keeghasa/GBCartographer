@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
 import { Dialog } from "../ui/kit";
 import { PxWizard } from "../ui/setIcons";
-import { WIZARD_FRAMES, photoFrames, wizardThumb, type WizardThumb } from "./wizardThumbs";
+import { WIZARD_FRAMES, WIZARD_LOOK, photoFrames, wizardThumb, type WizardThumb } from "./wizardThumbs";
 import sammie from "./sammie.png";
 import "./WizardGallery.css";
 
@@ -39,12 +39,14 @@ function Thumb({ id, playing }: { id: WizardThumb; playing: boolean }) {
       Object.assign(scratch, { width: image.width, height: image.height });
       const context = scratch.getContext("2d")!;
       context.drawImage(image, 0, 0);
-      setPhoto(photoFrames(context.getImageData(0, 0, image.width, image.height), count));
+      const pixels = context.getImageData(0, 0, image.width, image.height);
+      // All three looks in turn (the author, 2026-10-14: "all three, cycle").
+      setPhoto([0, 1, 2].flatMap((look) => photoFrames(pixels, count, look)));
     };
     image.src = sammie;
   }, [id, count]);
   const drawn = useMemo(() => Array.from({ length: count }, (_, frame) => {
-    const picture = wizardThumb(id, frame);
+    const picture = wizardThumb(id, frame, WIZARD_LOOK[id]);
     const cells = picture.cells ?? new Uint8Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
     const palettes = (picture.palettes ?? []).map(({ name, colors }) => ({ name, colors }));
     return new ImageData(toRgba(picture.pixels, cells, picture.width, palettes), picture.width, picture.height);
@@ -54,9 +56,9 @@ function Thumb({ id, playing }: { id: WizardThumb; playing: boolean }) {
   const [target, setTarget] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {
     if (!playing || still()) return;
-    const timer = window.setInterval(() => setFrame((at) => (at + 1) % count), ms);
+    const timer = window.setInterval(() => setFrame((at) => (at + 1) % frames.length), ms);
     return () => window.clearInterval(timer);
-  }, [playing, count, ms]);
+  }, [playing, frames.length, ms]);
   useEffect(() => {
     if (!target) return;
     const image = frames[frame];

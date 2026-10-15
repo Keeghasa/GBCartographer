@@ -78,10 +78,10 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     const at = frame / per, from = stops[Math.floor(at) % stops.length], to = stops[(Math.floor(at) + 1) % stops.length];
     const mix = (a: string, b: string, t: number) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
     const ease = (t: number) => t * t * (3 - 2 * t);
-    const out = blank([]), p = new Pen(out);
+    // The scene: the cave wizard's forest (the author's pick, 2026-10-14), in its shades, worn in one blended palette.
+    const out = crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, walls: "pines" }), 1, 24);
+    out.cells = new Uint8Array((W / 8) * (H / 8)).fill(1);
     out.palettes = [{ name: "Time of day", colors: from.colors.map((color, i) => mix(color, to.colors[i], ease(at % 1))) }];
-    landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
-    for (let y = 0; y < 12; y += 4) p.dot(10 + y * 10, 6 + y, 1);
     return out;
   }
   if (id === "paletteSet") {
@@ -134,6 +134,10 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
 }
 
 /** How many frames each wizard's loop has, and how long each shows (ms). */
+/** The look each card shows (the author's picks, 2026-10-14 review): 3D Snapshot, the palette set, the budget fixer
+ * and the check-up in their third look; Picture to background cycles through all three. */
+export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 2, world: 0, cave: 0, dns: 0, paletteSet: 2, budget: 2, checkup: 2 };
+
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
   picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
   cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 }, snapshot: { count: 24, ms: 110 },
