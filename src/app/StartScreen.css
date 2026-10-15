@@ -39,9 +39,9 @@
 .ss-alpha svg { flex: none; margin-top: 2px; color: #f0b450; }
 
 /* The intro: the icon pops in, the name slides up beside it, then the whole card fades (about 1.25 s). */
-.ss-intro { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; gap: 22px; background: var(--k-bg, #000); animation: ss-intro-out .35s ease-in 1.6s both; cursor: pointer; }
+.ss-intro { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; gap: 22px; background: var(--k-bg, #000); animation: ss-intro-out .4s ease-in 2.2s both; cursor: pointer; }
 .ss-intro-mark img { display: block; border-radius: 22px; image-rendering: pixelated; animation: ss-pop .7s cubic-bezier(.2, 1.6, .4, 1) both; }
-.ss-intro-name { font-size: 48px; letter-spacing: -.055em; animation: ss-rise .6s cubic-bezier(.16, 1, .3, 1) .35s both; }
+.ss-intro-name { font-size: 48px; line-height: 1.25; padding-bottom: .12em; letter-spacing: -.055em; animation: ss-rise .6s cubic-bezier(.16, 1, .3, 1) .35s both; }
 @keyframes ss-pop { from { transform: scale(.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes ss-rise { from { transform: translateY(24px); opacity: 0; clip-path: inset(0 0 100% 0); } to { transform: none; opacity: 1; clip-path: inset(0); } }
 @keyframes ss-intro-out { to { opacity: 0; visibility: hidden; } }

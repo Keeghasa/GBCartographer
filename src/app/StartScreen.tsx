@@ -83,7 +83,7 @@ function RecentRow({ index, name, path, onOpen }: { index: number; name: string;
 
 /**
  * The intro (the author, 2026-10-14: "a quick splash intro … then the projects sliding up quickly"): the app's icon
- * pops in and its name slides up beside it, about two seconds, then it fades and the recent projects slide up one after
+ * pops in and its name slides up beside it, about two and a half seconds, then it fades and the recent projects slide up one after
  * another. Once a session, and never when the system asks for less motion.
  */
 const INTRO_KEY = "gbc-intro-seen";
@@ -96,7 +96,7 @@ const wantsIntro = () => {
 };
 
 function Intro({ onDone }: { onDone: () => void }) {
-  useEffect(() => { const timer = window.setTimeout(onDone, 1950); return () => window.clearTimeout(timer); }, [onDone]);
+  useEffect(() => { const timer = window.setTimeout(onDone, 2600); return () => window.clearTimeout(timer); }, [onDone]);
   return (
     <div className="ss-intro" aria-hidden onClick={onDone}>
       <span className="ss-intro-mark"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={96} height={96} /></span>
