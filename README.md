@@ -53,8 +53,9 @@ palettes straight back into the project.
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
   palettes, drawn with your own auto-tile stamps if you like (the cave's walls, the overworld's shores and roads),
   as one background or cut into screens laid out in the Map Room.
-- **The Map Room.** Lay backgrounds out as an adventure-style grid of screens, see whether neighbouring edges
-  match, add a screen next to another, and export the whole map as one picture.
+- **The Map Room.** Lay backgrounds of any size out as an adventure-style map: single screens, 2 × 2 or 3 × 3 pictures
+  and odd sizes at their true size. Drag a piece to move it (pieces in the way move over), pan and zoom, see whether
+  neighbouring edges match, add a screen next to another, and export the whole map as one picture.
 - **Palettes edited in place.** Click a shade square again to change that color; Save writes the recolored
   palette back into the project, and undo brings old colors back.
 - **The usual tools.** Pencil, eraser, spray, line, rectangle, ellipse, fill (Alt-click replaces a shade
