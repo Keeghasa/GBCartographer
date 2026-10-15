@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Box, Check, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Box, Settings as SettingsIcon, Check, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -34,6 +34,7 @@ import { GeneratorWizard, type GeneratorMode } from "./app/GeneratorWizard";
 import { StoreWindow } from "./app/StoreWindow";
 import { WizardGallery, type WizardCard } from "./app/WizardGallery";
 import { SnapshotWindow } from "./app/SnapshotWindow";
+import { SettingsWindow } from "./app/SettingsWindow";
 import type { Generated } from "./app/generators";
 import type { FitResult } from "./app/pictureFit";
 
@@ -155,6 +156,7 @@ export default function PaintApp() {
   /** Unsaved changes when the desktop window closes: what would change, and whether Save is running. */
   const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing these tabs, not the window. */ tabs?: Doc[] } | null>(null);
   const [showSnapshot, setShowSnapshot] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "budget" | "checkup" | GeneratorMode | null>(null);
   /** A wizard waiting for a project picture with palette slots to open (Dawn, sunset and night picked with none open). */
   const [wizardAfterOpen, setWizardAfterOpen] = useState<"dns" | null>(null);
@@ -2699,6 +2701,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           <Button icon={<SwatchBook />} title="Palette manager: the project's palettes, a library, and your own" onClick={() => setShowPalettes(true)}>Palettes</Button>
           <Button icon={<StoreIcon />} title="Asset Catalog: credited palettes and art to take into your project, a piece at a time" onClick={() => setShowStore(true)}>Catalog</Button>
           <Button icon={<PxWizard size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards</Button>
+          <IconButton label="Settings: font and theme" onClick={() => setShowSettings(true)}><SettingsIcon /></IconButton>
         </span>
         <IconButton label="Undo" keys="Ctrl+Z" disabled={!doc?.undo.length} onClick={() => stepHistory("undo")}><Undo2 /></IconButton>
         <IconButton label="Redo" keys="Ctrl+Shift+Z" disabled={!doc?.redo.length} onClick={() => stepHistory("redo")}><Redo2 /></IconButton>
@@ -2728,7 +2731,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           ); })}
           <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
         </div>
-        {docs.current.length > 1 && <Menu align="end" items={[...docs.current.map((item): MenuEntry => ({ label: <span className={item.dirty ? "dirty" : undefined}>{item.name}{item.dirty && " *"}</span>, icon: foreignProject(item) ? <Plane /> : item.id === activeId ? <Check /> : <FileImage />, onSelect: () => setActiveId(item.id) })), { separator: true }, { label: "Close all", icon: <SquareX />, title: "Close every open picture (unsaved ones ask first)", onSelect: () => closeDocs([...docs.current]) }]}
+        {docs.current.length > 1 && <Menu align="end" items={[{ label: "Close all", icon: <SquareX />, title: "Close every open picture (unsaved ones ask first)", onSelect: () => closeDocs([...docs.current]) }, { separator: true }, ...docs.current.map((item): MenuEntry => ({ label: <span className={item.dirty ? "dirty" : undefined}>{item.name}{item.dirty && " *"}</span>, icon: foreignProject(item) ? <Plane /> : item.id === activeId ? <Check /> : <FileImage />, onSelect: () => setActiveId(item.id) }))]}
           trigger={<IconButton label={`All open pictures (${docs.current.length})`} size="sm" variant="ghost"><ChevronDown /></IconButton>} />}
       </div>
       <div className="app-body">
@@ -2909,6 +2912,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           picture={doc ? { name: doc.name, width: doc.width, height: doc.height, rgba: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return toRgba(flat, doc.cells, doc.width, doc.palettes); })() } : null}
           onClose={() => setWizard(null)} onAddToProject={addPaletteSet} onAddToMine={(list) => { addToMine(list); say(`Added ${list.length} palettes to Mine (the palette manager).`); }} />
       )}
+      {showSettings && <SettingsWindow font={font} onFont={(next) => { setFont(next); applyFont(next); }} onClose={() => setShowSettings(false)} />}
       {showSnapshot && <SnapshotWindow onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })}
         onExport={(blob, name) => saveBlob(blob, name, PNG_TYPES)}
         onSend={project ? (kind, shot) => createPicture({ kind, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels }) : null} />}

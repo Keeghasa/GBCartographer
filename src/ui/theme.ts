@@ -144,6 +144,31 @@ export function paletteThemeTokens(colors: string[]): Record<string, string> {
 
 let appliedTokens: string[] = [];
 
+/** "#rrggbb" or "rgb(a)(…)" → "r, g, b" (for the kit's --k-acc-rgb). */
+const rgbOf = (color: string) => { const [r, g, b] = parse(color); return `${r}, ${g}, ${b}`; };
+
+/** The UI kit's own tokens for a theme (2026-10-14: the Settings window brought the themes back): surfaces, ink and
+ * accent. OLED Game Boy green is the kit's default and sets nothing. */
+function kitTokens(shown: ThemeChoice, colors: string[] | null): Record<string, string> {
+  const accent = (acc: string, hi: string, lo: string, onAcc: string, text: string, hover: string, hoverInk: string) => ({
+    "--k-acc": acc, "--k-acc-hi": hi, "--k-acc-lo": lo, "--k-acc-rgb": rgbOf(acc), "--k-on-acc": onAcc, "--k-acc-text": text,
+    "--k-hover": hover, "--k-hover-ink": hoverInk, "--k-hover-edge": `rgba(${rgbOf(acc)}, .5)`,
+  });
+  if (colors) {
+    const at = (t: number) => rampColor(colors, t);
+    return {
+      "--k-bg": at(0), "--k-well": at(0.03), "--k-panel": at(0.06), "--k-sunk": at(0.09), "--k-ctl": at(0.13), "--k-ctl-2": at(0.17), "--k-raised": at(0.21),
+      "--k-ink": at(0.98), "--k-ink-2": at(0.84), "--k-ink-3": at(0.64),
+      "--k-edge": `rgba(${rgbOf(at(1))}, .09)`, "--k-edge-2": `rgba(${rgbOf(at(1))}, .16)`,
+      ...accent(at(0.72), at(0.82), at(0.62), at(0), at(0.9), at(0.32), at(1)),
+    };
+  }
+  const orange = accent("#F08A3C", "#F5A062", "#D9752A", "#1A0D04", "#F5B07E", "#5A3418", "#FDE6D4");
+  if (shown === "oled") return orange;
+  if (shown === "slate") return { "--k-bg": "#15181d", "--k-well": "#1a1e24", "--k-panel": "#1f242b", "--k-sunk": "#252a32", "--k-ctl": "#2c323b", "--k-ctl-2": "#343b45", "--k-raised": "#3c444f", ...orange };
+  return {};
+}
+
 /** Sets the theme on <html> (slate needs nothing; palette themes set inline variables) and remembers it. */
 export function applyTheme(choice: ThemeChoice, remember = true) {
   const root = document.documentElement;
@@ -154,6 +179,10 @@ export function applyTheme(choice: ThemeChoice, remember = true) {
   const accent = shown === "oled-gb" ? "gb" : shown === "oled-green" ? "green" : null;
   if (accent) root.dataset.accent = accent;
   else delete root.dataset.accent;
+  for (const [name, value] of Object.entries(kitTokens(shown, colors))) {
+    root.style.setProperty(name, value);
+    appliedTokens.push(name);
+  }
   if (colors) {
     root.dataset.theme = "palette";
     for (const [name, value] of Object.entries(paletteThemeTokens(colors))) {

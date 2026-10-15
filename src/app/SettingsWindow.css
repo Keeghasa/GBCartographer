@@ -1,0 +1,12 @@
+/* Settings: the font and theme as cards. */
+.stw { display: flex; flex-direction: column; gap: var(--k-4); }
+.stw-group { display: flex; flex-direction: column; gap: var(--k-2); }
+.stw-fonts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--k-2); }
+.stw-themes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--k-2); }
+.stw-font, .stw-theme { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; color: var(--k-ink); font-size: var(--k-text-sm); text-align: left; }
+.stw-font b { font-size: 26px; line-height: 1; }
+.stw-font--mono b { font-family: 'JetBrains Mono', monospace; } .stw-font--pixel b { font-family: 'Public Pixel', monospace; font-size: 18px; } .stw-font--dyslexic b { font-family: 'OpenDyslexic', sans-serif; }
+.stw-font[aria-checked="true"], .stw-theme[aria-checked="true"] { border-color: var(--k-acc); box-shadow: 0 0 0 1px var(--k-acc); }
+.stw-swatch { display: flex; width: 100%; height: 22px; border-radius: 4px; overflow: hidden; }
+.stw-swatch i { flex: 1; }
+@media (max-width: 640px) { .stw-fonts, .stw-themes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
