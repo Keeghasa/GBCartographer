@@ -2638,8 +2638,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         { separator: true },
       ] as MenuEntry[] : []),
       ...(slotTarget.id ? [
-        ...(assetMenu!.asset.kind === "stamps" && !assetMenu!.asset.autotile ? [{ label: assetMenu!.asset.tags?.includes(PATTERN_TAG) ? "Make it an object" : "Make it a repeat tile", icon: <PhCheckerboard size={15} />, title: assetMenu!.asset.tags?.includes(PATTERN_TAG) ? "Back to the Objects shelf" : "A seamless pattern: on the Repeat tiles shelf, and it opens with the seamless 3 × 3 view on", onSelect: () => void setRepeatTile(assetMenu!.asset, !assetMenu!.asset.tags?.includes(PATTERN_TAG)) }] : []),
-    { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
+        { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
         { label: "Duplicate", icon: <CopyPlus />, title: "A new project palette with the same colors", onSelect: () => void duplicateProjectPalette(slotTarget) },
       ] as MenuEntry[] : []),
       { note: !slotTarget.id ? "Add this palette to the project first (palette manager)." : sceneSlots.length ? `Put in slot writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Open a project background or sprite sheet to put it in a slot." },
@@ -2664,6 +2663,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   const assetFolder = (asset: Asset) => asset.kind === "stamps" ? "Cartographer/stamps" : `assets/${asset.kind}`;
   const assetItems: MenuEntry[] = assetMenu ? [
     ...(assetMenu.asset.kind === "stamps" ? [{ label: "Use as stamp", icon: <PhSticker size={15} />, onSelect: () => void useSavedStamp(assetMenu.asset) }] : []),
+    ...(assetMenu.asset.kind === "stamps" && !assetMenu.asset.autotile ? [{ label: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Make it an object" : "Make it a repeat tile", icon: <PhCheckerboard size={15} />, title: assetMenu.asset.tags?.includes(PATTERN_TAG) ? "Back to the Objects shelf" : "A seamless pattern: on the Repeat tiles shelf, and it opens with the seamless 3 × 3 view on", onSelect: () => void setRepeatTile(assetMenu.asset, !assetMenu.asset.tags?.includes(PATTERN_TAG)) }] : []),
     { label: assetMenu.asset.kind === "stamps" ? "Open to edit" : "Open", icon: <FolderOpen />, onSelect: () => void openAsset(assetMenu.asset) },
     { label: FILE_MANAGER_LABEL, icon: <FolderSearch />, onSelect: () => void fetch(`./__cartographer/reveal?${assetQuery(assetMenu.asset)}`, { method: "POST" }) },
     { label: "Copy file path", icon: <Copy />, onSelect: () => void navigator.clipboard?.writeText(`${project?.path ?? ""}/${assetFolder(assetMenu.asset)}/${assetMenu.asset.file}`).then(() => say("Copied the file path")) },
