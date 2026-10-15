@@ -179,9 +179,10 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   const foundPalettes = needle ? SHELVES.map((shelf) => ({ ...shelf, sets: shelf.sets.map((set) => set.name.toLowerCase().includes(needle) ? set : { ...set, palettes: set.palettes.filter((palette) => palette.name.toLowerCase().includes(needle)) }).filter((set) => set.palettes.length) })).filter((shelf) => shelf.sets.length) : [];
 
   const has = (palette: StorePalette) => hasPalette(projectPalettes, palette);
-  async function add(palettes: StorePalette[]) { setBusy(true); await onAddToProject(palettes.filter((palette) => !has(palette))); setBusy(false); }
-  function toMine(set: StoreSet) { onAddToMine(set.palettes); setMine(new Set(mine).add(set.id)); }
-  async function addArt(asset: WireAsset, art: Canvas) { setBusy(true); if (await onAddArt(asset, art)) setAdded(new Set(added).add(asset.id)); setBusy(false); }
+  // A failed add never leaves the window stuck (busy off in finally), and marks build on the newest set.
+  async function add(palettes: StorePalette[]) { setBusy(true); try { await onAddToProject(palettes.filter((palette) => !has(palette))); } finally { setBusy(false); } }
+  function toMine(set: StoreSet) { onAddToMine(set.palettes); setMine((was) => new Set(was).add(set.id)); }
+  async function addArt(asset: WireAsset, art: Canvas) { setBusy(true); try { if (await onAddArt(asset, art)) setAdded((was) => new Set(was).add(asset.id)); } finally { setBusy(false); } }
   const home = () => { setCategory(null); setQuery(""); };
 
   /** The home: a tile per category, sized by what it holds. */

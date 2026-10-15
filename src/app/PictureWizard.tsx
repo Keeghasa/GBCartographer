@@ -101,19 +101,24 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const file = useRef<HTMLInputElement>(null);
   const [width, height] = size;
 
-  const take = async (picked: File | Blob | null | undefined, label?: string) => {
+  // The newest pick wins (a slow decode never replaces a later one), and the picture it replaces is freed.
+  const picks = useRef(0), chosen = useRef(false);
+  const take = async (picked: File | Blob | null | undefined, label?: string, sample = false) => {
     if (!picked) return;
+    if (sample && chosen.current) return;
+    if (!sample) chosen.current = true;
+    const ticket = ++picks.current;
     try {
       const image = await createImageBitmap(picked, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
-      setSource({ image, name: label ?? (picked instanceof File ? picked.name : "picture") });
-      if (!name) setName((label ?? (picked instanceof File ? picked.name : "Picture")).replace(/\.[a-z0-9]+$/i, "").slice(0, 40));
+      if (ticket !== picks.current || (sample && chosen.current)) { image.close(); return; }
+      setSource((was) => { was?.image.close(); return { image, name: label ?? (picked instanceof File ? picked.name : "picture") }; });
     } catch { /* not a picture */ }
   };
 
   // It starts on the author's photo of Sammie (2026-10-14), so the wizard shows what it does straight away.
   useEffect(() => {
     let gone = false;
-    void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => { if (!gone) void take(blob, "Sammie"); }).catch(() => {});
+    void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => { if (!gone) void take(blob, "Sammie", true); }).catch(() => {});
     return () => { gone = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
