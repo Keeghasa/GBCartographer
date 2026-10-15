@@ -61,6 +61,8 @@ const ALL: WireAsset[] = [
   ...[...PEOPLE.map(([id, name, look]) => [id, name, look] as const), ["mystery", "Mystery", "mystery"] as const]
     // The hero's and the townsfolk's faces trade names (the author, 2026-10-13: the graphics suit the other name).
     .map(([id, name, look]): WireAsset => ({ id: `avatar-${id}`, name: ({ hero: "Townsfolk", villager: "Hero" } as Record<string, string>)[id] ?? name, group: "Avatars", kind: "avatars", about: "16 × 16 face for dialogue boxes.", make: () => avatar(look) })),
+  // The Wizards' icon as an avatar (the author, 2026-10-14: their pick C, to fix by hand in the Asset Catalog project).
+  { id: "avatar-wizard", name: "Wizard", group: "Avatars", kind: "avatars", about: "16 × 16 face for dialogue boxes: a bearded wizard in a pointed hat.", make: () => fromAuthored(["0000000330000000", "0000003333000000", "0000033333000000", "0000333333300000", "0003333333330000", "3333333333333333", "0333333333333330", "0003111111130000", "0003131113130000", "0003111111130000", "0003322222330000", "0000310001300000", "0000310001300000", "0000031013000000", "0000003130000000", "0000000300000000"]) },
   { id: "ui-frame-round", name: "Frame (rounded)", group: "UI", kind: "ui", about: "GB Studio's window frame: 24 × 24, cut in 8 × 8 corners, edges and middle. It reads ui/frame.png.", make: ui.frameRound },
   { id: "ui-frame-double", name: "Frame (double line)", group: "UI", kind: "ui", about: "A window frame (ui/frame.png).", make: ui.frameDouble },
   { id: "ui-frame-thick", name: "Frame (thick)", group: "UI", kind: "ui", about: "A window frame (ui/frame.png).", make: ui.frameThick },
