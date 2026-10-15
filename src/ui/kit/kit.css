@@ -23,7 +23,7 @@
   --k-warn: #e6a23c; --k-bad: #e0605a; --k-bad-soft: #1d1316;
   /* Depth. */
   --k-lift: inset 0 1px 0 rgba(255, 255, 255, .05), 0 1px 2px rgba(0, 0, 0, .6);
-  --k-glow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 4px 14px rgba(var(--k-acc-rgb), .3);
+  --k-glow: none; /* flat (the author, 2026-10-14) */
   --k-float: 0 12px 34px rgba(0, 0, 0, .7);
   --k-ease: cubic-bezier(.16, 1, .3, 1);
   --k-ctl-h: 30px; --k-ctl-h-sm: 26px;
@@ -120,13 +120,13 @@
 /* Slider (Radix). */
 .k-slider { position: relative; display: flex; align-items: center; height: 20px; width: 100%; touch-action: none; user-select: none; }
 .k-slider-track { position: relative; flex: 1; height: 6px; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: 999px; overflow: hidden; }
-.k-slider-range { position: absolute; height: 100%; background: linear-gradient(90deg, var(--k-acc-lo), var(--k-acc-hi)); }
+.k-slider-range { position: absolute; height: 100%; background: var(--k-acc); }
 .k-slider-thumb { display: block; width: 16px; height: 16px; background: #e8eaee; border: 2px solid var(--k-acc-hi); border-radius: 999px; box-shadow: 0 2px 6px rgba(0, 0, 0, .6); }
 
 /* Meter: a count as a bar (tiles against a budget). */
 .k-meter { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: var(--k-2); font-size: var(--k-text-sm); color: var(--k-ink-2); }
 .k-meter-track { height: 8px; background: var(--k-sunk); border: 1px solid var(--k-edge); border-radius: 999px; overflow: hidden; }
-.k-meter-fill { height: 100%; background: linear-gradient(90deg, var(--k-acc-lo), var(--k-acc-hi)); border-radius: 999px; }
+.k-meter-fill { height: 100%; background: var(--k-acc); border-radius: 999px; }
 .k-meter--warn .k-meter-fill { background: var(--k-warn); } .k-meter--bad .k-meter-fill { background: var(--k-bad); }
 .k-meter-count { color: var(--k-ink); font-variant-numeric: tabular-nums; white-space: nowrap; } .k-meter-count small { color: var(--k-ink-3); }
 

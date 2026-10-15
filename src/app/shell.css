@@ -73,7 +73,7 @@
 .app-tools { flex: none; width: 76px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; justify-items: center; gap: 2px; padding: 6px; overflow-y: auto; }
 .app-tools .k-btn { width: 30px; height: 30px; background: transparent; border-color: transparent; box-shadow: none; }
 .app-tools .k-btn svg { width: 16px; height: 16px; }
-.app-tools .k-btn[aria-pressed="true"] { background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); border-color: var(--k-acc-hi); box-shadow: var(--k-glow); }
+.app-tools .k-btn[aria-pressed="true"] { background: var(--k-acc); border-color: var(--k-acc); box-shadow: var(--k-glow); }
 .app-tools hr { grid-column: 1 / -1; width: 100%; height: 1px; margin: 4px 0; border: 0; background: var(--k-edge); }
 .app-size { grid-column: 1 / -1; display: flex; white-space: nowrap; align-items: center; justify-content: space-between; width: 100%; color: var(--k-ink-2); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; }
 .app-size .k-btn { width: 22px; height: 22px; } .app-size .k-btn svg { width: 12px; height: 12px; }

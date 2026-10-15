@@ -4,7 +4,7 @@
 .dw-step:not(:disabled) { cursor: pointer; } .dw-step:not(:disabled):hover { border-color: var(--k-hover-edge); }
 .dw-step b { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: #2a2e35; color: var(--k-ink-2); font-size: 10px; }
 .dw-step.done { color: var(--k-acc-text); } .dw-step.done b { background: var(--k-acc-lo); color: var(--k-on-acc); }
-.dw-step.now { color: var(--k-on-acc); background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); border-color: var(--k-acc-hi); } .dw-step.now b { background: var(--k-on-acc); color: var(--k-acc-text); }
+.dw-step.now { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); } .dw-step.now b { background: var(--k-on-acc); color: var(--k-acc-text); }
 
 .dw-two { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--k-5); align-items: start; }
 .dw-list { display: flex; flex-direction: column; gap: 4px; }

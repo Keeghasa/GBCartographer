@@ -10,7 +10,7 @@
 .cw-step--end { padding-right: 10px; }
 .cw-step.is-passed { opacity: .6; }
 .cw-step.is-done { color: var(--k-acc-text); } .cw-step.is-done b { background: var(--k-acc-lo); color: var(--k-on-acc); box-shadow: none; }
-.cw-step.is-now { color: var(--k-on-acc); background: linear-gradient(var(--k-acc-hi), var(--k-acc-lo)); border-color: var(--k-acc-hi); opacity: 1; }
+.cw-step.is-now { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); opacity: 1; }
 .cw-step.is-now b { background: var(--k-on-acc); color: var(--k-acc-text); box-shadow: none; }
 
 /* The issue card, a bar on the left in its level's color. */
