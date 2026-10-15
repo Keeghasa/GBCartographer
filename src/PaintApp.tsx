@@ -1479,6 +1479,16 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const notes: string[] = [];
     if (result.changed) notes.push(flagged ? `${result.cells} tile${result.cells === 1 ? "" : "s"} written to GB Studio (palettes and draw-over-sprites flags)` : `${result.cells} tile palette${result.cells === 1 ? "" : "s"} written to GB Studio`);
     if (outside) notes.push(`${outside} tile${outside === 1 ? "" : "s"} wear palettes outside the eight slots and keep their slot`);
+    // A sprite slice is 8 × 16 with one palette: halves wearing different palettes get the top one in the game.
+    if (asset.kind === "sprites") {
+      const cw = Math.ceil(target.width / 8), ch = Math.ceil(target.height / 8);
+      let split = 0;
+      for (let y = 0; y + 1 < ch; y += 2) for (let x = 0; x < cw; x += 1) {
+        const top = target.cells[y * cw + x], bottom = target.cells[(y + 1) * cw + x];
+        if (top && bottom && top !== bottom) split += 1;
+      }
+      if (split) notes.push(`${split} sprite slice${split === 1 ? "" : "s"} wear two palettes (top and bottom half); GB Studio uses the top half's for the whole 8 × 16 slice`);
+    }
     return notes;
   }
 

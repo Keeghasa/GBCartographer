@@ -132,12 +132,15 @@ const isTemporary = (path: string) => temporaryRoots.some((root) => resolve(path
 /** Which folders count as temporary (the tests' projects live in one, so they switch it off). */
 export function setTemporaryRoots(roots: string[]) { temporaryRoots = roots; }
 
+/** The same folder? Windows paths ignore case and slash direction. */
+const samePath = (a: string, b: string) => process.platform === "win32" ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : a === b;
+
 /** Remembers the open project and keeps the last six project folders as "recent" (newest first). */
 export function saveProjectFolder(settingsFile: string, path: string | null) {
   const settings = readSettings(settingsFile);
   if (path) {
     settings.project = path;
-    const recent = (Array.isArray(settings.recent) ? settings.recent as unknown[] : []).filter((entry): entry is string => typeof entry === "string" && entry !== path);
+    const recent = (Array.isArray(settings.recent) ? settings.recent as unknown[] : []).filter((entry): entry is string => typeof entry === "string" && !samePath(entry, path));
     settings.recent = [...(isTemporary(path) ? [] : [path]), ...recent.filter((entry) => !isTemporary(entry))].slice(0, 6);
   } else delete settings.project;
   mkdirSync(dirname(settingsFile), { recursive: true });
