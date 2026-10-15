@@ -19,8 +19,8 @@ palettes straight back into the project.
 
 <sub>Every picture here is GB Cartographer's own art from its demo project.</sub>
 
-**[Download the beta](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
-[Install](#install)).
+**Ready-made installers** for macOS, Windows and Linux will be on itch.io (paying for them supports development).
+The code is free: [build it yourself](#running-it) (see [Install](#install)).
 
 ## Features
 
@@ -111,8 +111,8 @@ The pictures in these screenshots are GB Cartographer's own placeholders.
 
 ## Install
 
-Download the file for your computer from the [latest release](https://github.com/Keeghasa/GBCartographer/releases).
-The builds aren't signed yet, so the first launch needs one extra step:
+Ready-made installers will be on itch.io; or [build your own](#running-it) with `npm run dist`. The builds
+aren't signed yet, so the first launch needs one extra step:
 
 - **macOS:** open the `.dmg` (`arm64` for Apple silicon, `x64` for Intel) and drag GB Cartographer to Applications.
   The first time you open it, macOS says it can't check the app for malware (checking needs a paid Apple developer
@@ -125,7 +125,7 @@ The builds aren't signed yet, so the first launch needs one extra step:
 
 ## Planned
 
-- An itch.io page, and a tested Windows pass.
+- The itch.io page.
 
 ## GB Studio versions
 
@@ -188,8 +188,8 @@ npm run dev            # or the page on a local dev server, http://127.0.0.1:517
 npm run dist           # installers for this computer, in release/ (dist:mac, dist:win, dist:linux)
 ```
 
-A tag like `v0.1.0-beta.1` makes GitHub build the installers for all three systems and publish them as a
-pre-release (`.github/workflows/release.yml`, notes from `docs/releases/<tag>.md`).
+A tag like `v0.1.0-beta.2` makes GitHub build the installers for all three systems into a private draft release
+for the itch.io page (`.github/workflows/release.yml`, notes from `docs/releases/<tag>.md`).
 
 In the desktop app, **Open project…** shows a file dialog: pick the project's `.gbsproj` file (or its folder). On the dev server it asks for the folder's path; you
 can also set `GBC_PROJECT=/path/to/project` or write `{ "project": "/path/to/project" }` to

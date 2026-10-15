@@ -1,8 +1,9 @@
 name: Release
 
 # A tag like v0.1.0-alpha.1 builds the installers on macOS, Windows and Linux from a clean checkout (so no art that
-# stays on the author's machines can get in) and publishes them as a GitHub pre-release, with the notes from
-# docs/releases/<tag>.md when that file exists.
+# stays on the author's machines can get in) and puts them in a private draft release (the author, 2026-10-15: the
+# installers are sold on itch.io; on GitHub only the source is public), with the notes from docs/releases/<tag>.md.
+# The build's own copies are kept one day.
 on:
   push:
     tags: ["v*"]
@@ -43,6 +44,7 @@ jobs:
         with:
           name: installers-${{ runner.os }}
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/*.dmg
             release/*.zip
@@ -59,10 +61,10 @@ jobs:
         with:
           path: installers
           merge-multiple: true
-      - name: GitHub pre-release
+      - name: Private draft release (only the repo's owner sees it)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           notes="docs/releases/${GITHUB_REF_NAME}.md"
           if [ -f "$notes" ]; then set -- --notes-file "$notes"; else set -- --generate-notes; fi
-          gh release create "$GITHUB_REF_NAME" installers/* --title "GB Cartographer ${GITHUB_REF_NAME#v}" --prerelease "$@"
+          gh release create "$GITHUB_REF_NAME" installers/* --title "GB Cartographer ${GITHUB_REF_NAME#v}" --prerelease --draft "$@"
