@@ -14,7 +14,8 @@ const LICENCES: [string, string][] = [
   ["JetBrains Mono", "JetBrains, SIL Open Font License 1.1."],
   ["Public Pixel", "GGBotNet, CC0."],
   ["OpenDyslexic", "Abbie Gonzalez, SIL Open Font License 1.1. Downloaded the first time you turn it on."],
-  ["Demo project", "Art by Raptorspank (CC0) and the GB Studio Community Assets authors (MIT), credited in the demo's CREDITS.md."],
+  ["Demo project and Asset Catalog", "GB Cartographer's own graphics (Keegan, CC0) and eleven CC0 packs from OpenGameArt, each piece credited to its maker in the catalog and the demo's CREDITS.md."],
+  ["3D Snapshot", "Rubber Duck Toy by Plat251 (Poly Haven, CC0)."],
   ["Libraries", "React (MIT), lucide icons (ISC) and three.js (MIT, for 3D Snapshot). The desktop app runs on Electron (MIT)."],
   ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licenses are in the app's licenses folder."],
 ];

@@ -7,8 +7,9 @@ import { LOGO_TILES, logoHelps } from "../gb/limits";
 import { ArrowRight, CircleCheck, Sparkles, Undo2 } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
-import { Button, Chip, Checkbox, Dialog, Field, Meter, Slider } from "../ui/kit";
+import { Button, Chip, Checkbox, Field, Meter, Slider } from "../ui/kit";
 import { applyMerges, mergeSteps, tilePixels, type MergeStep } from "./budgetSteps";
+import { WizardPage } from "./WizardPage";
 import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
@@ -131,7 +132,8 @@ export function BudgetFixer({ picture, limit, flips, onClose, onApply }: BudgetF
 
   const under = now <= limit;
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide title="Tile budget fixer" sub={`Bring ${picture.name} under GB Studio's tile limit, one safe step at a time`} icon={<Sparkles size={18} />}
+    <WizardPage title="Tile budget fixer" icon={<Sparkles size={18} />} onClose={onClose}
+      line={["One safe step at a time", `${picture.name} · under GB Studio's tile limit`]}
       footer={<>
         <span className="k-muted k-small">{history.length ? `${plural(history.length, "merge step")} made here` : "Nothing changes in the picture until you apply"}</span>
         <span className="k-spacer" />
@@ -183,6 +185,6 @@ export function BudgetFixer({ picture, limit, flips, onClose, onApply }: BudgetF
           </div>
         </div>
       </div>
-    </Dialog>
+    </WizardPage>
   );
 }

@@ -41,3 +41,14 @@
 /* The end page. */
 .cw-end { display: flex; flex-direction: column; align-items: flex-start; gap: var(--k-2); padding: var(--k-5); }
 .cw-end-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--k-acc); color: var(--k-on-acc); }
+
+/* One page (the author, 2026-10-14): every issue in a list on the left, the picked one with its fix on the right. */
+.cw-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow: auto; }
+.cw-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: var(--k-ink-2); text-align: left; font: inherit; cursor: pointer; }
+.cw-item:hover { background: var(--k-hover); color: var(--k-hover-ink); }
+.cw-item[aria-pressed="true"] { background: rgba(var(--k-acc-rgb), .16); color: var(--k-ink); }
+.cw-item-level { flex: none; font: 500 9.5px 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; color: var(--k-ink-3); width: 54px; }
+.cw-item--problem .cw-item-level { color: var(--k-warn); }
+.cw-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--k-text-sm); }
+.cw-item.is-fixed, .cw-item.is-gone { color: var(--k-ink-3); }
+.cw-item svg { color: var(--k-acc); flex: none; }

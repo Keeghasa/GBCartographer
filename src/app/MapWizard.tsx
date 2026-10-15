@@ -7,11 +7,12 @@
 import { ImagePlus, Map as MapIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { countUniqueTiles, fitTileBudget, toRgba } from "../paint";
-import { Button, Checkbox, Chip, Dialog, Field, Meter, Segmented, Select, Slider, Switch } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Meter, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { NameInput } from "./NameInput";
 import type { Picture } from "./mapEdges";
 import type { Asset } from "./model";
 import { fitPicture, type FitResult } from "./pictureFit";
+import { WizardPage } from "./WizardPage";
 import "./MapWizard.css";
 
 /** One screen of the planned map: a background already in the project, or a new PNG (blank when no picture). */
@@ -173,8 +174,8 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
   const summary = parts.charAt(0).toUpperCase() + parts.slice(1);
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onCancel(); }} wide icon={<MapIcon size={18} />} title="New map"
-      sub="An adventure-style grid of screens, each a 160 × 144 background; change anything and the preview follows"
+    <WizardPage title="New map" icon={<MapIcon size={18} />} busy={busy} onClose={onCancel}
+      line={["A grid of screens", "each a 160 × 144 background · change anything, the preview follows"]}
       footer={<>
         <span className="k-muted k-xs mw-summary" title={summary}>{summary}</span>
         <span className="k-spacer" />
@@ -272,6 +273,6 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
           {clashes.length > 0 && <span className="k-xs mw-bad">{clashes.length === 1 ? `${clashes[0].name}.png is` : `${clashes.length} of these names are`} already in assets/backgrounds/: change the file names.</span>}
         </div>
       </div>
-    </Dialog>
+    </WizardPage>
   );
 }

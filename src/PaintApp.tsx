@@ -49,7 +49,7 @@ import { framesOf, saveFile } from "./app/files";
 import { ToolColumn } from "./app/ToolColumn";
 import { PicturePane } from "./app/PicturePane";
 import { usePainting } from "./app/usePainting";
-import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxRobotHappy } from "./ui/setIcons";
+import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxWizard } from "./ui/setIcons";
 import { PalettesPane } from "./app/PalettesPane";
 import { FramesStrip } from "./app/FramesStrip";
 import { StampsStrip } from "./app/StampsStrip";
@@ -2685,7 +2685,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           {project && <Button icon={<MapIcon />} title="Map Room: adventure-style grids of screens, each a background" onClick={() => setShowMapRoom(true)}>Maps</Button>}
           <Button icon={<SwatchBook />} title="Palette manager: the project's palettes, a library, and your own" onClick={() => setShowPalettes(true)}>Palettes</Button>
           <Button icon={<StoreIcon />} title="Asset Catalog: credited palettes and art to take into your project, a piece at a time" onClick={() => setShowStore(true)}>Catalog</Button>
-          <Button icon={<PxRobotHappy size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards</Button>
+          <Button icon={<PxWizard size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards</Button>
         </span>
         <IconButton label="Undo" keys="Ctrl+Z" disabled={!doc?.undo.length} onClick={() => stepHistory("undo")}><Undo2 /></IconButton>
         <IconButton label="Redo" keys="Ctrl+Shift+Z" disabled={!doc?.redo.length} onClick={() => stepHistory("redo")}><Redo2 /></IconButton>

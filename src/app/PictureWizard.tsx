@@ -10,7 +10,7 @@ import { Crop, ImagePlus, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
 import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
-import { Dialog } from "../ui/kit";
+import { WizardPage } from "./WizardPage";
 import { SCREEN_SIZES, fitPicture, type FitOptions, type FitResult } from "./pictureFit";
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
@@ -110,6 +110,13 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
     } catch { /* not a picture */ }
   };
 
+  // It starts on the author's photo of Sammie (2026-10-14), so the wizard shows what it does straight away.
+  useEffect(() => {
+    let gone = false;
+    void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => { if (!gone) void take(blob, "Sammie"); }).catch(() => {});
+    return () => { gone = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Paste a picture from the clipboard while the window is open.
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => { const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith("image/")); if (item) { event.preventDefault(); void take(item.getAsFile(), "Pasted picture"); } };
@@ -134,7 +141,8 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const tone = result ? (result.tiles > result.limit ? "bad" : result.tiles > result.limit * 0.9 ? "warn" : undefined) : undefined;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide title="Picture to background" sub="One page: change anything and the result follows" icon={<ImagePlus size={18} />}
+    <WizardPage title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
+      line={["Change anything, the result follows", result ? `${source?.name ?? "picture"} · ${width} × ${height} · ${result.tiles} / ${result.limit} tiles · ${result.palettes.length} palettes` : source ? `${source.name} · fitting…` : "drop, paste or choose a picture"]}
       footer={<>
         <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void take(event.target.files?.[0]); event.target.value = ""; }} />
         <Button icon={<Upload />} onClick={() => file.current?.click()}>{source ? "Another picture…" : "Choose a picture…"}</Button>
@@ -176,6 +184,6 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           </>}
         </div>
       </div>
-    </Dialog>
+    </WizardPage>
   );
 }

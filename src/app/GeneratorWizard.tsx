@@ -6,13 +6,14 @@
 import { Dices, Mountain, Pickaxe } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
-import { Button, Chip, Dialog, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
+import { Button, Chip, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
 import { CAVE_DEFAULTS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, wallsOf, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
 import { defaultName, isSuggestedName, type NameKind } from "./names";
 import { NameInput } from "./NameInput";
+import { WizardPage } from "./WizardPage";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -108,9 +109,8 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
 
   const reroll = <IconButton label="New layout (another seed)" onClick={() => mode === "cave" ? setC({ seed: newSeed() }) : setW({ seed: newSeed() })}><Dices /></IconButton>;
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} wide tall
-      title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />}
-      sub={mode === "cave" ? "A cave or dungeon in the catalog's art, sized in screens" : "An RPG-style overworld in the catalog's art: water, forest, mountains, towns"}
+    <WizardPage title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />} busy={busy} onClose={onClose}
+      line={[mode === "cave" ? "In the catalog's art" : "Water, forest, mountains, towns", mode === "cave" ? "sized in screens · sliders redraw it live" : "in the palettes you pick · sliders redraw it live"]}
       footer={<>
         <span className="k-spacer" />
         <Button onClick={() => { onOpen(picture, name.trim() || "Map"); onClose(); }} disabled={busy}>Open as picture</Button>
@@ -182,6 +182,6 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           </span>
         </div>
       </div>
-    </Dialog>
+    </WizardPage>
   );
 }

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
 import { Dialog } from "../ui/kit";
-import { PxRobotHappy } from "../ui/setIcons";
+import { PxWizard } from "../ui/setIcons";
 import { WIZARD_FRAMES, photoFrames, wizardThumb, type WizardThumb } from "./wizardThumbs";
 import sammie from "./sammie.png";
 import "./WizardGallery.css";
@@ -70,7 +70,7 @@ export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose
   const ready = cards.filter((card) => !card.blocked).length;
   const sorted = [...cards].sort((a, b) => ORDER.indexOf(a.thumb) - ORDER.indexOf(b.thumb));
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} full title="Wizards" sub="Step-by-step helpers" icon={<PxRobotHappy size={18} />}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} full title="Wizards" sub="Step-by-step helpers" icon={<PxWizard size={18} />}>
       <div className="wg">
         <div className="wg-head"><span>Pick one to start</span><span>{cards.length} wizards · {ready} ready now</span></div>
         <h1 className="wg-h1"><b>Wizards</b></h1>

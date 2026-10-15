@@ -39,10 +39,15 @@ function landscape(p: Pen, x: number) {
   p.panel(x + 46, 52, 18, 14, 1); p.peak(x + 44, 42, 22, 11, 2); p.rect(x + 53, 58, 4, 8, 3);
 }
 
-export function wizardThumb(id: WizardThumb, frame = 0): Generated {
+/** Which of a wizard's looks (0 = the one the gallery shows; 1, 2 for the author's review, 2026-10-14). */
+let look = 0;
+const pick = <T,>(...options: T[]): T => options[look % options.length];
+
+export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated {
+  look = variant;
   if (id === "snapshot") {
     // 3D Snapshot: a little house turning on its stand, drawn as lines, a print beside it.
-    const out = blank(["V20-8-UI"]), p = new Pen(out);
+    const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
     p.fill(3);
     const turn = (frame / WIZARD_FRAMES.snapshot.count) * Math.PI * 2;
     const points: [number, number, number][] = [[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1], [-1, 1.2, -1], [1, 1.2, -1], [1, 1.2, 1], [-1, 1.2, 1], [0, 2, 0]];
@@ -57,7 +62,7 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
   }
   if (id === "picture") {
     // A "photo" (dithered) on the left turning into flat pixels on the right.
-    const out = blank(["V20-2-Fire"]), p = new Pen(out);
+    const out = blank([pick("V20-2-Fire", "Vibe21-3-Foliage", "Vibrant14-4-Water")]), p = new Pen(out);
     landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
     // The photo (dithered) right of the wipe, fitted pixels left of it; the wipe sweeps across frame by frame.
     const wipe = 8 + frame * 24;
@@ -68,7 +73,7 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
   if (id === "dns") {
     // The day going round (the author, 2026-10-14: a smooth loop): dawn → day → sunset → night → dawn, each frame's
     // palette a blend of the two versions it lies between (the wizard itself makes only the four).
-    const [day, dawn, sunset, night] = ["DWC-1-Cliffs", "DWC-1-Cliffs D", "DWC-1-Cliffs S", "DWC-1-Cliffs N"].map(palette);
+    const [day, dawn, sunset, night] = (() => { const base = pick("DWC-1-Cliffs", "DWC-4-Foliage", "DWC-6-MauveBldg"); return [base, `${base} D`, `${base} S`, `${base} N`]; })().map(palette);
     const stops = [dawn, day, sunset, night], per = WIZARD_FRAMES.dns.count / stops.length;
     const at = frame / per, from = stops[Math.floor(at) % stops.length], to = stops[(Math.floor(at) + 1) % stops.length];
     const mix = (a: string, b: string, t: number) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
@@ -81,15 +86,17 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
   }
   if (id === "paletteSet") {
     // VIBE-20's eight palettes, each a column of its four colors.
-    const names = ["V20-1-Skin", "V20-2-Fire", "V20-3-Foliage", "V20-4-Water", "V20-5-Stone", "V20-6-Rose", "V20-7-Wood", "V20-8-UI"];
-    const out = blank(["V20-8-UI", ...names]), p = new Pen(out);
+    const names = pick(["V20-1-Skin", "V20-2-Fire", "V20-3-Foliage", "V20-4-Water", "V20-5-Stone", "V20-6-Rose", "V20-7-Wood", "V20-8-UI"],
+      ["Vibe21-1-Skin", "Vibe21-2-Fire", "Vibe21-3-Foliage", "Vibe21-4-Water", "Vibe21-5-Stone", "Vibe21-6-Rose", "Vibe21-7-Wood", "Vibe21-8-UI"],
+      ["DWC-1-Cliffs", "DWC-2-Computer", "DWC-3-Cactus", "DWC-4-Foliage", "DWC-5-Warm", "DWC-6-MauveBldg", "DWC-7-Warm", "DWC-1-Cliffs N"]);
+    const out = blank([names[7], ...names]), p = new Pen(out);
     p.fill(3);
     names.forEach((_, at) => { if (at >= frame) return; const x = 16 + at * 16; for (let shade = 0; shade < 4; shade += 1) p.rect(x, 16 + shade * 16, 16, 16, shade); p.box(x, 16, 16, 64, 3); wearBox(out, x, 16, 16, 64, at + 2); });
     return out;
   }
   if (id === "budget") {
     // GB Studio's tile meter over the limit, three near-twin tiles merged into one, the meter back under.
-    const out = blank(["Vibrant14-5-Stone"]), p = new Pen(out);
+    const out = blank([pick("Vibrant14-5-Stone", "Vibe21-4-Water", "DWC-2-Computer")]), p = new Pen(out);
     p.fill(0);
     const brick = (x: number, y: number, chip: number) => {
       const q = p.at(x, y, 16);
@@ -109,10 +116,10 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
     if (merged === 3) p.text(14, 72, "UNDER THE LIMIT", 2);
     return out;
   }
-  if (id === "cave") return crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11 + frame, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone" }), 1, 24);
-  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: 5 + frame, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
+  if (id === "cave") return crop(drawCave({ style: pick("cave", "dungeon", "cave"), columns: 1, rows: 1, cell: 16, seed: 11 + frame, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, theme: "V20-5-Stone", ...(look === 2 ? { walls: "pines" as const } : {}) }), 1, 24);
+  if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: pick(5, 21, 40) + frame, water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 2, 24);
   // checkup: a health report, ticked off one by one.
-  const out = blank(["V20-8-UI"]), p = new Pen(out);
+  const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
   p.fill(0);
   p.round(8, 6, 144, 84, 0, 2);
   [96, 72, 104, 64].map((width, row) => [row < frame, width] as const).forEach(([done, width], row) => {
@@ -136,9 +143,13 @@ export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> =
  * Picture to background's loop (the author, 2026-10-14: their dog Sammie): the photo, and a wipe sweeping across it
  * that leaves the fitted version behind, each 8 × 8 tile in the nearer of two four-color palettes, as the wizard does.
  */
-const FIT_PALETTES = [["#F4DCCB", "#D9938C", "#7B4A36", "#24140E"], ["#E6C690", "#AE7D4C", "#5E3E26", "#1C120C"]]
-  .map((colors) => colors.map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))));
-export function photoFrames(photo: ImageData, count = WIZARD_FRAMES.picture.count): ImageData[] {
+const FIT_LOOKS = [
+  [["#F4DCCB", "#D9938C", "#7B4A36", "#24140E"], ["#E6C690", "#AE7D4C", "#5E3E26", "#1C120C"]],
+  [["#E0F8CF", "#86C06C", "#306850", "#071821"], ["#E0F8CF", "#86C06C", "#306850", "#071821"]],
+  [["#FFE9C5", "#E39A6A", "#8F3D5A", "#2B1236"], ["#CFE8F2", "#7AA6C8", "#3D5C8C", "#141F3A"]],
+].map((look) => look.map((colors) => colors.map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)))));
+export function photoFrames(photo: ImageData, count = WIZARD_FRAMES.picture.count, variant = 0): ImageData[] {
+  const FIT_PALETTES = FIT_LOOKS[variant % FIT_LOOKS.length];
   const { width, height, data } = photo, fitted = new Uint8ClampedArray(data);
   const distance = (i: number, c: number[]) => (data[i] - c[0]) ** 2 + (data[i + 1] - c[1]) ** 2 + (data[i + 2] - c[2]) ** 2;
   const nearest = (i: number, palette: number[][]) => palette.reduce((best, color) => distance(i, color) < distance(i, best) ? color : best);

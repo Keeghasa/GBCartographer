@@ -3,12 +3,13 @@
  * button shows what it would do (old → new) before it is pressed. Palette fixes go through the parent (it writes
  * with a backup); pictures open in the painter. Notes with nothing to do stay hidden unless asked for.
  */
-import { Archive, ArrowLeft, ArrowRight, Check, ExternalLink, RefreshCw, Sparkles } from "lucide-react";
+import { Archive, ArrowRight, Check, ExternalLink, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
 import { colorDistance } from "../paint";
-import { Button, Chip, Dialog, Meter, Switch } from "../ui/kit";
+import { Button, Chip, Meter, Switch } from "../ui/kit";
 import { checkupOrder, checkupSummary, contrastPairs, fixKind, isPicture, issueKey, separatePairs, tileCount, twinNames, whatToDo, type CheckupIssue } from "./checkupFixes";
 import { PROJECT_URL } from "./model";
+import { WizardPage } from "./WizardPage";
 import "./CheckupWizard.css";
 
 export interface CheckupWizardProps {
@@ -232,42 +233,43 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
   const title = issue ? (issue.kind === "palettes" && issue.file ? `${issue.file}: ${issue.title}` : issue.title) : "";
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide title="Project check-up" sub={`${projectName} · health issues one at a time, each with its fix`} icon={<Sparkles size={18} />}
-      headExtra={<Switch checked={notes} onChange={toggleNotes}>Show notes too</Switch>}
+    <WizardPage title="Project check-up" icon={<Sparkles size={18} />} onClose={onClose}
+      line={[projectName, report ? `${list.length} issue${list.length === 1 ? "" : "s"} · ${counts.fixed} fixed · ${counts.skipped} skipped` : "checking…"]}
       footer={<>
-        <span className="k-muted k-small">{!report ? "" : done ? (list.length ? "Done" : "") : `Issue ${at + 1} of ${list.length}`}</span>
+        <Switch checked={notes} onChange={toggleNotes}>Show notes too</Switch>
         <span className="k-spacer" />
-        {done ? (<>
-          <Button icon={<RefreshCw />} onClick={() => setStamp(stamp + 1)}>Check again</Button>
-          <Button variant="primary" onClick={onClose}>Close</Button>
-        </>) : (<>
-          {report && at > 0 && <Button icon={<ArrowLeft />} disabled={busy} onClick={() => setAt(at - 1)}>Back</Button>}
-          {fixable && <Button variant="ghost" disabled={busy} onClick={leave}>Skip</Button>}
-          <Button variant="primary" disabled={!report || busy} onClick={leave}>{nextOpen(at, { ...statuses, [key]: "seen" }) >= list.length ? "Finish" : "Next"}<ArrowRight /></Button>
-        </>)}
+        <Button icon={<RefreshCw />} disabled={busy} onClick={() => setStamp(stamp + 1)}>Check again</Button>
+        <Button variant="primary" onClick={onClose}>Close</Button>
       </>}>
       {error && <p className="k-muted k-small">Could not check: {error}</p>}
       {!report && !error && <p className="k-muted k-small">Checking every picture and palette…</p>}
-      {report && list.length > 0 && (
-        <div className="cw-steps" role="list" aria-label="Issues">
-          {list.map((entry, index) => {
-            const mark = statuses[issueKey(entry)];
-            const cls = index === at ? "is-now" : mark === "fixed" || mark === "gone" ? "is-done" : mark ? "is-passed" : "";
-            return (
-              <button key={issueKey(entry)} type="button" role="listitem" className={`cw-step cw-step--${entry.level} ${cls}`} title={`${entry.file ? `${entry.file}: ` : ""}${entry.title}${mark ? ` (${mark})` : ""}`} onClick={() => setAt(index)}>
-                <b>{mark === "fixed" || mark === "gone" ? <Check size={10} strokeWidth={3} /> : index + 1}</b>
-              </button>
-            );
-          })}
-          <button type="button" role="listitem" className={`cw-step cw-step--end ${done ? "is-now" : ""}`} onClick={() => setAt(list.length)}><b><Check size={10} strokeWidth={3} /></b>Done</button>
-        </div>
-      )}
+      {report && (
+        <div className="wp-cols">
+          <div className="wp-panel">
+            <h2 className="k-heading">Issues</h2>
+            {list.length === 0 && <span className="k-muted k-small">Nothing to fix.</span>}
+            <div className="cw-list" role="list">
+              {list.map((entry, index) => {
+                const mark = statuses[issueKey(entry)];
+                return (
+                  <button key={issueKey(entry)} type="button" role="listitem" aria-pressed={index === at} className={`cw-item cw-item--${entry.level}${mark ? ` is-${mark}` : ""}`} onClick={() => setAt(index)}>
+                    <span className="cw-item-level">{LEVEL_WORD[entry.level]}</span>
+                    <span className="cw-item-title">{entry.kind === "palettes" && entry.file ? `${entry.file}: ${entry.title}` : entry.title}</span>
+                    {(mark === "fixed" || mark === "gone") ? <Check size={13} strokeWidth={3} /> : mark === "skipped" ? <span className="k-muted k-xs">skipped</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="wp-panel">
       {report && issue && (
         <div className={`k-card cw-issue cw-issue--${issue.level}`}>
           <div className="k-row cw-issue-head">
             <span className="cw-level">{LEVEL_WORD[issue.level]}</span>
             {status === "fixed" && <Chip tone="acc"><Check size={11} strokeWidth={3} /> Fixed</Chip>}
             {status === "skipped" && <Chip>Skipped</Chip>}
+            <span className="k-spacer" />
+            {fixable && !status && <Button size="sm" variant="ghost" disabled={busy} onClick={leave}>Skip</Button>}
           </div>
           <b className="cw-title">{title}</b>
           {isPicture(issue) && <small className="k-muted k-xs">{KIND_WORD[issue.kind] ?? issue.kind} · {issue.file}</small>}
@@ -288,6 +290,9 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
           </>)}
         </div>
       )}
-    </Dialog>
+          </div>
+        </div>
+      )}
+    </WizardPage>
   );
 }

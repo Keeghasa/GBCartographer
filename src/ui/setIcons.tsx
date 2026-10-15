@@ -72,6 +72,11 @@ export function PxRobotHappy({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M4 6h16v2H4zm0 14h16v2H4zM2 8h2v12H2zm18 0h2v12h-2z", "M11 4h2v4h-2zm-3 6h2v2H8zm6 0h2v2h-2zm-1-8h4v2h-4zM0 12h2v2H0zm22 0h2v2h-2zM7 14h10v2H7zm2 2h6v2H9z"]} />;
 }
 
+/** Ours (the author, 2026-10-14): a wizard in a pointed hat with a beard, a staff and a sparkle (the Wizards). */
+export function PxWizard({ size }: { size?: number | string }) {
+  return <Icon size={size} box={24} pixel paths={["M9 1h2v1H9zM20 1h1v1H20zM8 2h4v1H8zM19 2h3v1H19zM8 3h5v1H8zM20 3h1v1H20zM7 4h6v1H7zM7 5h7v1H7zM21 5h2v1H21zM6 6h8v1H6zM20 6h4v1H20zM6 7h9v1H6zM20 7h4v1H20zM5 8h10v1H5zM21 8h2v1H21zM0 9h17v1H0zM21 9h2v1H21zM1 10h16v1H1zM21 10h2v1H21zM5 11h2v1H5zM13 11h2v1H13zM21 11h2v1H21zM5 12h1v1H5zM7 12h2v1H7zM11 12h2v1H11zM14 12h1v1H14zM21 12h2v1H21zM5 13h1v1H5zM8 13h4v1H8zM14 13h1v1H14zM21 13h2v1H21zM5 14h2v1H5zM8 14h1v1H8zM11 14h1v1H11zM13 14h2v1H13zM21 14h2v1H21zM3 15h4v1H3zM8 15h1v1H8zM11 15h1v1H11zM13 15h4v1H13zM21 15h2v1H21zM2 16h5v1H2zM9 16h1v1H9zM12 16h5v1H12zM20 16h3v1H20zM1 17h6v1H1zM9 17h1v1H9zM12 17h6v1H12zM19 17h4v1H19zM1 18h7v1H1zM11 18h7v1H11zM19 18h4v1H19zM1 19h8v1H1zM10 19h8v1H10zM21 19h2v1H21zM1 20h17v1H1zM21 20h2v1H21zM1 21h17v1H1zM21 21h2v1H21zM1 22h17v1H1zM21 22h2v1H21zM1 23h17v1H1zM21 23h2v1H21z"]} />;
+}
+
 /** Pixelarticons: lightbulb (Help). */
 export function PxLightbulb({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M9 4h6v2H9zM7 6h2v2H7zm8 0h2v2h-2zm4-2h2v2h-2zm2-2h2v2h-2zM0 10h3v2H0zm21 0h3v2h-3zM3 4h2v2H3zM1 2h2v2H1zm6 12h2v2H7zm8 0h2v2h-2zM5 8h2v6H5zm12 0h2v6h-2zm-8 8h6v2H9zm0 4h6v2H9zm0-2h2v2H9zm4 0h2v2h-2zM11 0h2v3h-2z"]} />;
