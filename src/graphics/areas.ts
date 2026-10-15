@@ -24,12 +24,12 @@ type Filled = (x: number, y: number) => boolean;
 
 /** A sheet by its temp-asset id (made once). */
 const made = new Map<string, Canvas>();
-export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round" | "xp-brick-square" | "pat-stone-wall" | "xp-flowers" | "xp-ground" | "xp-ice"): Canvas {
+export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round" | "xp-brick-square" | "pat-stone-wall" | "xp-flowers" | "xp-ground" | "xp-ice" | "room-border"): Canvas {
   let art = made.get(id);
   if (!art) {
     // The catalog's version first (the author's hand edits from the Asset Catalog project), else the code's.
-    const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees" } as Record<string, string>)[id] ?? id;
-    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : id === "xp-ground" ? xpGroundTemplate() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
+    const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees", "room-border": "piece-room-border" } as Record<string, string>)[id] ?? id;
+    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : id === "xp-ground" || id === "room-border" ? xpGroundTemplate() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
     made.set(id, art);
   }
   return art;

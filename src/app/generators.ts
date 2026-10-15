@@ -65,15 +65,15 @@ export interface CaveSettings {
 
 /**
  * The catalog walls a cave or dungeon can wear (the author, 2026-10-13): caves the Cliff XP ridges with a face two
- * cells (32 px) tall, dungeons Stone wall 9-sliced; either can take the other, the 16 px cliff or Brick wall XP.
+ * cells (32 px) tall, dungeons the author's Room Border (2026-10-14; Stone wall 9-sliced before); any can take another.
  */
-export type CaveWalls = "cliff32" | "cliff16" | "stone" | "brick" | "pines" | "oaks";
+export type CaveWalls = "cliff32" | "cliff16" | "room" | "stone" | "brick" | "pines" | "oaks";
 export const CAVE_WALLS: { value: CaveWalls; label: string }[] = [
   { value: "cliff32", label: "Cliff XP · 32 px walls" }, { value: "cliff16", label: "Cliff XP · 16 px walls" },
-  { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall XP" },
+  { value: "room", label: "Room Border" }, { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall XP" },
   { value: "pines", label: "Pine forest" }, { value: "oaks", label: "Round forest" },
 ];
-export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "stone" : "cliff32");
+export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "room" : "cliff32");
 
 export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 16, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 5, connected: true, stairs: true };
 
@@ -272,6 +272,8 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     out.pixels.fill(3);
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
     if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32");
+    // Room Border (the author's, 2026-10-14): the dungeon's walls by default, an XP area beyond the map's edge too.
+    else if (walls === "room") paintXp(canvasOut, sheet("room-border"), rock, cw, ch, true);
     else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
     else if (walls === "pines" || walls === "oaks") paintWoods(canvasOut, rock, cw, ch, walls === "pines");
     else paintSliced(canvasOut, sheet("pat-stone-wall"), rock, cw, ch);
