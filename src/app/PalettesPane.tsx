@@ -2,6 +2,7 @@
  * The inspector's Palettes tab: the scene's eight palette slots, the open picture's palettes (the palette brush
  * paints the picked one onto tiles), and the picked palette's colors in this picture.
  */
+import { CloseWarning, closeIgnored } from "./CloseWarning";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { CopyPlus } from "lucide-react";
 import { GB_SHADES, closeShades, namedSlot, type Palette } from "../paint";
@@ -70,7 +71,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
     const before = new Set(close.map(({ a, b }) => `${a}-${b}`));
     const fresh = closeShades(colors, sprite).filter(({ a, b }) => !before.has(`${a}-${b}`));
     onRecolor(colors);
-    if (fresh.length) say(`Colors ${fresh[0].a + 1} and ${fresh[0].b + 1} of ${picked?.name ?? "this palette"} are too alike to tell apart on a screen now: make one lighter or darker.`);
+    if (fresh.length && !(picked && closeIgnored(picked.colors))) say(`Colors ${fresh[0].a + 1} and ${fresh[0].b + 1} of ${picked?.name ?? "this palette"} are too alike to tell apart on a screen now: make one lighter or darker.`);
   };
 
   // On a sprite sheet a palette's first color is see-through (GB Studio ignores it): its chip is crossed out.
@@ -112,7 +113,7 @@ export function PalettesPane({ doc, palettes, sceneSlots, slotPalettes, slotWher
       {doc && picked && (
         <section className="app-section gbp-palette-edit">
           <hr className="k-divider" />
-          <div className="app-section-head"><span className="k-eyebrow">{picked.name} · in this picture</span>{close.length > 0 && <Chip tone="warn" title={close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart (difference ${delta}; aim for 12 or more)`).join("\n")}>low contrast</Chip>}</div>
+          <div className="app-section-head"><span className="k-eyebrow">{picked.name} · in this picture</span>{close.length > 0 && <CloseWarning key={picked.colors.join()} colors={picked.colors} label="low contrast" title={close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart (difference ${delta}; aim for 12 or more)`).join("\n")} />}</div>
           <div className="app-colors">
             {picked.colors.map((color, index) => <span key={index} className={sprite && index === 0 ? "app-color app-ignored" : "app-color"}><input type="color" aria-label={`${picked.name} color ${index + 1}${sprite && index === 0 ? " (see-through on sprites)" : ""}`} title={sprite && index === 0 ? `Color 1: ${color}. ${IGNORED}.` : `Color ${index + 1}: ${color}`} value={color} onChange={(event) => recolor(picked.colors.map((old, at) => at === index ? event.target.value : old))} /></span>)}
           </div>

@@ -5,13 +5,14 @@
  * shades too close, name them: a base name, "<base>-1" … "<base>-8", each renamable). The parent writes them: into the project
  * (optionally into slots 1–8 of a scene or the defaults) or into "Mine".
  */
-import { ArrowDownWideNarrow, Check, ImageUp, Palette as PaletteIcon, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowDownWideNarrow, Check, ImageUp, Palette as PaletteIcon, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { fetchLospecColors } from "../PaletteManager";
 import library from "../palettes/library.json";
 import { closeShades, fitPalettes } from "../paint";
 import { Button, Checkbox, Chip, Field, IconButton, Segmented, Select } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
+import { CloseWarning } from "./CloseWarning";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
 import "./PaletteSetWizard.css";
 
@@ -210,7 +211,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
                   <div className="psw-swatches" role="group" aria-label={`Palette ${index + 1}`}>
                     {colors.map((color, at) => <button key={at} type="button" className="psw-swatch" style={{ background: color }} aria-pressed={picked?.[0] === index && picked[1] === at} aria-label={`Color ${at + 1}: ${color}`} title={`Color ${at + 1}: ${color}`} onClick={() => pick(index, at)} />)}
                   </div>
-                  {close.length > 0 && <Chip tone="warn" title={close.map(({ a, b }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart`).join("; ")}><TriangleAlert size={11} />too alike</Chip>}
+                  {close.length > 0 && <CloseWarning key={colors.join()} colors={colors} title={close.map(({ a, b }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart`).join("; ")} />}
                   <IconButton size="sm" variant="ghost" label={sorted ? "Already lightest first" : "Sort lightest first"} disabled={sorted} onClick={() => edit(palettes.map((each, at) => at === index ? lightestFirst(each) : each))}><ArrowDownWideNarrow /></IconButton>
                 </div>
               );
