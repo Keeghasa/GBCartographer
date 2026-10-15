@@ -170,14 +170,17 @@ export function sampleModel(): THREE.Object3D {
   return group;
 }
 
+/** The model files 3D Snapshot opens (with whatever files they bring: .bin, textures, .mtl). */
+export const MODEL_FILE = /\.(glb|gltf|fbx|obj|dae|usdz|usda|3mf|stl|ply)$/i;
+
 /**
  * A model from dropped or picked files: a .glb, a .gltf (with its .bin and textures dropped beside it), or an .obj
  * (with its .mtl, if any: without one it's a plain light grey, which reads well in the four shades).
  */
 export async function loadModel(files: File[]): Promise<{ model: THREE.Object3D; name: string }> {
   const byName = new Map(files.map((file) => [file.name.toLowerCase(), file]));
-  const main = files.find((file) => /\.(glb|gltf|obj)$/i.test(file.name));
-  if (!main) throw new Error("Pick a .glb, .gltf or .obj file (and any files that come with it).");
+  const main = files.find((file) => MODEL_FILE.test(file.name));
+  if (!main) throw new Error("Pick a model: .glb, .gltf, .fbx, .obj, .dae, .usdz, .3mf, .stl or .ply (and any files that come with it).");
   const urls: string[] = [];
   const manager = new THREE.LoadingManager();
   // The model's own files point at each other by name: the dropped ones, by name.
@@ -201,6 +204,19 @@ export async function loadModel(files: File[]): Promise<{ model: THREE.Object3D;
       if (!mtl) object.traverse((child) => { const mesh = child as THREE.Mesh; if (mesh.isMesh) mesh.material = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.9 }); });
       return { model: object, name: main.name };
     }
+    // The other formats three.js reads, each loader fetched only when its kind of file is opened.
+    const plain = (geometry: THREE.BufferGeometry) => { geometry.computeVertexNormals(); return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.9, vertexColors: Boolean(geometry.attributes.color) })); };
+    if (name.endsWith(".fbx")) { const { FBXLoader } = await import("three/examples/jsm/loaders/FBXLoader.js"); return { model: new FBXLoader(manager).parse(await main.arrayBuffer(), ""), name: main.name }; }
+    if (name.endsWith(".dae")) { const { ColladaLoader } = await import("three/examples/jsm/loaders/ColladaLoader.js"); return { model: new ColladaLoader(manager).parse(await main.text(), "").scene, name: main.name }; }
+    if (name.endsWith(".usdz") || name.endsWith(".usda")) {
+      const { USDZLoader } = await import("three/examples/jsm/loaders/USDZLoader.js");
+      // three.js reads text USD (USDA) only; Apple's tools write binary (USDC) inside most .usdz files.
+      try { return { model: new USDZLoader(manager).parse(await main.arrayBuffer()), name: main.name }; }
+      catch { throw new Error("it holds binary USD (USDC), which can't be read here yet; export it as .glb or .gltf instead (Reality Converter or Blender can)"); }
+    }
+    if (name.endsWith(".3mf")) { const { ThreeMFLoader } = await import("three/examples/jsm/loaders/3MFLoader.js"); return { model: new ThreeMFLoader(manager).parse(await main.arrayBuffer()), name: main.name }; }
+    if (name.endsWith(".stl")) { const { STLLoader } = await import("three/examples/jsm/loaders/STLLoader.js"); return { model: plain(new STLLoader(manager).parse(await main.arrayBuffer())), name: main.name }; }
+    if (name.endsWith(".ply")) { const { PLYLoader } = await import("three/examples/jsm/loaders/PLYLoader.js"); return { model: plain(new PLYLoader(manager).parse(await main.arrayBuffer())), name: main.name }; }
     const data = name.endsWith(".glb") ? await main.arrayBuffer() : await main.text();
     const gltf = await new GLTFLoader(manager).parseAsync(data, "");
     return { model: gltf.scene, name: main.name };

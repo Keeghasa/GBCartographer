@@ -172,8 +172,8 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
             <Segmented label="Built-in models" fill size="sm" value={builtIn ?? ("" as BuiltIn)} onChange={(value) => void pick(value)} options={(Object.keys(BUILT_IN) as BuiltIn[]).map((value) => ({ value, label: BUILT_IN[value].label }))} />
             <div className="sw-drop">{model} · {triangles.toLocaleString()} triangles</div>
             {builtIn && BUILT_IN[builtIn].credit && <a className="k-xs sw-credit" href={BUILT_IN[builtIn].credit!.href} target="_blank" rel="noreferrer">{BUILT_IN[builtIn].credit!.text}</a>}
-            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a .glb, .gltf or .obj anywhere here, with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
-            <input ref={file} type="file" accept=".glb,.gltf,.bin,.obj,.mtl,.png,.jpg,.jpeg" multiple hidden onChange={(event) => { void open([...(event.target.files ?? [])]); event.target.value = ""; }} />
+            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a model anywhere here (.glb, .gltf, .fbx, .obj, .dae, .usdz, .3mf, .stl, .ply), with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
+            <input ref={file} type="file" accept=".glb,.gltf,.bin,.fbx,.obj,.mtl,.dae,.usdz,.usda,.3mf,.stl,.ply,.png,.jpg,.jpeg,.tga" multiple hidden onChange={(event) => { void open([...(event.target.files ?? [])]); event.target.value = ""; }} />
           </div>
           <div className="sw-group">
             <div className="sw-head"><h2 className="k-heading">Light rig</h2><span className="k-muted k-xs">drag the lights</span></div>
