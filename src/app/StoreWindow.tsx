@@ -151,6 +151,8 @@ const SECTIONS: { id: string; title: string; note: string; ids: CategoryId[] }[]
   { id: "pictures", title: "Assets", note: "Added as new PNGs in your GB Studio project's assets folders, where GB Studio uses them.", ids: ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"] },
   { id: "stamps", title: "Stamps", note: "Added to Cartographer/stamps in your project, for painting with in GB Cartographer. GB Studio never reads them.", ids: ["objects", "repeat", "autotiles", "animated"] },
 ];
+/** A few pieces repeat until the mosaic is full (a category with two fonts still fills its tile). */
+const fillMosaic = <T,>(list: T[], n: number): T[] => list.length ? Array.from({ length: Math.max(n, list.length) }, (_, at) => list[at % list.length]).slice(0, n) : [];
 /** Home tiles two columns wide; the rest are one (4 + 4 + 4 + 4 across the four rows). */
 const WIDE_TILES = new Set<CategoryId>(["palettes", "backgrounds", "autotiles", "animated"]);
 const isStampCategory = (id: CategoryId) => SECTIONS[2].ids.includes(id);
@@ -196,8 +198,8 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
       {CATEGORIES.map((item) => {
         const n = count(item.id);
         const collage = item.id === "palettes"
-          ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 24).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
-          : pieces.filter((piece) => piece.category === item.id).slice(0, 18).map(({ asset, art }) => <img key={asset.id} src={pictureUrl(asset.id, art)} alt="" draggable={false} />);
+          ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 60).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
+          : fillMosaic(pieces.filter((piece) => piece.category === item.id), 40).map(({ asset, art }, at) => <img key={`${asset.id}-${at}`} src={pictureUrl(asset.id, art)} alt="" draggable={false} />);
         // A grid like the Wizards' (the author, 2026-10-14): the collage on top, the name, count and line below.
         return (
           <button key={item.id} type="button" className={`stm-cat${WIDE_TILES.has(item.id) ? " stm-cat--wide" : ""}`} disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>

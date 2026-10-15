@@ -15,7 +15,7 @@ palettes straight back into the project.
 
 | Spray | Select and move | Pencil |
 | :---: | :---: | :---: |
-| ![Spraying shades over the demo's village](docs/media/spray.gif) | ![Selecting the village house and moving it](docs/media/select-move.gif) | ![Drawing zig-zag strokes with the pencil over the village](docs/media/pencil.gif) |
+| ![Spraying shades over the demo's cave](docs/media/spray.gif) | ![Selecting the village house and moving it](docs/media/select-move.gif) | ![Drawing zig-zag strokes with the pencil over the village](docs/media/pencil.gif) |
 
 <sub>Every picture here is GB Cartographer's own art from its demo project.</sub>
 
@@ -98,11 +98,11 @@ pick. Make background puts the map and its palettes in your project.
 
 | | |
 | :---: | :---: |
-| ![The cave generator: the rock slider moving, then dungeons rolled](docs/media/cave.gif) | ![The cave generator in a stone palette](docs/media/cave.png) |
+| ![The cave generator: the rock slider moving, new caves rolled, then a pine forest](docs/media/cave.gif) | ![The cave generator in a stone palette](docs/media/cave.png) |
 
 ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png)
 
-![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png)
+![The Map Room with 24 screens, twelve of dungeon and twelve of forest, laid out side by side](docs/media/map-room.png)
 
 ![The Asset Catalog: palettes and art to take into a project, each credited](docs/media/graphics.png)
 
