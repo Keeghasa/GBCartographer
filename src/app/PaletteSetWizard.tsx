@@ -1,16 +1,17 @@
 /**
  * A palette set (wizard W3): eight GB Studio palettes at once from a Lospec palette, the open picture or the
- * bundled library, each four colors lightest first. Three steps like the approved mockup: Source (where the colors
- * come from), Group (swap colors between palettes, re-sort one, see which have shades too close to tell apart) and
- * Name (a base name, "<base>-1" … "<base>-8", each optionally renamed). The parent writes them: into the project
+ * bundled library, each four colors lightest first. One page (the author, 2026-10-14: no steps): the source on the
+ * left (a new one loads at once), the set on the right (swap colors between palettes, re-sort one, see which have
+ * shades too close, name them: a base name, "<base>-1" … "<base>-8", each renamable). The parent writes them: into the project
  * (optionally into slots 1–8 of a scene or the defaults) or into "Mine".
  */
-import { ArrowDownWideNarrow, ArrowLeft, ArrowRight, Check, ImageUp, Palette as PaletteIcon, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowDownWideNarrow, Check, ImageUp, Palette as PaletteIcon, RotateCcw, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { fetchLospecColors } from "../PaletteManager";
 import library from "../palettes/library.json";
 import { closeShades, fitPalettes } from "../paint";
-import { Button, Checkbox, Chip, Dialog, Field, IconButton, Segmented, Select } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, IconButton, Segmented, Select } from "../ui/kit";
+import { WizardPage } from "./WizardPage";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
 import "./PaletteSetWizard.css";
 
@@ -32,7 +33,6 @@ type SourceKind = "lospec" | "picture" | "library";
 /** What a source gives: the palettes, a base name, and (library only) each palette's own name. */
 interface Made { palettes: string[][]; base: string; names: string[] }
 
-const STEPS = ["Source", "Group", "Name"];
 const SETS = librarySets(library.collections);
 
 type Picture = { rgba: Uint8ClampedArray; width: number; height: number; name: string };
@@ -63,10 +63,8 @@ function Thumb({ picture }: { picture: Picture }) {
 }
 
 const Strip = ({ colors }: { colors: readonly string[] }) => <div className="psw-strip">{colors.map((color, at) => <i key={at} style={{ background: color }} title={color} />)}</div>;
-const Mini = ({ palettes }: { palettes: string[][] }) => <div className="psw-mini">{palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>;
 
 export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, onAddToProject, onAddToMine }: PaletteSetWizardProps): JSX.Element {
-  const [step, setStep] = useState(0);
   const [kind, setKind] = useState<SourceKind>("lospec");
   const [link, setLink] = useState("");
   const [fetching, setFetching] = useState(false);
@@ -123,12 +121,8 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
     }
   };
 
-  const next = () => {
-    // Going on from Source loads its set, unless it is the one already loaded (edits survive Back and Next).
-    if (step === 0 && made && loadedFrom !== made) load(made);
-    setError("");
-    setStep(Math.min(2, step + 1));
-  };
+  // A new source's set loads at once (edits stay until the source changes).
+  useEffect(() => { if (made && made.palettes.length && loadedFrom !== made) load(made); }, [made]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (palette: number, color: number) => {
     if (!picked) return setPicked([palette, color]);
@@ -154,27 +148,19 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
   const last = palettes.length;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} wide title="A palette set" sub="Eight GB Studio palettes from a Lospec palette, a picture or the library" icon={<PaletteIcon size={18} />}
+    <WizardPage title="A palette set" icon={<PaletteIcon size={18} />} busy={busy} onClose={onClose}
+      line={["Eight palettes at once", last ? `${last} palette${last === 1 ? "" : "s"} · lightest first` : "pick a source"]}
       footer={<>
-        {step === 2 && projectName && slotsWhere && !done.project
-          ? <Checkbox checked={slots} onChange={setSlots}>Put them in slots 1–{Math.min(8, last)} of {slotsWhere}</Checkbox>
-          : <span className="k-muted k-small">Step {step + 1} of {STEPS.length}</span>}
+        {projectName && slotsWhere && !done.project ? <Checkbox checked={slots} onChange={setSlots}>Put them in slots 1–{Math.min(8, last || 8)} of {slotsWhere}</Checkbox> : <span />}
         <span className="k-spacer" />
-        {error && step > 0 && <p className="psw-error" role="alert">{error}</p>}
-        {step === 2 && (done.project || done.mine) && <Chip tone="acc"><Check size={12} strokeWidth={3} />{[done.project, done.mine].filter(Boolean).join(" · ")}</Chip>}
-        {step > 0 && <Button icon={<ArrowLeft />} disabled={busy} onClick={() => { setPicked(null); setStep(step - 1); }}>Back</Button>}
-        {step < 2 ? <Button variant="primary" disabled={step === 0 ? !made?.palettes.length : !palettes.length} title={step === 0 && !made?.palettes.length ? (kind === "lospec" ? "Fetch a Lospec palette first" : kind === "picture" ? "Choose a picture first" : "Pick a library set first") : undefined} onClick={next}>Next<ArrowRight /></Button>
-          : <>
-            <Button variant={projectName ? undefined : "primary"} disabled={!named || busy || Boolean(done.mine)} title="Your own palettes, kept in this browser" onClick={addToMine}>Add to Mine</Button>
-            {projectName && !done.project && <Button variant="primary" disabled={!named || busy} title={`New palette files in ${projectName}`} onClick={() => void addToProject()}>{busy ? "Adding…" : `Add to ${projectName}`}</Button>}
-            {(done.project || (!projectName && done.mine)) && <Button variant="primary" onClick={onClose}>Close</Button>}
-          </>}
+        {(done.project || done.mine) && <Chip tone="acc"><Check size={12} strokeWidth={3} />{[done.project, done.mine].filter(Boolean).join(" · ")}</Chip>}
+        <Button variant={projectName ? undefined : "primary"} disabled={!named || busy || Boolean(done.mine)} title="Your own palettes, kept in this browser" onClick={addToMine}>Add to Mine</Button>
+        {projectName && !done.project && <Button variant="primary" disabled={!named || busy} title={`New palette files in ${projectName}`} onClick={() => void addToProject()}>{busy ? "Adding…" : `Add to ${projectName}`}</Button>}
+        {(done.project || (!projectName && done.mine)) && <Button variant="primary" onClick={onClose}>Close</Button>}
       </>}>
-      <div className="psw-steps">{STEPS.map((name, index) => <span key={name} className={`psw-step${index < step ? " is-done" : index === step ? " is-now" : ""}`}><b>{index < step ? <Check size={10} strokeWidth={3} /> : index + 1}</b>{name}</span>)}</div>
-
-      {step === 0 && (
-        <div className="psw-two">
-          <div className="k-stack">
+      <div className="wp-cols">
+        <div className="wp-panel">
+          <h2 className="k-heading">Source</h2>
             <Segmented fill size="sm" label="Source" value={kind} onChange={(value) => { setKind(value); setError(""); }} options={sources} />
             {kind === "lospec" && <>
               <form className="k-row" onSubmit={(event) => { event.preventDefault(); if (link.trim() && !fetching) void fetchLink(); }}>
@@ -201,23 +187,18 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
               <Select label="Library set" value={setId} onChange={setSetId} options={SETS.map((set) => ({ value: set.id, label: set.label }))} />
               <span className="k-muted k-xs">The bundled palettes: Game Boy screens, the author's Chorbi and Overworld sets (CC0) and SpicyGame's (public domain).</span>
             </>}
-          </div>
-          <div className="k-stack k-stack--tight">
-            {made?.palettes.length ? <>
-              <span className="k-eyebrow">{kind === "lospec" ? `Grouped into ${made.palettes.length} palettes, lightest first` : `${made.palettes.length} palette${made.palettes.length === 1 ? "" : "s"}, lightest first`}</span>
-              <Mini palettes={made.palettes} />
-            </> : <div className="k-well psw-empty k-muted k-small">{kind === "lospec" ? "Fetch a Lospec palette to see it grouped." : "Nothing to make a set from yet."}</div>}
-          </div>
         </div>
-      )}
-
-      {step === 1 && (
-        <div className="k-stack">
-          <div className="k-row">
-            <span className="k-eyebrow">{last} palette{last === 1 ? "" : "s"}, lightest first</span>
-            <span className="k-spacer" />
-            <span className="k-muted k-xs">{picked ? "Now click the color to swap it with." : "Click a color, then another, to swap them."}</span>
+        <div className="wp-panel">
+          <div className="wp-head">
+            <h2 className="k-heading">The set</h2>
+            <span className="k-muted k-xs">{!last ? "" : picked ? "Now click the color to swap it with." : "Click a color, then another, to swap them."}</span>
             <Button size="sm" variant="ghost" icon={<RotateCcw />} disabled={!loadedFrom} title="Back to the palettes as the source gave them" onClick={() => loadedFrom && load(loadedFrom)}>Start over</Button>
+          </div>
+          {!last ? <div className="k-well psw-empty k-muted k-small">{kind === "lospec" ? "Fetch a Lospec palette to see it grouped." : "Nothing to make a set from yet."}</div> : <>
+          <div className="psw-base">
+            <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last} where a name below is left empty`}>
+              <input className="k-input" value={base} onChange={(event) => { setBase(event.target.value); setDone({}); }} />
+            </Field>
           </div>
           <div className="psw-grid">
             {palettes.map((colors, index) => {
@@ -225,7 +206,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
               const sorted = lightestFirst(colors).join() === colors.join();
               return (
                 <div key={index} className="k-card psw-row">
-                  <span className="psw-num">{index + 1}</span>
+                  <input className="k-input psw-row-name" aria-label={`Palette ${index + 1} name`} placeholder={`${base.trim() || "name"}-${index + 1}`} value={own[index] ?? ""} onChange={(event) => { const nextOwn = [...own]; nextOwn[index] = event.target.value; setOwn(nextOwn); setDone({}); }} />
                   <div className="psw-swatches" role="group" aria-label={`Palette ${index + 1}`}>
                     {colors.map((color, at) => <button key={at} type="button" className="psw-swatch" style={{ background: color }} aria-pressed={picked?.[0] === index && picked[1] === at} aria-label={`Color ${at + 1}: ${color}`} title={`Color ${at + 1}: ${color}`} onClick={() => pick(index, at)} />)}
                   </div>
@@ -235,26 +216,9 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
               );
             })}
           </div>
+          </>}
         </div>
-      )}
-
-      {step === 2 && (
-        <div className="k-stack">
-          <div className="psw-base">
-            <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last} where a name below is left empty`}>
-              <input className="k-input" value={base} onChange={(event) => { setBase(event.target.value); setDone({}); }} />
-            </Field>
-          </div>
-          <div className="psw-names">
-            {palettes.map((colors, index) => (
-              <label key={index} className="psw-name">
-                <Strip colors={colors} />
-                <input className="k-input" aria-label={`Palette ${index + 1} name`} placeholder={`${base.trim() || "name"}-${index + 1}`} value={own[index] ?? ""} onChange={(event) => { const nextOwn = [...own]; nextOwn[index] = event.target.value; setOwn(nextOwn); setDone({}); }} />
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-    </Dialog>
+      </div>
+    </WizardPage>
   );
 }
