@@ -2885,7 +2885,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           picture={doc ? { name: doc.name, width: doc.width, height: doc.height, rgba: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return toRgba(flat, doc.cells, doc.width, doc.palettes); })() } : null}
           onClose={() => setWizard(null)} onAddToProject={addPaletteSet} onAddToMine={(list) => { addToMine(list); say(`Added ${list.length} palettes to Mine (the palette manager).`); }} />
       )}
-      {showSnapshot && <SnapshotWindow onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })} />}
+      {showSnapshot && <SnapshotWindow onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })}
+        onSend={project ? (kind, shot) => createPicture({ kind, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels }) : null} />}
       {showWizards && <WizardGallery cards={wizardCards} onClose={() => setShowWizards(false)} />}
       {showStore && (
         <StoreWindow projectName={project?.name ?? null} projectPalettes={project?.palettes ?? []} onClose={() => setShowStore(false)}

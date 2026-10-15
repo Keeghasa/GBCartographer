@@ -6,7 +6,7 @@
  * console's own.
  */
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Box, Camera as CameraIcon, ImagePlus, Trash2, Upload } from "lucide-react";
+import { Box, Camera as CameraIcon, FolderInput, ImagePlus, Trash2, Upload } from "lucide-react";
 import { toRgba } from "../paint";
 import { Button, Dialog, IconButton, Segmented, Slider, Switch } from "../ui/kit";
 import type { ShotSettings, Stage } from "./snapshot3d";
@@ -57,7 +57,20 @@ function Rig({ rig, onMove }: { rig: ShotSettings["rig"]; onMove: (light: Light,
   );
 }
 
-export function SnapshotWindow({ onClose, onTake }: { onClose: () => void; onTake: (picture: { name: string; width: number; height: number; pixels: Uint8Array }) => void }) {
+type Shot = { name: string; width: number; height: number; pixels: Uint8Array };
+
+/** A shot made ready for the project: a background at least a screen big (a smaller shot centred on one), or a sprite. */
+function forProject(shot: Shot): { kind: "backgrounds" | "sprites"; shot: Shot } {
+  if (shot.width === 32) return { kind: "sprites", shot };
+  if (shot.width >= 160 && shot.height >= 144) return { kind: "backgrounds", shot };
+  const pixels = new Uint8Array(160 * 144), left = (160 - shot.width) >> 1, top = (144 - shot.height) >> 1;
+  for (let y = 0; y < shot.height; y += 1) pixels.set(shot.pixels.subarray(y * shot.width, (y + 1) * shot.width), (top + y) * 160 + left);
+  return { kind: "backgrounds", shot: { ...shot, width: 160, height: 144, pixels } };
+}
+
+export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => void; onTake: (picture: Shot) => void;
+  /** Writes the shot into the open project as a new background or sprite (null: no project open). */
+  onSend: ((kind: "backgrounds" | "sprites", picture: Shot) => Promise<boolean>) | null }) {
   const print = useRef<HTMLCanvasElement>(null), file = useRef<HTMLInputElement>(null);
   const stage = useRef<Stage | null>(null), engine = useRef<typeof import("./snapshot3d") | null>(null);
   const [size, setSize] = useState<Size>("screen");
@@ -96,13 +109,14 @@ export function SnapshotWindow({ onClose, onTake }: { onClose: () => void; onTak
     target.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint8Array(Math.ceil(settings.width / 8) * Math.ceil(settings.height / 8)), settings.width), settings.width, settings.height), 0, 0);
   });
 
-  async function open(picked: File | undefined) {
-    if (!picked || !engine.current || !stage.current) return;
+  async function open(picked: File[]) {
+    if (!picked.length || !engine.current || !stage.current) return;
     try {
-      stage.current.show(await engine.current.loadModel(picked));
-      setModel(picked.name); setTriangles(stage.current.triangles()); setProblem(null);
+      const loaded = await engine.current.loadModel(picked);
+      stage.current.show(loaded.model);
+      setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
     } catch (error) {
-      setProblem(`${picked.name} didn't open: ${error instanceof Error ? error.message : String(error)}. A .glb works best (from Blender: File → Export → glTF 2.0, binary).`);
+      setProblem(`${picked.map((file) => file.name).join(", ")} didn't open: ${error instanceof Error ? error.message : String(error)}. A .glb works best (from Blender: File → Export → glTF 2.0, binary).`);
     }
   }
 
@@ -117,13 +131,13 @@ export function SnapshotWindow({ onClose, onTake }: { onClose: () => void; onTak
       <div className="sw-page">
       <div className="sw-top"><span>Turn · light · take</span><span>{model} · {triangles.toLocaleString()} triangles · {settings.width} × {settings.height}</span></div>
       <h1 className="sw-h1"><b>3D Snapshot</b></h1>
-      <div className="sw" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void open(event.dataTransfer.files[0]); }}>
+      <div className="sw" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void open([...event.dataTransfer.files]); }}>
         <aside className="k-card sw-controls">
           <div className="sw-group">
             <div className="sw-head"><h2 className="k-heading">Model</h2><Button size="sm" icon={<Upload />} onClick={() => file.current?.click()}>Load…</Button></div>
             <div className="sw-drop">{model} · {triangles.toLocaleString()} triangles</div>
-            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a .glb, .gltf or .obj anywhere here. From Blender: File → Export → glTF 2.0.</p>}
-            <input ref={file} type="file" accept=".glb,.gltf,.obj" hidden onChange={(event) => { void open(event.target.files?.[0]); event.target.value = ""; }} />
+            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a .glb, .gltf or .obj anywhere here, with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
+            <input ref={file} type="file" accept=".glb,.gltf,.bin,.obj,.mtl,.png,.jpg,.jpeg" multiple hidden onChange={(event) => { void open([...(event.target.files ?? [])]); event.target.value = ""; }} />
           </div>
           <div className="sw-group">
             <div className="sw-head"><h2 className="k-heading">Light rig</h2><span className="k-muted k-xs">drag the lights</span></div>
@@ -150,7 +164,7 @@ export function SnapshotWindow({ onClose, onTake }: { onClose: () => void; onTak
             <div className="sw-head"><span className="k-muted k-xs">Drag the print to turn the model · scroll to zoom</span><Button variant="primary" icon={<CameraIcon />} onClick={take}>Take picture</Button></div>
           </div>
           <div className="sw-pictures">
-            <div className="sw-head"><h2 className="k-heading">Pictures</h2><span className="k-muted k-xs">{pictures.length ? "Open one as a new picture to paint and save" : "Take picture adds the print here"}</span></div>
+            <div className="sw-head"><h2 className="k-heading">Pictures</h2><span className="k-muted k-xs">{pictures.length ? "Hover a picture: open it to paint, or send it to the project" : "Take picture adds the print here"}</span></div>
             <div className="sw-strip">
               {pictures.map((picture) => (
                 <figure key={picture.id} className="sw-shot">
@@ -158,6 +172,8 @@ export function SnapshotWindow({ onClose, onTake }: { onClose: () => void; onTak
                   <figcaption>{picture.name}<small>{picture.width} × {picture.height}</small></figcaption>
                   <span className="sw-shot-acts">
                     <IconButton label="Open as a new picture" size="sm" variant="primary" onClick={() => { onTake(picture); onClose(); }}><ImagePlus /></IconButton>
+                    <IconButton label={onSend ? `Send to the project as a new ${picture.width === 32 ? "sprite" : "background"}` : "Open a project to send pictures to it"} size="sm" disabled={!onSend}
+                      onClick={() => { const ready = forProject(picture); void onSend?.(ready.kind, ready.shot).then((made) => { if (made) onClose(); }); }}><FolderInput /></IconButton>
                     <IconButton label="Throw away" size="sm" onClick={() => setPictures((list) => list.filter((item) => item.id !== picture.id))}><Trash2 /></IconButton>
                   </span>
                 </figure>
