@@ -93,7 +93,9 @@
 .stm-tile-source { position: relative; display: flex; margin-top: 4px; }
 
 /* The home as an even grid, like the Wizards (the author, 2026-10-14): three across, the collage on top. */
-.stm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stm-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-flow: dense; gap: 8px; }
+.stm-cat--wide { grid-column: span 2; }
+.stm-cat--wide .stm-cat-art { aspect-ratio: 336 / 96; }
 .stm-cat { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 0; border: 0; border-radius: 6px; background: var(--k-panel-2, #161c17); color: var(--k-ink); text-align: left; font: inherit; cursor: pointer; }
 .stm-cat:disabled { opacity: .45; cursor: default; }
 .stm-cat-art { position: relative; aspect-ratio: 160 / 96; overflow: hidden; background: #0e110f; }
@@ -106,4 +108,4 @@
 .stm-cat-name .stm-icon svg { width: 16px; height: 16px; }
 .stm-cat-count { margin-left: auto; font: 500 12px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); letter-spacing: 0; }
 .stm-cat:not(:disabled):hover .stm-cat-name { color: var(--k-acc); }
-@media (max-width: 760px) { .stm-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .stm-grid { grid-template-columns: 1fr 1fr; } }

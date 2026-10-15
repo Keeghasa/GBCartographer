@@ -9,7 +9,7 @@ palettes straight back into the project.
 > control). It writes into your project when you save, features and file handling are still changing, and there
 > will be bugs. Close GB Studio while you work, and please report problems in the repository's issues.
 
-![A generated overworld open in the painter, in its palettes](docs/media/painter.png)
+![The demo's town open in the painter, in its palettes](docs/media/painter.png)
 
 ![Painting palettes onto the demo's village, tile by tile, with the palette brush](docs/media/palette-brush.gif)
 
@@ -98,8 +98,11 @@ pick. Make background puts the map and its palettes in your project.
 
 | | |
 | :---: | :---: |
-| ![The overworld generator in SpicyGame's VIBE-20 colors](docs/media/generators.png) | ![The cave generator in a stone palette](docs/media/cave.png) |
-| ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png) | ![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png) |
+| ![The cave generator: the rock slider moving, then dungeons rolled](docs/media/cave.gif) | ![The cave generator in a stone palette](docs/media/cave.png) |
+
+![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png)
+
+![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png)
 
 ![The Asset Catalog: palettes and art to take into a project, each credited](docs/media/graphics.png)
 

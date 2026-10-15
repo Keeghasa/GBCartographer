@@ -151,6 +151,8 @@ const SECTIONS: { id: string; title: string; note: string; ids: CategoryId[] }[]
   { id: "pictures", title: "Assets", note: "Added as new PNGs in your GB Studio project's assets folders, where GB Studio uses them.", ids: ["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"] },
   { id: "stamps", title: "Stamps", note: "Added to Cartographer/stamps in your project, for painting with in GB Cartographer. GB Studio never reads them.", ids: ["objects", "repeat", "autotiles", "animated"] },
 ];
+/** Home tiles two columns wide; the rest are one (4 + 4 + 4 + 4 across the four rows). */
+const WIDE_TILES = new Set<CategoryId>(["palettes", "backgrounds", "autotiles", "animated"]);
 const isStampCategory = (id: CategoryId) => SECTIONS[2].ids.includes(id);
 const categoryOf = (asset: WireAsset): CategoryId => asset.kind === "stamps" ? stampGroup({ autotile: asset.autotile, tags: asset.group === "Patterns" ? ["pattern"] : [] }) : asset.kind as CategoryId;
 const PALETTE_COUNT = SHELVES.reduce((sum, shelf) => sum + shelf.sets.reduce((n, set) => n + set.palettes.length, 0), 0);
@@ -185,30 +187,30 @@ export function StoreWindow({ projectName, projectPalettes, onClose, onAddToProj
   async function addArt(asset: WireAsset, art: Canvas) { setBusy(true); try { if (await onAddArt(asset, art)) setAdded((was) => new Set(was).add(asset.id)); } finally { setBusy(false); } }
   const home = () => { setCategory(null); setQuery(""); };
 
-  /** The home: a tile per category in an even grid. */
-  const mosaic = SECTIONS.map((section) => (
-    <section key={section.id} className={`stm-section stm-section--${section.id}`}>
-      <header className="stm-section-head"><span className="stm-section-title">{section.title}</span><span className="stm-section-note">{section.note}</span></header>
+  /**
+   * The home (the author, 2026-10-14: "just mix it all up, 4 columns, in order of appearance in the sidebar; no tile
+   * bigger than 2 wide or 1 tall"): one grid, palettes first, then the rail's folders and stamp shelves in order.
+   */
+  const mosaic = (
       <div className="stm-grid">
-      {CATEGORIES.filter((item) => section.ids.includes(item.id)).map((item) => {
+      {CATEGORIES.map((item) => {
         const n = count(item.id);
         const collage = item.id === "palettes"
           ? SHELVES.flatMap((shelf) => shelf.sets.flatMap((set) => set.palettes)).slice(0, 24).map((palette) => <span key={palette.name} className="stm-chip">{palette.colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)
           : pieces.filter((piece) => piece.category === item.id).slice(0, 18).map(({ asset, art }) => <img key={asset.id} src={pictureUrl(asset.id, art)} alt="" draggable={false} />);
         // A grid like the Wizards' (the author, 2026-10-14): the collage on top, the name, count and line below.
         return (
-          <button key={item.id} type="button" className="stm-cat" disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>
+          <button key={item.id} type="button" className={`stm-cat${WIDE_TILES.has(item.id) ? " stm-cat--wide" : ""}`} disabled={!n} onClick={() => setCategory(item.id)} title={n ? `${item.name}: ${item.about}` : `${item.name}: none in the catalog yet`}>
             <span className="stm-cat-art" aria-hidden><span className="stm-cat-collage">{collage}</span></span>
             <span className="stm-cat-text">
               <span className="stm-cat-name"><span className="stm-icon">{item.icon}</span>{item.name}<span className="stm-cat-count">{n || "–"}</span></span>
-              <span className="stm-meta">{n ? item.about : "None yet"}</span>
+              <span className="stm-meta">{n ? item.about : "None yet"}{isStampCategory(item.id) && <> · a stamp shelf</>}</span>
             </span>
           </button>
         );
       })}
       </div>
-    </section>
-  ));
+  );
 
   const artTiles = (list: typeof pieces) => (
     <div className="stm-tiles">
