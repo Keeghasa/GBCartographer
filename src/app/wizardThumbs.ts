@@ -111,6 +111,30 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
 
 /** How many frames each wizard's loop has, and how long each shows (ms). */
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
-  picture: { count: 8, ms: 260 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
+  picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
   cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 },
 };
+
+/**
+ * Picture to background's loop (the author, 2026-10-14: their dog Sammie): the photo, and a wipe sweeping across it
+ * that leaves the fitted version behind, each 8 × 8 tile in the nearer of two four-color palettes, as the wizard does.
+ */
+const FIT_PALETTES = [["#F4DCCB", "#D9938C", "#7B4A36", "#24140E"], ["#E6C690", "#AE7D4C", "#5E3E26", "#1C120C"]]
+  .map((colors) => colors.map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))));
+export function photoFrames(photo: ImageData, count = WIZARD_FRAMES.picture.count): ImageData[] {
+  const { width, height, data } = photo, fitted = new Uint8ClampedArray(data);
+  const distance = (i: number, c: number[]) => (data[i] - c[0]) ** 2 + (data[i + 1] - c[1]) ** 2 + (data[i + 2] - c[2]) ** 2;
+  const nearest = (i: number, palette: number[][]) => palette.reduce((best, color) => distance(i, color) < distance(i, best) ? color : best);
+  for (let ty = 0; ty < height; ty += 8) for (let tx = 0; tx < width; tx += 8) {
+    const pixels: number[] = [];
+    for (let y = ty; y < Math.min(height, ty + 8); y += 1) for (let x = tx; x < Math.min(width, tx + 8); x += 1) pixels.push((y * width + x) * 4);
+    const palette = FIT_PALETTES.reduce((best, palette) => pixels.reduce((sum, i) => sum + distance(i, nearest(i, palette)), 0) < pixels.reduce((sum, i) => sum + distance(i, nearest(i, best)), 0) ? palette : best);
+    for (const i of pixels) fitted.set(nearest(i, palette), i);
+  }
+  return Array.from({ length: count }, (_, frame) => {
+    const wipe = Math.round((frame / (count - 1)) * width), out = new Uint8ClampedArray(data);
+    for (let y = 0; y < height; y += 1) for (let x = 0; x < wipe; x += 1) out.set(fitted.subarray((y * width + x) * 4, (y * width + x) * 4 + 4), (y * width + x) * 4);
+    if (wipe > 0 && wipe < width) for (let y = 0; y < height; y += 1) out.set([224, 248, 207, 255], (y * width + wipe) * 4);
+    return new ImageData(out, width, height);
+  });
+}

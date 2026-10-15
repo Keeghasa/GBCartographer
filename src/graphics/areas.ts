@@ -112,9 +112,12 @@ export function paintSliced(out: Canvas, art: Canvas, filled: Filled, cellsW: nu
   }
 }
 
-/** Forest on 32 px units (the pine or round forest brush): the clump inside, lone trees round the edge. */
-export function paintForest(out: Canvas, art: Canvas, forest: Filled, unitsW: number, unitsH: number, x0 = 0, y0 = 0) {
-  const is = (x: number, y: number) => x >= 0 && y >= 0 && x < unitsW && y < unitsH && forest(x, y);
+/**
+ * Forest on 32 px units (the pine or round forest brush): the clump inside, lone trees round the edge. With `beyond`,
+ * the woods go on past the picture's edge (no lone trees along it).
+ */
+export function paintForest(out: Canvas, art: Canvas, forest: Filled, unitsW: number, unitsH: number, x0 = 0, y0 = 0, beyond = false) {
+  const is = (x: number, y: number) => x < 0 || y < 0 || x >= unitsW || y >= unitsH ? beyond : forest(x, y);
   for (let y = 0; y < unitsH; y += 1) for (let x = 0; x < unitsW; x += 1) {
     forestLayout(is, x, y).forEach((piece, quarter) => {
       if (!piece) return;

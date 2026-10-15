@@ -13,6 +13,7 @@ import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
 import { APPROVED, TEMP_ASSETS } from "./temp";
 import { AUTHORED } from "./authored";
+import { CAVE_DEFAULTS, drawCave } from "../app/generators";
 import { OPENGAMEART } from "./opengameart";
 import { setCatalogArt } from "./areas";
 import { CLEAR, canvas, type Canvas } from "./pen";
@@ -104,6 +105,10 @@ const ALL: WireAsset[] = [
   { id: "scene-dialogue", name: "Dialogue", group: "Scenes", kind: "backgrounds", about: "The village's first screen with a dialogue box.", make: scenes.dialogue },
   { id: "scene-village", name: "Village (whole)", group: "Map screens", kind: "backgrounds", about: "The whole village, 480 × 288, before it is cut into screens.", make: villageMap },
   ...[0, 1].flatMap((row) => [0, 1, 2].map((column): WireAsset => ({ id: `village-${column}-${row}`, name: `Village ${column + 1}-${row + 1}`, group: "Map screens", kind: "backgrounds", about: `Screen ${column + 1} of 3 across, ${row + 1} of 2 down. Neighbours share their edge tiles, so they join in the Map Room.`, make: () => villageScreen(column, row) }))),
+  // A sample of each map the cave wizard makes (the author, 2026-10-14), one screen each, so the catalog shows them.
+  { id: "gen-cave", name: "Cave (generated)", group: "Generated maps", kind: "backgrounds", about: "One screen from the Cave or dungeon wizard: a cave in Cliff XP's 32 px walls. The wizard makes more, any size.", make: () => drawCave({ ...CAVE_DEFAULTS, columns: 1, rows: 1, seed: 7 }) },
+  { id: "gen-dungeon", name: "Dungeon (generated)", group: "Generated maps", kind: "backgrounds", about: "One screen from the Cave or dungeon wizard: rooms and corridors in 9-sliced stone.", make: () => drawCave({ ...CAVE_DEFAULTS, style: "dungeon", columns: 1, rows: 1, seed: 4, rooms: 5, roomSize: 4 }) },
+  { id: "gen-forest", name: "Forest (generated)", group: "Generated maps", kind: "backgrounds", about: "One screen from the Cave or dungeon wizard with forest walls: clearings among pines.", make: () => drawCave({ ...CAVE_DEFAULTS, columns: 1, rows: 1, seed: 3, walls: "pines" }) },
   { id: "scene-room", name: "Point-and-click room", group: "Scenes", kind: "backgrounds", make: scenes.room },
   // The temp assets the author approved (swipe review, 2026-10-13): XP area auto-tiles and seamless patterns.
   ...TEMP_ASSETS.filter((asset) => APPROVED.has(asset.id)).map((asset): WireAsset => ({ id: asset.id, name: asset.name, group: asset.family === "xp" ? "XP auto-tiles" : "Patterns", kind: "stamps", about: asset.about, make: asset.make, ...(asset.autotile ? { autotile: asset.autotile } : {}) })),

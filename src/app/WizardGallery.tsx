@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
 import { Dialog } from "../ui/kit";
 import { PxRobotHappy } from "../ui/setIcons";
-import { WIZARD_FRAMES, wizardThumb, type WizardThumb } from "./wizardThumbs";
+import { WIZARD_FRAMES, photoFrames, wizardThumb, type WizardThumb } from "./wizardThumbs";
+import sammie from "./sammie.png";
 import "./WizardGallery.css";
 
 export interface WizardCard {
@@ -30,12 +31,27 @@ const still = () => typeof window !== "undefined" && window.matchMedia?.("(prefe
 /** A wizard's loop, frame by frame (the last frame only, when the system asks for less motion). */
 function Thumb({ id, playing }: { id: WizardThumb; playing: boolean }) {
   const { count, ms } = WIZARD_FRAMES[id];
-  const frames = useMemo(() => Array.from({ length: count }, (_, frame) => {
+  // Picture to background plays the author's photo of Sammie turning into pixels (loaded, then fitted).
+  const [photo, setPhoto] = useState<ImageData[] | null>(null);
+  useEffect(() => {
+    if (id !== "picture") return;
+    const image = new Image();
+    image.onload = () => {
+      const scratch = document.createElement("canvas");
+      Object.assign(scratch, { width: image.width, height: image.height });
+      const context = scratch.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      setPhoto(photoFrames(context.getImageData(0, 0, image.width, image.height), count));
+    };
+    image.src = sammie;
+  }, [id, count]);
+  const drawn = useMemo(() => Array.from({ length: count }, (_, frame) => {
     const picture = wizardThumb(id, frame);
     const cells = picture.cells ?? new Uint8Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
     const palettes = (picture.palettes ?? []).map(({ name, colors }) => ({ name, colors }));
     return new ImageData(toRgba(picture.pixels, cells, picture.width, palettes), picture.width, picture.height);
   }), [id, count]);
+  const frames = photo ?? drawn;
   const [frame, setFrame] = useState(still() ? count - 1 : 0);
   const [target, setTarget] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {

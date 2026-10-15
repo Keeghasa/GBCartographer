@@ -4,7 +4,7 @@
  * (an 8 × 8 nine-slice) and the 8 × 8 menu cursor. Backgrounds in screens of 160 × 144 (10 × 9 tiles).
  */
 import { drawCave, drawWorld } from "../app/generators";
-import { paintXp, sheet } from "./areas";
+import { paintForest, paintXp, sheet } from "./areas";
 import { Pen, canvas, textWidth, type Canvas } from "./pen";
 import { outdoorTile, TILES } from "./tiles";
 
@@ -129,47 +129,55 @@ const level = [
 const levelLegend = { ".": "sky", "?": "questionBlock", "=": "platform", L: "ladder", "^": "spikesUp", G: "groundTop", d: "ground", "~": "waterSide", B: "brick", p: "pipe" };
 
 /**
- * The village, 30 × 18 cells of 16 (3 × 2 screens), remade after the author's Town (2026-10-13, the Asset Catalog
- * project's Town.png): a ring of small round trees with ways out at the bottom, houses with two rows of roof over a
- * brick wall and their door on a path, plain Path tiles in a grid (as the author painted them), Flower bed XP hedges, a framed field (Ground XP),
- * a little pond (Floor tiles XP) under a pine, fences, a sign and a few bushes on Grass XP.
- * Cells: "." grass, T tree, R roof, W wall, D door, "," path, h hedge, c field, o pond, F fence, s sign, P pine.
+ * The village, 30 × 18 cells of 16 (3 × 2 screens), first remade after the author's Town (2026-10-13), then walled
+ * in with the forest brush (the author, 2026-10-14: "use the tree/forest brush to reimagine the village"): a ring of
+ * round forest two cells thick with ways out at the bottom and the left, a pine grove in the north-east, houses with
+ * two rows of roof over a brick wall and their door on a path, Flower bed XP hedges, a framed field (Ground XP), a
+ * pond (Floor tiles XP) with a pine, a fence and a sign on Grass XP.
+ * Cells: "." grass, T round forest, G pine grove, R roof, W wall, D door, "," path, h hedge, c field, o pond,
+ * F fence, s sign, P pine. Forest only comes in whole 32 px units (2 × 2 cells on even cells).
  */
 function village(): string[] {
   const W = 30, H = 18, map = Array.from({ length: H }, () => Array.from({ length: W }, () => "."));
   const set = (x: number, y: number, c: string) => { if (x >= 0 && y >= 0 && x < W && y < H) map[y][x] = c; };
   const box = (x: number, y: number, w: number, h: number, c: string) => { for (let dy = 0; dy < h; dy += 1) for (let dx = 0; dx < w; dx += 1) set(x + dx, y + dy, c); };
-  box(0, 0, W, 1, "T"); box(0, H - 1, W, 1, "T"); box(0, 0, 1, H, "T"); box(W - 1, 0, 1, H, "T");
-  // Paths: two long ones across, three down, the ways out at the bottom.
-  box(2, 5, 26, 1, ","); box(2, 10, 26, 1, ","); box(4, 14, 22, 1, ",");
-  box(2, 5, 1, 6, ","); box(8, 5, 1, 10, ","); box(17, 5, 1, 13, ","); box(25, 5, 1, 6, ","); box(11, 14, 1, 4, ",");
-  // Houses: roof, roof, wall with its door, a path from the door to the nearest path.
+  // The forest ring, two cells thick, and its ways out: the bottom at columns 16–17, the left at rows 6–7.
+  box(0, 0, W, 2, "T"); box(0, H - 2, W, 2, "T"); box(0, 0, 2, H, "T"); box(W - 2, 0, 2, H, "T");
+  box(16, H - 2, 2, 2, "."); box(0, 6, 2, 2, ".");
+  box(24, 2, 4, 4, "G");
+  // Paths: two across (the upper one out to the left), one down between them, one down to the bottom way out.
+  box(0, 6, 24, 1, ","); box(2, 11, 26, 1, ","); box(9, 6, 1, 6, ","); box(16, 11, 1, 7, ",");
+  // Houses: roof, roof, wall with its door, a path from the door to the path beside it.
   const house = (x: number, y: number, w: number, door: number, to: number) => {
     box(x, y, w, 2, "R"); box(x, y + 2, w, 1, "W"); set(door, y + 2, "D");
     for (let py = y + 3; py !== to; py += to > y ? 1 : -1) set(door, py, ",");
   };
-  house(3, 1, 4, 4, 5); house(11, 1, 5, 13, 5); house(20, 1, 4, 21, 5);
-  house(3, 11, 4, 5, 14); house(13, 11, 3, 14, 14); house(21, 11, 4, 23, 14);
-  // Hedges, the field, the pond under its pine, fences, a sign and bushes.
-  box(4, 6, 1, 3, "h"); box(4, 8, 3, 1, "h"); box(10, 6, 3, 1, "h"); box(19, 7, 5, 2, "h"); box(26, 11, 2, 2, "h"); box(1, 15, 3, 1, "h"); box(19, 15, 4, 1, "h");
-  box(11, 7, 5, 3, "c");
-  box(26, 2, 2, 2, "o"); set(27, 1, "P");
-  box(6, 6, 1, 1, "F"); box(21, 6, 3, 1, "F");
-  set(15, 6, "s");
+  house(3, 2, 4, 5, 6); house(11, 2, 5, 13, 6); house(18, 2, 4, 19, 6);
+  house(3, 8, 4, 4, 11); house(11, 8, 4, 12, 11); house(20, 8, 4, 22, 11);
+  // Hedges, the field, the pond with its pine, a fence and a sign.
+  box(18, 13, 7, 1, "h"); box(3, 13, 1, 2, "h");
+  box(19, 14, 6, 2, "c");
+  box(5, 13, 3, 2, "o"); set(8, 13, "P");
+  box(11, 13, 4, 1, "F");
+  set(15, 7, "s");
   return map.map((row) => row.join(""));
 }
-const villageLegend = { ".": "grass", T: "tree", P: "pine", R: "roof", W: "houseWall", D: "door", ",": "path", h: "grass", c: "grass", o: "grass", F: "fence", s: "sign" };
+const villageLegend = { ".": "grass", T: "grass", G: "grass", P: "pine", R: "roof", W: "houseWall", D: "door", ",": "path", h: "grass", c: "grass", o: "grass", F: "fence", s: "sign" };
 
 /**
  * The village as one picture (480 × 288): the tiles from the Outdoor tiles sheet (the author's versions), its paths,
- * hedges, field and pond painted with the library's XP pieces, joined at their edges as the stamps would.
+ * hedges, field and pond painted with the library's XP pieces, joined at their edges as the stamps would, and the
+ * forest with the round and pine forest brushes.
  */
 export const villageMap = () => {
   const rows = village(), w = rows[0].length, h = rows.length;
+  const unit = (c: string) => (ux: number, uy: number) => [0, 1].every((dy) => [0, 1].every((dx) => rows[uy * 2 + dy]?.[ux * 2 + dx] === c));
   return fromMap(rows, villageLegend, (out) => {
     paintXp(out, sheet("xp-flowers"), (x, y) => rows[y][x] === "h", w, h, false);
     paintXp(out, sheet("xp-ground"), (x, y) => rows[y][x] === "c", w, h, false);
     paintXp(out, sheet("xp-ice"), (x, y) => rows[y][x] === "o", w, h, false);
+    paintForest(out, sheet("round"), unit("T"), w / 2, h / 2, 0, 0, true);
+    paintForest(out, sheet("pines"), unit("G"), w / 2, h / 2);
   });
 };
 
