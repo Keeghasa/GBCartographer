@@ -58,7 +58,7 @@ export function paintXp(out: Canvas, art: Canvas, filled: Filled, cellsW: number
   }
 }
 
-/** Cliffs (Cliff XP) on 16 px cells: plateaus with their faces where the cell below isn't cliff. */
+/** Cliffs (Cliff) on 16 px cells: plateaus with their faces where the cell below isn't cliff. */
 export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH: number, x0 = 0, y0 = 0, tall = false, beyond = false) {
   // With `beyond`, rock runs on past the picture's edge (the author, 2026-10-14: no bevelled cliff sides at the border).
   const art = sheet("cliff"), is = (x: number, y: number) => x < 0 || y < 0 || x >= cellsW || y >= cellsH ? beyond : filled(x, y);

@@ -132,8 +132,8 @@ const levelLegend = { ".": "sky", "?": "questionBlock", "=": "platform", L: "lad
  * The village, 30 × 18 cells of 16 (3 × 2 screens), first remade after the author's Town (2026-10-13), then walled
  * in with the forest brush (the author, 2026-10-14: "use the tree/forest brush to reimagine the village"): a ring of
  * round forest two cells thick with ways out at the bottom and the left, a pine grove in the north-east, houses with
- * two rows of roof over a brick wall and their door on a path, Flower bed XP hedges, a framed field (Ground XP), a
- * pond (Floor tiles XP) with a pine, a fence and a sign on Grass XP.
+ * two rows of roof over a brick wall and their door on a path, Flower bed hedges, a framed field (Ground), a
+ * pond (Floor tiles) with a pine, a fence and a sign on Grass.
  * Cells: "." grass, T round forest, G pine grove, R roof, W wall, D door, "," path, h hedge, c field, o pond,
  * F fence, s sign, P pine. Forest only comes in whole 32 px units (2 × 2 cells on even cells).
  */

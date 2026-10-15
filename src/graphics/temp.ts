@@ -42,7 +42,7 @@ const xpSquare = (shade: Shader): Canvas => { const out = canvas(48, 64, CLEAR);
 const woodFloor: Shader = edged((x, y) => (y % 4 === 3) ? 2 : (x === (y < 4 ? 5 : 1)) ? 2 : 1);
 const carpet: Shader = (depth, x, y) => depth === 0 ? 3 : depth === 1 ? 0 : depth === 2 ? 2 : (Math.abs(x - 3.5) + Math.abs(y - 3.5) === 3) ? 0 : 1;
 const tiledFloor: Shader = edged((x, y) => ((x >> 2) + (y >> 2)) % 2 ? 2 : 0, 3);
-/** The old path tile's design (the path tile is now drawn from Dirt XP itself, so this keeps its own copy). */
+/** The old path tile's design (the path tile is now drawn from Dirt itself, so this keeps its own copy). */
 const oldPath = (p: Pen) => { p.fill(1); for (const [x, y] of [[3, 4], [10, 2], [12, 11], [5, 12]]) p.rect(x, y, 2, 1, 2); };
 /** The old grass and wood floor tiles' designs (the author preferred them; the tiles now draw from the XP sheets). */
 const oldGrass: Tile = { name: "Grass", draw: (p) => { p.fill(0); for (const [x, y] of [[3, 3], [11, 10]]) { p.dot(x, y + 1, 1); p.dot(x + 1, y, 1); p.dot(x + 2, y + 1, 1); } } };
@@ -56,36 +56,36 @@ const brickFill = lazyFill(() => OUTDOOR.houseWall), plankFill = lazyFill(() => 
 const flowerBed: Shader = (depth, x, y) => { if (depth <= 1) return 2; const f = at([[2, 1], [1, 2], [3, 2], [2, 3], [6, 5], [5, 6], [7, 6], [6, 7]], x, y), c = at([[2, 2], [6, 6]], x, y); return c ? 1 : f ? 0 : 2; };
 
 const XP: TempAsset[] = [
-  { id: "xp-grass", name: "Grass XP", family: "xp", autotile: "xp", about: "A grass patch: tufts on light ground, a soft mid edge.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) },
+  { id: "xp-grass", name: "Grass", family: "xp", autotile: "xp", about: "A grass patch: tufts on light ground, a soft mid edge.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) },
     make: () => xp(edged((x, y) => at([[1, 2], [2, 1], [3, 2], [5, 6], [6, 5], [7, 6]], x, y) ? 2 : 0, 1, 2)) },
-  { id: "xp-dirt", name: "Dirt XP", family: "xp", autotile: "xp", about: "The path tile's design turned a quarter, with a dark border around the area.", before: { name: "Path tile", make: () => tileNow(OUTDOOR.path) },
+  { id: "xp-dirt", name: "Dirt", family: "xp", autotile: "xp", about: "The path tile's design turned a quarter, with a dark border around the area.", before: { name: "Path tile", make: () => tileNow(OUTDOOR.path) },
     make: () => { const fill = tileFill({ name: "Path", draw: oldPath }, true); return xp((depth, _x, _y, gx, gy) => depth === 0 ? 3 : depth === 1 ? 2 : fill(gx, gy)); } },
-  { id: "xp-sand", name: "Sand XP", family: "xp", autotile: "xp", about: "Pale sand, just dots; the edge a mid band.", before: { name: "Sand tile", make: () => tileNow(OUTDOOR.sand) },
+  { id: "xp-sand", name: "Sand", family: "xp", autotile: "xp", about: "Pale sand, just dots; the edge a mid band.", before: { name: "Sand tile", make: () => tileNow(OUTDOOR.sand) },
     make: () => xp(edged((x, y) => at([[1, 2], [5, 1], [3, 5], [7, 6]], x, y) ? 1 : 0, 1, 2)) },
-  { id: "xp-snow", name: "Snow XP", family: "xp", autotile: "xp", about: "Snow banks: white with blue-ish shadow dots, a thick soft edge.",
+  { id: "xp-snow", name: "Snow", family: "xp", autotile: "xp", about: "Snow banks: white with blue-ish shadow dots, a thick soft edge.",
     make: () => xp((depth, x, y) => depth === 0 ? 2 : depth <= 2 ? 1 : at([[2, 5], [6, 1]], x, y) ? 1 : 0) },
-  { id: "xp-ice", name: "Floor tiles XP", family: "xp", autotile: "xp", about: "The ice sheet a shade darker all over, for a floorboard or tiled floor: diagonal glints and short cracks between them (2026-10-13: the cracks never cross the glints).",
+  { id: "xp-ice", name: "Floor tiles", family: "xp", autotile: "xp", about: "The ice sheet a shade darker all over, for a floorboard or tiled floor: diagonal glints and short cracks between them (2026-10-13: the cracks never cross the glints).",
     make: () => xp(edged((x, y) => (x + y) % 8 === 0 ? 1 : (x - y + 16) % 8 === 7 && ((x + y) % 8 === 3 || (x + y) % 8 === 5) ? 3 : 2, 1)) },
-  { id: "xp-lava", name: "Lava XP", family: "xp", autotile: "xpAnim", about: "Three frames: dark crust edge, bright bubbles that pop and move; the shore wavy like Water XP's (2026-10-13).",
+  { id: "xp-lava", name: "Lava", family: "xp", autotile: "xpAnim", about: "Three frames: dark crust edge, bright bubbles that pop and move; the shore wavy like Sea's (2026-10-13).",
     make: () => xpShoreTemplate(3, (f) => edged((x, y) => { const bx = (2 + f * 2) % 8, by = (5 + f * 3) % 8; return (Math.abs(x - bx) + Math.abs(y - by) <= 1) ? 0 : ((x + y * 3 + f) % 7 === 0 ? 2 : 1); }, 2)) },
-  { id: "xp-swamp", name: "Swamp XP", family: "xp", autotile: "xpAnim", about: "Three frames: murky water, lily pads, slow ripples.",
+  { id: "xp-swamp", name: "Swamp", family: "xp", autotile: "xpAnim", about: "Three frames: murky water, lily pads, slow ripples.",
     make: () => xpAnim((f) => edged((x, y) => { if (at([[2, 2], [3, 2], [2, 3]], x, y)) return 1; const ripple = (x + f * 2) % 8; return y === 6 && ripple < 3 ? 1 : 2; }, 1)) },
-  { id: "xp-stone-floor", name: "Stone floor XP", family: "xp", autotile: "xp", about: "Flagstones in a dungeon: big slabs with dark joints.",
+  { id: "xp-stone-floor", name: "Stone floor", family: "xp", autotile: "xp", about: "Flagstones in a dungeon: big slabs with dark joints.",
     make: () => xp(edged((x, y) => (y === 7 || (x === 7 && y < 7) || (x === 3 && y === 7)) ? 2 : at([[2, 2], [5, 4]], x, y) ? 2 : 1)) },
-  { id: "xp-water-calm", name: "Calm water XP", family: "xp", autotile: "xp", about: "Water XP's first frame on its own: still water, no animation, a third of the tiles.", before: { name: "Water XP (3 frames)", make: () => xpWaterTemplate() },
+  { id: "xp-water-calm", name: "Calm water", family: "xp", autotile: "xp", about: "Sea's first frame on its own: still water, no animation, a third of the tiles.", before: { name: "Sea (3 frames)", make: () => xpWaterTemplate() },
     make: () => { const sheet = xpWaterTemplate(), out = canvas(48, 64, CLEAR); for (let y = 0; y < 64; y += 1) out.pixels.set(sheet.pixels.subarray(y * 144, y * 144 + 48), y * 48); return out; } },
-  { id: "xp-water-2", name: "Water XP (2 frames)", family: "xp", autotile: "xpAnim", about: "Water XP in two frames: the waves and the shore ripple half a step apart, two thirds of the tiles of the 3-frame one.", before: { name: "Water XP (3 frames)", make: () => xpWaterTemplate() },
+  { id: "xp-water-2", name: "Sea (2 frames)", family: "xp", autotile: "xpAnim", about: "Sea in two frames: the waves and the shore ripple half a step apart, two thirds of the tiles of the 3-frame one.", before: { name: "Sea (3 frames)", make: () => xpWaterTemplate() },
     make: () => xpWaterTemplate(2) },
-  { id: "xp-wood-floor", name: "Wood floor XP", family: "xp", autotile: "xp", about: "Plank floor with a dark rim, boards end to end.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xp(woodFloor) },
-  { id: "xp-wood-floor-square", name: "Wood floor XP (square)", family: "xp", autotile: "xp", about: "The wood floor with square corners, to fill a room edge to edge.", make: () => xpSquare(woodFloor) },
-  { id: "xp-carpet", name: "Carpet XP", family: "xp", autotile: "xp", about: "A rug: a light border band inside the outline, a diamond weave in the middle.", make: () => xp(carpet) },
-  { id: "xp-carpet-square", name: "Carpet XP (square)", family: "xp", autotile: "xp", about: "The carpet with square corners: wall-to-wall.", make: () => xpSquare(carpet) },
-  { id: "xp-flowers", name: "Flower bed XP", family: "xp", autotile: "xp", about: "A dark gray bed with light flowers, no border.", before: { name: "Flowers tile", make: () => tileNow(OUTDOOR.flowers) }, make: () => xp(flowerBed) },
-  { id: "xp-tile-floor", name: "Tiled floor XP", family: "xp", autotile: "xp", about: "Checkered tiles, a shop or diner floor, with a dark rim.", make: () => xp(tiledFloor) },
-  { id: "xp-tile-floor-square", name: "Tiled floor XP (square)", family: "xp", autotile: "xp", about: "The checkered floor with square corners, to fill a room.", make: () => xpSquare(tiledFloor) },
-  { id: "xp-brick-square", name: "Brick wall XP (square)", family: "xp", autotile: "xp", about: "The house wall's bricks as an area with a dark rim and square corners.", before: { name: "House wall tile", make: () => tileNow(OUTDOOR.houseWall) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : brickFill(gx, gy)) },
-  { id: "xp-planks-square", name: "Wood planks XP (square)", family: "xp", autotile: "xp", about: "The wood floor tile's planks as an area with a dark rim and square corners.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : plankFill(gx, gy)) },
-  { id: "xp-grandmas-wallpaper-square", name: "Grandmas-Wallpaper XP (square)", family: "xp", autotile: "xp", about: "The old grass tile's tufts as a wallpaper area with a dark gray rim and square corners.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 2 : wallpaperFill(gx, gy)) },
+  { id: "xp-wood-floor", name: "Wood floor", family: "xp", autotile: "xp", about: "Plank floor with a dark rim, boards end to end.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xp(woodFloor) },
+  { id: "xp-wood-floor-square", name: "Wood floor (square)", family: "xp", autotile: "xp", about: "The wood floor with square corners, to fill a room edge to edge.", make: () => xpSquare(woodFloor) },
+  { id: "xp-carpet", name: "Carpet", family: "xp", autotile: "xp", about: "A rug: a light border band inside the outline, a diamond weave in the middle.", make: () => xp(carpet) },
+  { id: "xp-carpet-square", name: "Carpet (square)", family: "xp", autotile: "xp", about: "The carpet with square corners: wall-to-wall.", make: () => xpSquare(carpet) },
+  { id: "xp-flowers", name: "Flower bed", family: "xp", autotile: "xp", about: "A dark gray bed with light flowers, no border.", before: { name: "Flowers tile", make: () => tileNow(OUTDOOR.flowers) }, make: () => xp(flowerBed) },
+  { id: "xp-tile-floor", name: "Tiled floor", family: "xp", autotile: "xp", about: "Checkered tiles, a shop or diner floor, with a dark rim.", make: () => xp(tiledFloor) },
+  { id: "xp-tile-floor-square", name: "Tiled floor (square)", family: "xp", autotile: "xp", about: "The checkered floor with square corners, to fill a room.", make: () => xpSquare(tiledFloor) },
+  { id: "xp-brick-square", name: "Brick wall (square)", family: "xp", autotile: "xp", about: "The house wall's bricks as an area with a dark rim and square corners.", before: { name: "House wall tile", make: () => tileNow(OUTDOOR.houseWall) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : brickFill(gx, gy)) },
+  { id: "xp-planks-square", name: "Wood planks (square)", family: "xp", autotile: "xp", about: "The wood floor tile's planks as an area with a dark rim and square corners.", before: { name: "Wood floor tile", make: () => tileNow(INDOOR.woodFloor) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 3 : plankFill(gx, gy)) },
+  { id: "xp-grandmas-wallpaper-square", name: "Grandmas-Wallpaper (square)", family: "xp", autotile: "xp", about: "The old grass tile's tufts as a wallpaper area with a dark gray rim and square corners.", before: { name: "Grass tile", make: () => tileNow(OUTDOOR.grass) }, make: () => xpSquare((depth, _x, _y, gx, gy) => depth === 0 ? 2 : wallpaperFill(gx, gy)) },
 ];
 
 // ---- seamless patterns (32 × 32) ------------------------------------------------------------------------------------

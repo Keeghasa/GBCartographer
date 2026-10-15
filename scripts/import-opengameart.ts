@@ -61,7 +61,7 @@ const WINTER = "winter-pixel-pack/Winter-Pixel-Pack", PLAT = "gb_platformer_star
 const WALKS = "Six frames: down, down step, up, up step, right, right step (GB Studio sets up walking in four directions; left is right flipped).";
 const FOREST = "64 × 32: a clump of trees that tiles as forest, and a tree on its own. Paint in 32 px tree units.";
 const NESTOR_XP: [string, number, number][] = [
-  ["Grass", 0, 128], ["Tall grass", 48, 128], ["Dirt", 0, 192], ["Cobbles", 48, 192],
+  ["Short grass", 0, 128], ["Tall grass", 48, 128], ["Earth", 0, 192], ["Cobbles", 48, 192],
   ["Hollow in grass", 96, 0], ["Dark hollow", 144, 0], ["Dirt pit", 96, 64], ["Rocky pit", 144, 64],
   ["Leaf litter", 96, 128], ["Mushroom field", 144, 128], ["Hedge", 96, 192], ["Tree trunks", 144, 192],
 ];

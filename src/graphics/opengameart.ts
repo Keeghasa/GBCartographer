@@ -1916,7 +1916,7 @@ export const OPENGAMEART: OgaPiece[] = [
     "332222222022222232222222202222223222222220222223000002222200000200000222220000020000022222000002331113331331133313311333133311331331133313331113332233333333223333223333333322333322333333332233",
     "332223222022222332222322202222233222232220222233200002222222222220000222222222222000022222222222333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333",
   ] },
-  {"id":"oga-nestor-xp-grass","name":"Grass","group":"Nestor","kind":"stamps","autotile":"xp","about":"48 × 64 in RPG Maker's autotile layout (a lone tile, the inner corners, a 3 × 3 block): paint 16 px cells and the edges fit.","credit":{"author":"Demetrius (Garbata Team)","license":"CC0","source":"https://opengameart.org/content/nestor-tileset"}, rows: [
+  {"id":"oga-nestor-xp-short-grass","name":"Short grass","group":"Nestor","kind":"stamps","autotile":"xp","about":"48 × 64 in RPG Maker's autotile layout (a lone tile, the inner corners, a 3 × 3 block): paint 16 px cells and the edges fit.","credit":{"author":"Demetrius (Garbata Team)","license":"CC0","source":"https://opengameart.org/content/nestor-tileset"}, rows: [
     "333333332333333333333333233333333333333323333333",
     "333333333233333333333333323333333333333332333333",
     "333333333233333233333333323333323333333332333332",
@@ -2048,7 +2048,7 @@ export const OPENGAMEART: OgaPiece[] = [
     "333233233332333333323323333233333332332333323333",
     "333233333332333333323333333233333332333333323333",
   ] },
-  {"id":"oga-nestor-xp-dirt","name":"Dirt","group":"Nestor","kind":"stamps","autotile":"xp","about":"48 × 64 in RPG Maker's autotile layout (a lone tile, the inner corners, a 3 × 3 block): paint 16 px cells and the edges fit.","credit":{"author":"Demetrius (Garbata Team)","license":"CC0","source":"https://opengameart.org/content/nestor-tileset"}, rows: [
+  {"id":"oga-nestor-xp-earth","name":"Earth","group":"Nestor","kind":"stamps","autotile":"xp","about":"48 × 64 in RPG Maker's autotile layout (a lone tile, the inner corners, a 3 × 3 block): paint 16 px cells and the edges fit.","credit":{"author":"Demetrius (Garbata Team)","license":"CC0","source":"https://opengameart.org/content/nestor-tileset"}, rows: [
     "332223332222223333333333233333332222222222222211",
     "322222222222222333333333323333331222222222222222",
     "222222222222222333333333323333322222222222222222",

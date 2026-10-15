@@ -64,13 +64,13 @@ export interface CaveSettings {
 }
 
 /**
- * The catalog walls a cave or dungeon can wear (the author, 2026-10-13): caves the Cliff XP ridges with a face two
+ * The catalog walls a cave or dungeon can wear (the author, 2026-10-13): caves the Cliff ridges with a face two
  * cells (32 px) tall, dungeons the author's Room Border (2026-10-14; Stone wall 9-sliced before); any can take another.
  */
 export type CaveWalls = "cliff32" | "cliff16" | "room" | "stone" | "brick" | "pines" | "oaks";
 export const CAVE_WALLS: { value: CaveWalls; label: string }[] = [
-  { value: "cliff32", label: "Cliff XP · 32 px walls" }, { value: "cliff16", label: "Cliff XP · 16 px walls" },
-  { value: "room", label: "Room Border" }, { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall XP" },
+  { value: "cliff32", label: "Cliff · 32 px walls" }, { value: "cliff16", label: "Cliff · 16 px walls" },
+  { value: "room", label: "Room Border" }, { value: "stone", label: "Stone wall" }, { value: "brick", label: "Brick wall" },
   { value: "pines", label: "Pine forest" }, { value: "oaks", label: "Round forest" },
 ];
 export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "room" : "cliff32");
@@ -268,7 +268,7 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     for (let py = 0; py < 8; py += 1) out.pixels.set(tiles!.pixels.subarray((row * 8 + py) * tiles!.width + column * 8, (row * 8 + py) * tiles!.width + column * 8 + 8), (y * 8 + py) * out.width + x * 8);
   };
   // With no stamp of the author's chosen and cells of 16 px or more: drawn with the library's pieces (2026-10-13), the
-  // rock as cliffs (Cliff XP, its face where the floor begins below) and the floor a stone floor area (Stone floor XP).
+  // rock as cliffs (Cliff, its face where the floor begins below) and the floor a stone floor area (Stone floor).
   if (!tiles && size >= 16) {
     const sub = size / 16, cw = w * sub, ch = h * sub, canvasOut = { width: out.width, height: out.height, pixels: out.pixels };
     const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
@@ -317,7 +317,7 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
 }
 
 /**
- * A forest for walls (the author, 2026-10-13: "a forest style, using the pine or oak"): grass everywhere (Grass XP),
+ * A forest for walls (the author, 2026-10-13: "a forest style, using the pine or oak"): grass everywhere (Grass),
  * then the rock as the pine or round forest brush on 32 px units wherever a whole unit is rock, and a lone tree from
  * the author's Outdoor tiles in each rock cell left over, so no rock is left bare.
  */
@@ -561,8 +561,8 @@ function drawRoads(out: Generated, grid: Uint8Array, w: number, h: number, sheet
 
 /**
  * The overworld drawn with the library's pieces (the author, 2026-10-13), as if painted with the stamps: grass with
- * tufts, sand round the water (Sand XP), the water itself (Water XP, frame 1), dirt roads (Dirt XP), mountains as
- * cliffs (Cliff XP: plateaus whose bottom row is the rock face) and forests from the pine or round forest brush on
+ * tufts, sand round the water (Sand), the water itself (Sea, frame 1), dirt roads (Dirt), mountains as
+ * cliffs (Cliff: plateaus whose bottom row is the rock face) and forests from the pine or round forest brush on
  * 32 px units (a lone tree where a forest is too small for a unit), towns as two houses.
  */
 function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number, settings: WorldSettings): Generated {
