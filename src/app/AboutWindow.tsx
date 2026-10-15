@@ -15,7 +15,7 @@ const LICENCES: [string, string][] = [
   ["Public Pixel", "GGBotNet, CC0."],
   ["OpenDyslexic", "Abbie Gonzalez, SIL Open Font License 1.1. Downloaded the first time you turn it on."],
   ["Demo project", "Art by Raptorspank (CC0) and the GB Studio Community Assets authors (MIT), credited in the demo's CREDITS.md."],
-  ["Libraries", "React (MIT) and lucide icons (ISC). The desktop app runs on Electron (MIT)."],
+  ["Libraries", "React (MIT), lucide icons (ISC) and three.js (MIT, for 3D Snapshot). The desktop app runs on Electron (MIT)."],
   ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licenses are in the app's licenses folder."],
 ];
 

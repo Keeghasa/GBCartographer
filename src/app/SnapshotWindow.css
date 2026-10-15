@@ -1,0 +1,52 @@
+/* The 3D Snapshot window, the Darkroom (the author, 2026-10-14): controls on the left, the print in the middle with
+   the pictures taken under it. */
+.sw { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--k-3); min-height: 100%; }
+.sw-controls { display: flex; flex-direction: column; gap: var(--k-4); padding: var(--k-3); align-self: start; }
+.sw-group { display: flex; flex-direction: column; gap: var(--k-2); }
+.sw-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-2); flex-wrap: wrap; }
+.sw-drop { padding: 10px; border: 1px dashed var(--k-edge-2); border-radius: 8px; font-size: var(--k-text-sm); color: var(--k-ink-2); }
+.sw-problem { margin: 0; color: var(--k-warn); }
+.sw-group p { margin: 0; }
+.sw-row { display: grid; grid-template-columns: 76px 1fr 38px; align-items: center; gap: var(--k-2); color: var(--k-ink-2); font-size: var(--k-text-sm); }
+.sw-row b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--k-ink); }
+.sw-switches { display: flex; gap: var(--k-4); }
+
+/* The light rig, seen from above. */
+.sw-rig { position: relative; aspect-ratio: 1; border-radius: 10px; background: var(--k-well, #08090b); border: 1px solid var(--k-edge); touch-action: none; user-select: none; }
+.sw-rig-ring { position: absolute; inset: 8%; border: 1px dashed var(--k-edge-2); border-radius: 50%; }
+.sw-rig-model { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 6px 8px; border-radius: 6px; background: var(--k-ctl); font-size: 11px; color: var(--k-ink-3); }
+.sw-rig-camera { position: absolute; left: 50%; bottom: 4px; translate: -50% 0; font-size: 11px; color: var(--k-ink-3); }
+.sw-light { position: absolute; translate: -50% -50%; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--k-bg, #000); font: 700 11px var(--k-font); color: var(--k-on-acc); cursor: grab; }
+.sw-light--key { background: #f2d36b; } .sw-light--fill { background: #9cc4e4; } .sw-light--rim { background: #e49c9c; }
+.sw-light:active { cursor: grabbing; }
+
+/* The print, then the pictures under it. */
+.sw-main { display: flex; flex-direction: column; gap: var(--k-3); min-width: 0; }
+.sw-print-card { display: flex; flex-direction: column; gap: var(--k-3); padding: var(--k-3); }
+.sw-frame { display: grid; place-items: center; padding: var(--k-4); border-radius: 10px; background: var(--k-well, #08090b); }
+.sw-print { height: min(52vh, 460px); width: auto; max-width: 100%; image-rendering: pixelated; cursor: grab; touch-action: none; box-shadow: 0 0 0 6px #f4f1e8, 0 12px 30px rgba(0, 0, 0, .5); }
+.sw-print:active { cursor: grabbing; }
+.sw-pictures { display: flex; flex-direction: column; gap: var(--k-2); }
+.sw-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--k-2); }
+.sw-shot { position: relative; margin: 0; padding: 8px 8px 10px; border-radius: 4px; background: #f4f1e8; color: #1c1c1c; rotate: -1deg; box-shadow: 0 6px 16px rgba(0, 0, 0, .45); }
+.sw-shot:nth-child(even) { rotate: 1.2deg; }
+.sw-shot img { display: block; width: 100%; image-rendering: pixelated; }
+.sw-shot figcaption { display: flex; justify-content: space-between; gap: 6px; margin-top: 6px; font: 500 12px var(--k-font); }
+.sw-shot figcaption small { color: #6b6b6b; font: 500 10.5px 'JetBrains Mono', ui-monospace, monospace; }
+.sw-shot-acts { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.sw-shot:hover .sw-shot-acts, .sw-shot:focus-within .sw-shot-acts { opacity: 1; }
+@media (max-width: 860px) { .sw { grid-template-columns: 1fr; } }
+
+/* Neo-grotesk (the author, 2026-10-14), as the Wizards and the Asset Catalog: a mono line over a 2 px rule, the big
+   title with its green full stop, bold headings, mono numbers; flat panels. */
+.sw-page { display: flex; flex-direction: column; gap: var(--k-3); min-height: 100%; }
+.sw-top { display: flex; justify-content: space-between; gap: var(--k-4); flex-wrap: wrap; padding-bottom: var(--k-2); border-bottom: 2px solid var(--k-ink); font: 500 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); text-transform: uppercase; letter-spacing: .08em; }
+.sw-top span:last-child { text-transform: none; letter-spacing: 0; }
+.sw-h1 { margin: 0; font: 800 56px/.95 var(--k-font); letter-spacing: -.05em; color: var(--k-ink); }
+.sw-h1 b::after { content: "."; color: var(--k-acc); }
+.sw .k-card { box-shadow: none; background: var(--k-panel-2, #161c17); border-color: transparent; border-radius: 6px; }
+.sw-row { font: 500 11px 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--k-ink-3); }
+.sw-row b { font: 800 15px var(--k-font); letter-spacing: -.02em; text-transform: none; }
+.sw-drop { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; border-style: solid; border-color: var(--k-edge); }
+.sw-shot figcaption { font-weight: 800; letter-spacing: -.02em; }
+@media (max-width: 760px) { .sw-h1 { font-size: 40px; } }

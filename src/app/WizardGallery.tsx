@@ -23,7 +23,7 @@ export interface WizardCard {
 }
 
 /** The order the wizards show in, three to a row. */
-const ORDER: WizardThumb[] = ["picture", "world", "cave", "dns", "paletteSet", "budget", "checkup"];
+const ORDER: WizardThumb[] = ["picture", "snapshot", "world", "cave", "dns", "paletteSet", "budget", "checkup"];
 const still = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** A wizard's loop, frame by frame (the last frame only, when the system asks for less motion). */

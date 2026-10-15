@@ -7,7 +7,7 @@ import library from "../palettes/library.json";
 import { Pen, canvas } from "../graphics/pen";
 import { drawCave, drawWorld, type Generated } from "./generators";
 
-export type WizardThumb = "picture" | "dns" | "paletteSet" | "budget" | "cave" | "world" | "checkup";
+export type WizardThumb = "picture" | "dns" | "paletteSet" | "budget" | "cave" | "world" | "checkup" | "snapshot";
 
 const W = 160, H = 96, TILES_WIDE = W / 8;
 const palette = (name: string) => {
@@ -40,6 +40,21 @@ function landscape(p: Pen, x: number) {
 }
 
 export function wizardThumb(id: WizardThumb, frame = 0): Generated {
+  if (id === "snapshot") {
+    // 3D Snapshot: a little house turning on its stand, drawn as lines, a print beside it.
+    const out = blank(["V20-8-UI"]), p = new Pen(out);
+    p.fill(3);
+    const turn = (frame / WIZARD_FRAMES.snapshot.count) * Math.PI * 2;
+    const points: [number, number, number][] = [[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1], [-1, 1.2, -1], [1, 1.2, -1], [1, 1.2, 1], [-1, 1.2, 1], [0, 2, 0]];
+    const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7], [4, 8], [5, 8], [6, 8], [7, 8]];
+    const at = ([x, y, z]: [number, number, number]) => { const rx = x * Math.cos(turn) - z * Math.sin(turn), rz = x * Math.sin(turn) + z * Math.cos(turn); return [Math.round(48 + rx * 20), Math.round(70 - y * 20 + rz * 6)] as const; };
+    p.oval(16, 76, 64, 14, 2, 2);
+    for (const [a, b] of edges) { const [x0, y0] = at(points[a]), [x1, y1] = at(points[b]); p.line(x0, y0, x1, y1, 0); }
+    // The print: the same house, flat, in the shades.
+    p.rect(100, 18, 48, 60, 0); p.rect(104, 22, 40, 44, 1);
+    p.peak(112, 30, 24, 12, 3); p.rect(114, 42, 20, 16, 2); p.rect(122, 50, 4, 8, 3);
+    return out;
+  }
   if (id === "picture") {
     // A "photo" (dithered) on the left turning into flat pixels on the right.
     const out = blank(["V20-2-Fire"]), p = new Pen(out);
@@ -114,7 +129,7 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
 /** How many frames each wizard's loop has, and how long each shows (ms). */
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
   picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
-  cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 },
+  cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 }, snapshot: { count: 24, ms: 110 },
 };
 
 /**
