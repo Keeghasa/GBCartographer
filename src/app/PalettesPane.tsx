@@ -40,7 +40,8 @@ const matches = (name: string, filter: string) => !filter.trim() || name.toLower
 
 function helpFor(doc: Doc | null, slots: boolean) {
   const kind = doc?.asset?.kind;
-  if (kind === "tilesets" && slots) return "Each 8 × 8 tile wears one of the project's eight default background palettes. Save writes the tileset in the GB greens and each tile's palette into GB Studio as its slot. None leaves a tile's slot as it is.";
+  // Checked with GB Studio 4.3.2's own builder (2026-10-14): a tileset's tile palettes don't reach the game.
+  if (kind === "tilesets" && slots) return "Each 8 × 8 tile wears one of the project's eight default background palettes, to see how it looks. GB Studio keeps a tileset's tile palettes in its file but doesn't use them in a game: a background's palettes are what count. Save writes the tileset in the GB greens.";
   if (kind === "sprites" && slots) return "Each 8 × 16 sprite tile wears one of the scene's eight sprite palettes; a palette's colors 1–3 dress the shades and color 0 is see-through. Save writes the sheet in the GB greens and each tile's palette as its slot.";
   if (kind === "backgrounds" && slots) return "Each 8 × 8 tile wears one of the scene's eight palettes. Save writes the picture in the GB greens and each tile's palette into GB Studio as its slot. None leaves a tile's slot as it is.";
   return "Each 8 × 8 tile wears one palette, or none. Palettes are only for looking here: saving always writes the GB greens.";

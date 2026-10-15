@@ -12,7 +12,7 @@ import "./SettingsWindow.css";
 const SWATCH: Partial<Record<ThemeChoice, string[]>> = {
   "oled-gb": ["#000000", "#306850", "#86C06C", "#E0F8CF"], slate: ["#1E2228", "#3A404A", "#E8783C", "#E8EAEE"],
   oled: ["#000000", "#1A1A1A", "#F08A3C", "#F4F4F4"], "oled-green": ["#000000", "#1A1F1A", "#86C06C", "#F4F4F4"],
-  shuffle: ["#000000", "#F08A3C", "#86C06C", "#306850"],
+  shuffle: ["#000000", "#F08A3C", "#86C06C", "#306850"], fuchsia: ["#0a0408", "#351d2e", "#E0349B", "#f4e8f0"],
 };
 
 export function SettingsWindow({ font, onFont, onClose }: { font: FontChoice; onFont: (font: FontChoice) => void; onClose: () => void }) {

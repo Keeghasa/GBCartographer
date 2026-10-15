@@ -9,7 +9,7 @@
  */
 import { LIGHT_TOKENS } from "./themeTokens";
 
-export type ThemeChoice = "shuffle" | "oled" | "oled-gb" | "oled-green" | "slate" | "dmg" | "pocket" | "berry";
+export type ThemeChoice = "shuffle" | "oled" | "oled-gb" | "oled-green" | "fuchsia" | "slate" | "dmg" | "pocket" | "berry";
 export type FontChoice = "inter" | "mono" | "dyslexic" | "pixel";
 
 export interface ThemeInfo {
@@ -23,6 +23,7 @@ export interface ThemeInfo {
 /** One theme for now (the author's call, 2026-10-09): OLED Game Boy green (it began as mauve, then maroon). The others stay here, unlisted, for later. */
 export const THEMES: ThemeInfo[] = [
   { id: "oled-gb", label: "OLED Game Boy green", title: "OLED Game Boy green: true black with the two Game Boy greens as the accent" },
+  { id: "fuchsia", label: "Dark fuchsia", title: "Dark fuchsia: near-black with a plum tint and a bright fuchsia accent (the author's ask, 2026-10-14)" },
   { id: "slate", label: "Slate", title: "Slate: neutral dark gray, orange accent" },
   { id: "oled", label: "OLED orange", title: "OLED orange: true black with an orange accent" },
   { id: "oled-green", label: "OLED green", title: "OLED green: true black with a Game Boy green accent" },
@@ -80,7 +81,8 @@ export function resolveTheme(choice: ThemeChoice): ThemeChoice {
 }
 
 export function isOledTheme(choice: ThemeChoice): boolean {
-  return resolveTheme(choice).startsWith("oled");
+  const shown = resolveTheme(choice);
+  return shown.startsWith("oled") || shown === "fuchsia";
 }
 
 // --- Palette ramp ----------------------------------------------------------------------------------------
@@ -165,6 +167,11 @@ function kitTokens(shown: ThemeChoice, colors: string[] | null): Record<string, 
   }
   const orange = accent("#F08A3C", "#F5A062", "#D9752A", "#1A0D04", "#F5B07E", "#5A3418", "#FDE6D4");
   if (shown === "oled") return orange;
+  if (shown === "fuchsia") return {
+    "--k-bg": "#0a0408", "--k-well": "#0f070c", "--k-panel": "#140a11", "--k-sunk": "#1a0e16", "--k-ctl": "#22121d", "--k-ctl-2": "#2b1725", "--k-raised": "#351d2e",
+    "--k-edge": "rgba(255, 140, 210, .08)", "--k-edge-2": "rgba(255, 140, 210, .14)", "--k-ink": "#f4e8f0", "--k-ink-2": "#cdb6c5", "--k-ink-3": "#9a8090",
+    ...accent("#E0349B", "#EC5BB0", "#C42283", "#1A0612", "#F28CC8", "#5C1840", "#FCE0F0"),
+  };
   if (shown === "slate") return { "--k-bg": "#15181d", "--k-well": "#1a1e24", "--k-panel": "#1f242b", "--k-sunk": "#252a32", "--k-ctl": "#2c323b", "--k-ctl-2": "#343b45", "--k-raised": "#3c444f", ...orange };
   return {};
 }
