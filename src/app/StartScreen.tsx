@@ -50,7 +50,7 @@ function GreenPicture({ src }: { src: string }) {
 }
 
 /** One recent project: its name and path, its backgrounds behind it. */
-function RecentRow({ name, path, onOpen }: { name: string; path: string; onOpen: () => void }) {
+function RecentRow({ index, name, path, onOpen }: { index: number; name: string; path: string; onOpen: () => void }) {
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const [shown, setShown] = useState(0);
   const cells = useRef<(HTMLSpanElement | null)[]>([]);
@@ -62,7 +62,7 @@ function RecentRow({ name, path, onOpen }: { name: string; path: string; onOpen:
   }, [path]);
   const picture = (file: string, color: boolean) => `./__cartographer/recent-picture?${new URLSearchParams({ path, file, ...(color ? { color: "1" } : {}) })}`;
   return (
-    <button type="button" className="ss-row" title={path} onClick={onOpen}
+    <button type="button" className="ss-row" style={{ ["--ss-i" as string]: index }} title={path} onClick={onOpen}
       onPointerMove={(event) => { const hit = cells.current.findIndex((cell) => { const box = cell?.getBoundingClientRect(); return box && event.clientX >= box.left && event.clientX < box.right; }); if (hit >= 0 && hit !== shown) setShown(hit); }}
       onPointerLeave={() => setShown(0)}
       onKeyDown={(event) => { if (backgrounds.length && (event.key === "ArrowLeft" || event.key === "ArrowRight")) { event.preventDefault(); setShown((shown + (event.key === "ArrowLeft" ? 1 : backgrounds.length - 1)) % backgrounds.length); } }}>
@@ -81,9 +81,35 @@ function RecentRow({ name, path, onOpen }: { name: string; path: string; onOpen:
   );
 }
 
-export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOpenRecent, onAbout }: { recent: { name: string; path: string }[]; onChooseProject: () => void; onDemo: (() => void) | null; onOpenFiles: () => void; onOpenRecent: (path: string) => void; onAbout: () => void }) {
+/**
+ * The intro (the author, 2026-10-14: "a quick splash intro … then the projects sliding up quickly"): the app's icon
+ * pops in and its name slides up beside it, about a second, then it fades and the recent projects slide up one after
+ * another. Once a session, and never when the system asks for less motion.
+ */
+const INTRO_KEY = "gbc-intro-seen";
+const wantsIntro = () => {
+  try {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || sessionStorage.getItem(INTRO_KEY)) return false;
+    sessionStorage.setItem(INTRO_KEY, "1");
+    return true;
+  } catch { return false; }
+};
+
+function Intro({ onDone }: { onDone: () => void }) {
+  useEffect(() => { const timer = window.setTimeout(onDone, 1250); return () => window.clearTimeout(timer); }, [onDone]);
   return (
-    <div className="ss-splash k">
+    <div className="ss-intro" aria-hidden onClick={onDone}>
+      <span className="ss-intro-mark"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={96} height={96} /></span>
+      <span className="ss-intro-name k-wordmark">GB Cartographer</span>
+    </div>
+  );
+}
+
+export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOpenRecent, onAbout }: { recent: { name: string; path: string }[]; onChooseProject: () => void; onDemo: (() => void) | null; onOpenFiles: () => void; onOpenRecent: (path: string) => void; onAbout: () => void }) {
+  const [intro, setIntro] = useState(wantsIntro);
+  return (
+    <div className={`ss-splash k${intro ? " is-intro" : " is-in"}`}>
+      {intro && <Intro onDone={() => setIntro(false)} />}
       <header className="ss-bar">
         <span className="ss-brand"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={32} height={32} /><span className="k-wordmark">GB Cartographer</span> <Chip tone="acc">ALPHA</Chip></span>
         <nav className="ss-ways">
@@ -95,7 +121,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       {recent.length > 0 ? (
         <section className="ss-recent">
           <div className="ss-head"><span>Recent projects</span><span>Hover to see a project's backgrounds in color · move across to pick one</span></div>
-          {recent.map((item) => <RecentRow key={item.path} name={item.name} path={item.path} onOpen={() => onOpenRecent(item.path)} />)}
+          {recent.map((item, index) => <RecentRow key={item.path} index={index} name={item.name} path={item.path} onOpen={() => onOpenRecent(item.path)} />)}
         </section>
       ) : (
         <section className="ss-empty"><h2>Open a GB Studio project to start.</h2><p className="k-muted">Its backgrounds, sprites, tilesets and fonts open here and save back. Projects you open show up here next time.</p></section>
