@@ -80,8 +80,7 @@ export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose
               onClick={() => { onClose(); card.onStart(); }}>
               <span className="wg-art"><Thumb id={card.thumb} playing={!card.blocked} /></span>
               <span className="wg-text">
-                <span className="wg-icon">{card.icon}</span>
-                <span className="wg-name">{card.name}</span>
+                <span className="wg-name"><span className="wg-icon">{card.icon}</span>{card.name}</span>
                 <span className="wg-about">{card.blocked ?? card.needs ?? card.about}</span>
               </span>
             </button>

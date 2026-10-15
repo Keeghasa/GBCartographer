@@ -271,7 +271,7 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
     out.pixels.fill(3);
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
-    if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32");
+    if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32", true);
     // Room Border (the author's, 2026-10-14): the dungeon's walls by default, an XP area beyond the map's edge too.
     else if (walls === "room") paintXp(canvasOut, sheet("room-border"), rock, cw, ch, true);
     else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
@@ -422,6 +422,10 @@ export function worldGrid(settings: WorldSettings): { w: number; h: number; grid
   const lowland = land.filter((at) => grid[at] === GRASS);
   const wet = cut(lowland.map((at) => damp[at]), 100 - settings.forest);
   for (const at of lowland) if (settings.forest > 0 && damp[at] >= wet) grid[at] = FOREST;
+  // Clean-up (the author, 2026-10-14: the overworld looked messy): mountains, forests and lakes only where they make
+  // whole 2 × 2 blocks (no one-cell nubs, stray trees or puddles), after smoothing away lone specks.
+  for (let pass = 0; pass < 2; pass += 1) smoothTerrain(grid, w, h);
+  keepBlocks(grid, w, h, MOUNTAIN, GRASS); keepUnits(grid, w, h, FOREST, GRASS); keepBlocks(grid, w, h, WATER, GRASS, true);
   // Shore: land (not mountain) beside water.
   for (let at = 0; at < w * h; at += 1) {
     if (grid[at] !== GRASS && grid[at] !== FOREST) continue;
@@ -430,6 +434,39 @@ export function worldGrid(settings: WorldSettings): { w: number; h: number; grid
   }
   placeTowns(grid, w, h, settings, random);
   return { w, h, grid };
+}
+
+/** A cell with fewer than two neighbours of its kind (of four) takes the kind most of its neighbours have. */
+function smoothTerrain(grid: Uint8Array, w: number, h: number) {
+  const before = grid.slice();
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    const kinds = SIDES.map(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < w && ny < h ? before[ny * w + nx] : before[y * w + x]; });
+    const own = before[y * w + x];
+    if (kinds.filter((kind) => kind === own).length >= 2) continue;
+    const counts = new Map<number, number>();
+    for (const kind of kinds) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    grid[y * w + x] = [...counts].sort((a, b) => b[1] - a[1])[0][0];
+  }
+}
+
+/** Keeps `kind` only in cells that are part of a whole 2 × 2 block of it (off the map counts, with `edges`). */
+function keepBlocks(grid: Uint8Array, w: number, h: number, kind: number, instead: number, edges = false) {
+  const is = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? edges : grid[y * w + x] === kind;
+  const keep = new Uint8Array(w * h);
+  for (let y = -1; y < h; y += 1) for (let x = -1; x < w; x += 1) {
+    if (!(is(x, y) && is(x + 1, y) && is(x, y + 1) && is(x + 1, y + 1))) continue;
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) if (x + dx >= 0 && y + dy >= 0 && x + dx < w && y + dy < h) keep[(y + dy) * w + x + dx] = 1;
+  }
+  for (let at = 0; at < w * h; at += 1) if (grid[at] === kind && !keep[at]) grid[at] = instead;
+}
+
+/** Keeps `kind` only in whole 32 px units (2 × 2 cells on even cells), the forest brush's own grid. */
+function keepUnits(grid: Uint8Array, w: number, h: number, kind: number, instead: number) {
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const cells = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => (y + dy) * w + x + dx).filter((_, i) => x + (i % 2) < w && y + (i >> 1) < h);
+    const whole = cells.length === 4 && cells.every((at) => grid[at] === kind);
+    if (!whole) for (const at of cells) if (grid[at] === kind) grid[at] = instead;
+  }
 }
 
 function edgeCell(at: number, w: number, h: number) {
@@ -453,9 +490,12 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
     open.splice(open.indexOf(best), 1);
   }
   if (!settings.roads) return;
-  const walkable = (cell: number) => cell === GRASS || cell === FOREST || cell === SHORE || cell === ROAD || cell === TOWN;
+  // Roads keep off the sand where they can (inland first, the shore only when a town can't be reached otherwise).
+  const inland = (cell: number) => cell === GRASS || cell === FOREST || cell === ROAD || cell === TOWN;
+  const walkable = (cell: number) => inland(cell) || cell === SHORE;
   for (let at = 1; at < towns.length; at += 1) {
-    const distance = distances(grid, w, h, towns[at], walkable);
+    const dry = distances(grid, w, h, towns[at], inland);
+    const distance = towns.slice(0, at).some((town) => dry[town] > 0) ? dry : distances(grid, w, h, towns[at], walkable);
     const reachable = towns.slice(0, at).filter((town) => distance[town] > 0);
     if (!reachable.length) continue;
     // Walk back from the nearest town along falling distances, laying road.

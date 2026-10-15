@@ -106,6 +106,8 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
     if (done) { p.line(20, y + 5, 22, y + 7, 3); p.line(22, y + 7, 26, y + 2, 3); }
     p.rect(36, y + 3, width as number, 4, done ? 1 : 2);
   });
+  // Inverted (the author, 2026-10-14): the report dark, its lines light.
+  for (let i = 0; i < out.pixels.length; i += 1) if (out.pixels[i] < 4) out.pixels[i] = 3 - out.pixels[i];
   return out;
 }
 
