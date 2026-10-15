@@ -45,6 +45,9 @@ interface Cut {
   under?: number;
   /** Shades by how much of the picture each color covers (a quarter each), for dark, many-colored scenes. */
   equal?: boolean;
+  /** NES art: each 16 × 16 block uses one of a few 4-color palettes; each palette's colors get the four shades in
+   * order, so every section keeps its own contrast (the author, 2026-10-14: Nestor's colors). */
+  nes?: boolean;
   /** Parts in rows (a grid) instead of one row. */
   rows?: Part[][];
 }
@@ -107,16 +110,16 @@ const CUTS: Cut[] = [
   { id: "oga-mini-plant", name: "Potted plant", kind: "stamps", parts: one("mini", 64, 128, 16, 16), clear: "edge" },
 
   // Nestor (Demetrius, Garbata Team): RPG Maker 2000's chipset, its twelve ground autotiles, trees and props.
-  { id: "oga-nestor-tiles", name: "Nestor", kind: "tilesets", parts: one("nestor", 192, 0, 288, 256), about: "Floors, walls, roofs, furniture and props, 16 × 16 tiles." },
-  { id: "oga-nestor-water", name: "Nestor water and ground", kind: "tilesets", parts: one("nestor", 0, 0, 192, 256), about: "Water, waterfalls and ground, as the chipset lays them out." },
-  ...NESTOR_XP.map(([name, x, y]): Cut => ({ id: `oga-nestor-xp-${name.toLowerCase().replace(/ /g, "-")}`, name, kind: "stamps", autotile: "xp", parts: one("nestor", x, y, 48, 64), about: XP })),
-  { id: "oga-nestor-forest-round", name: "Leafy forest", kind: "stamps", autotile: "forest", parts: [at("nestor", 336, 128, 32, 32), at("nestor", 304, 128, 32, 32)], clear: "edge", about: FOREST },
-  { id: "oga-nestor-forest-pine", name: "Fir forest", kind: "stamps", autotile: "forest", parts: [at("nestor", 352, 160, 32, 32), at("nestor", 320, 160, 32, 32)], clear: "edge", about: FOREST },
-  { id: "oga-nestor-cypress", name: "Cypresses", kind: "stamps", parts: one("nestor", 288, 160, 32, 32), clear: "edge" },
-  { id: "oga-nestor-bushes", name: "Round bushes", kind: "stamps", parts: one("nestor", 368, 128, 16, 32), clear: "edge" },
-  { id: "oga-nestor-dead-tree", name: "Bare tree", kind: "stamps", parts: one("nestor", 384, 16, 32, 32), clear: "edge" },
-  { id: "oga-nestor-boulder", name: "Boulder", kind: "stamps", parts: one("nestor", 416, 16, 32, 32), clear: "edge" },
-  { id: "oga-nestor-statue", name: "Statue", kind: "stamps", parts: one("nestor", 448, 176, 16, 32), clear: "edge" },
+  { id: "oga-nestor-tiles", name: "Nestor", kind: "tilesets", nes: true, parts: one("nestor", 192, 0, 288, 256), about: "Floors, walls, roofs, furniture and props, 16 × 16 tiles." },
+  { id: "oga-nestor-water", name: "Nestor water and ground", kind: "tilesets", nes: true, parts: one("nestor", 0, 0, 192, 256), about: "Water, waterfalls and ground, as the chipset lays them out." },
+  ...NESTOR_XP.map(([name, x, y]): Cut => ({ id: `oga-nestor-xp-${name.toLowerCase().replace(/ /g, "-")}`, name, kind: "stamps", nes: true, autotile: "xp", parts: one("nestor", x, y, 48, 64), about: XP })),
+  { id: "oga-nestor-forest-round", name: "Leafy forest", kind: "stamps", nes: true, autotile: "forest", parts: [at("nestor", 336, 128, 32, 32), at("nestor", 304, 128, 32, 32)], clear: "edge", about: FOREST },
+  { id: "oga-nestor-forest-pine", name: "Fir forest", kind: "stamps", nes: true, autotile: "forest", parts: [at("nestor", 352, 160, 32, 32), at("nestor", 320, 160, 32, 32)], clear: "edge", about: FOREST },
+  { id: "oga-nestor-cypress", name: "Cypresses", kind: "stamps", nes: true, parts: one("nestor", 288, 160, 32, 32), clear: "edge" },
+  { id: "oga-nestor-bushes", name: "Round bushes", kind: "stamps", nes: true, parts: one("nestor", 368, 128, 16, 32), clear: "edge" },
+  { id: "oga-nestor-dead-tree", name: "Bare tree", kind: "stamps", nes: true, parts: one("nestor", 384, 16, 32, 32), clear: "edge" },
+  { id: "oga-nestor-boulder", name: "Boulder", kind: "stamps", nes: true, parts: one("nestor", 416, 16, 32, 32), clear: "edge" },
+  { id: "oga-nestor-statue", name: "Statue", kind: "stamps", nes: true, parts: one("nestor", 448, 176, 16, 32), clear: "edge" },
 
   // Gauntness (surt): the grey set of its dungeon walls, and its sample room.
   { id: "oga-gaunt-tiles", name: "Gauntness walls", kind: "tilesets", parts: one("gaunt", 0, 240, 640, 392), about: "Five dungeon wall styles in three looks each, plus doors, pipes and floors." },
@@ -248,6 +251,8 @@ function convert(cut: Cut): string[] {
     for (let y = 0; y < part.h; y += 1) for (let x = 0; x < part.w; x += 1) rgb[(top + y) * width + left + x] = own[y * part.w + x];
   }
 
+  if (cut.nes) return nesShades(cut, rgb, width, height);
+
   // Brightness to shades: four levels by 1-D k-means over the piece's own colors (weighted by how often each shows).
   const counts = new Map<number, number>();
   for (const color of rgb) if (color !== -1) counts.set(color, (counts.get(color) ?? 0) + 1);
@@ -299,6 +304,52 @@ function convert(cut: Cut): string[] {
     rows.push(row);
   }
   void CLEAR;
+  return rows;
+}
+
+/** Shades NES art section by section: the palettes its 16 × 16 blocks use, each palette's colors ranked by brightness. */
+function nesShades(cut: Cut, rgb: Int32Array, width: number, height: number): string[] {
+  const blocks: { x: number; y: number; colors: Set<number> }[] = [];
+  for (let by = 0; by < height; by += 16) for (let bx = 0; bx < width; bx += 16) {
+    const colors = new Set<number>();
+    for (let y = by; y < Math.min(height, by + 16); y += 1) for (let x = bx; x < Math.min(width, bx + 16); x += 1) if (rgb[y * width + x] !== -1) colors.add(rgb[y * width + x]);
+    blocks.push({ x: bx, y: by, colors });
+  }
+  // The palettes: the biggest color sets first; a block whose colors fit one already found uses it.
+  const palettes: Set<number>[] = [];
+  const paletteOf = (colors: Set<number>) => palettes.find((palette) => [...colors].every((color) => palette.has(color)));
+  for (const block of [...blocks].sort((a, b) => b.colors.size - a.colors.size)) {
+    if (!block.colors.size || paletteOf(block.colors)) continue;
+    // A small set that fits nowhere joins a palette it shares colors with while that stays at four colors.
+    const join = block.colors.size < 4 ? palettes.find((palette) => new Set([...palette, ...block.colors]).size <= 4) : undefined;
+    if (join) block.colors.forEach((color) => join.add(color)); else palettes.push(new Set(block.colors));
+  }
+  const shadeIn = new Map<Set<number>, Map<number, number>>();
+  for (const palette of palettes) {
+    const ranked = [...palette].sort((a, b) => luma(b) - luma(a));
+    const map = new Map<number, number>();
+    const lo = luma(ranked[ranked.length - 1]), hi = luma(ranked[0]);
+    let last = -1;
+    ranked.forEach((color, index) => {
+      // Four colors take 0–3; fewer keep their brightness spacing, in order.
+      let level = ranked.length === 4 || hi === lo ? index : Math.round(((hi - luma(color)) / (hi - lo)) * 3);
+      level = Math.min(Math.max(level, last + 1), 3 - (ranked.length - 1 - index));
+      map.set(color, last = level);
+    });
+    shadeIn.set(palette, map);
+  }
+  const solid = cut.kind !== "stamps" && cut.kind !== "sprites" && cut.kind !== "emotes";
+  const rows: string[] = [];
+  for (let y = 0; y < height; y += 1) {
+    let row = "";
+    for (let x = 0; x < width; x += 1) {
+      const color = rgb[y * width + x];
+      if (color === -1) { row += solid ? String(cut.under ?? 0) : "."; continue; }
+      const block = blocks.find((item) => item.x === (x & ~15) && item.y === (y & ~15))!;
+      row += String(shadeIn.get(paletteOf(block.colors)!)!.get(color));
+    }
+    rows.push(row);
+  }
   return rows;
 }
 
