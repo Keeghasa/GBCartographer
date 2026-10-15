@@ -9,15 +9,15 @@ palettes straight back into the project.
 > control). It writes into your project when you save, features and file handling are still changing, and there
 > will be bugs. Close GB Studio while you work, and please report problems in the repository's issues.
 
-![GB Cartographer with GB Studio's sample project open: "Paint and Color directly in app" painted over the wide parallax background in its scene's palettes, the project's backgrounds on the left and the palettes on the right](docs/screenshot-paint-directly.png)
+![A generated overworld open in the painter, in its palettes](docs/media/painter.png)
 
-![Painting palettes onto the demo's Winter Tileset, tile by tile, with the palette brush](docs/demo.gif)
+![Painting palettes onto the demo's village, tile by tile, with the palette brush](docs/media/palette-brush.gif)
 
 | Spray | Select and move | Pencil |
 | :---: | :---: | :---: |
-| ![Spraying shades over the demo's Free Furniture tileset](docs/demo-spray.gif) | ![Selecting a television on the Free Furniture tileset and moving it](docs/demo-select-move.gif) | ![Drawing zig-zag strokes with the pencil over the Free Furniture tileset](docs/demo-pencil.gif) |
+| ![Spraying shades over the demo's village](docs/media/spray.gif) | ![Selecting the village house and moving it](docs/media/select-move.gif) | ![Drawing zig-zag strokes with the pencil over the village](docs/media/pencil.gif) |
 
-<sub>The main screenshot shows GB Studio's sample project (`appData/templates/gbs2` in the [GB Studio repository](https://github.com/chrismaltby/gb-studio)), Copyright (c) 2019-2026 Chris Maltby, used under the MIT license. The art in these GIFs is from an earlier demo project: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md). It appears here only as screen recordings: the art files themselves aren't in this repository or the downloads.</sub>
+<sub>Every picture here is GB Cartographer's own art from its demo project.</sub>
 
 **[Download the beta](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
 [Install](#install)).
@@ -101,9 +101,7 @@ pick. Make background puts the map and its palettes in your project.
 | ![The overworld generator in SpicyGame's VIBE-20 colors](docs/media/generators.png) | ![The cave generator in a stone palette](docs/media/cave.png) |
 | ![The Wizards gallery: a card and a picture for each wizard](docs/media/wizards.png) | ![The Map Room with a village laid out as six screens that meet at their edges](docs/media/map-room.png) |
 
-![A generated overworld open in the painter, in its palettes](docs/media/painter.png)
-
-![The Asset Catalog: SpicyGame's public-domain palette sets, credited, with buttons to add a set or one palette](docs/media/graphics.png)
+![The Asset Catalog: palettes and art to take into a project, each credited](docs/media/graphics.png)
 
 The pictures in these screenshots are GB Cartographer's own placeholders.
 
@@ -237,5 +235,5 @@ npm run build
 
 Code: MIT (see LICENSE). The logo is the author's pixel art, CC0. [Public Pixel](https://ggbot.itch.io/public-pixel-font)
 by GGBotNet (CC0, shipped in `public/fonts/`) is an optional UI font. Inter by Rasmus Andersson and the Inter Project Authors, and JetBrains Mono by JetBrains, ship with the app (SIL Open Font License 1.1, licences in `public/fonts/`).
-Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholders, CC0, and eleven CC0 packs from OpenGameArt, turned into Game Boy shades and cut into tilesets, stamps, auto-tiles and sprites, each piece credited to its maker in the catalog: [4-Color Dungeon Bricks Extended](https://opengameart.org/content/4-color-dungeon-bricks-extended-16x16) by MoikMellah, [GB Mini Pixel World](https://opengameart.org/content/gb-mini-pixel-world) by pebonius, [Nestor](https://opengameart.org/content/nestor-tileset) by Demetrius (Garbata Team), [Gauntness](https://opengameart.org/content/gauntness) by surt, [Stonelands](https://opengameart.org/content/rpg-tile-set-stonelands-nes) by Chasersgaming, [NES CC0 Graphics 2](https://opengameart.org/content/nes-cc0-graphics-2) by ETTiNGRiNDER (with thanks to [gwes](http://opengameart.org/users/gwes)), [Wintery Pixel Art Pack](https://opengameart.org/content/wintery-pixel-art-pack) by Spencer "Raptorspank" Gerowe, [GB Platformer Starter Pack](https://opengameart.org/content/gb-platformer-starter-pack) (and Catila) by Fava Beans, [Tile Set Pack #1 GBE](https://opengameart.org/content/tile-set-pack-1-gbe) by Chasersgaming, [Green Robot + Enemy](https://opengameart.org/content/green-robot-enemy) by darkagent (Arbiyan) and [Choco Prairies](https://opengameart.org/content/choco-prairies-gb-pack) by GrafxKid. 3D Snapshot comes with a sample house (ours) and [Rubber Duck Toy](https://polyhaven.com/a/rubber_duck_toy) by Plat251 from Poly Haven (CC0), its colour texture shrunk to 256 px (`public/models/rubber-duck`). The demo project is the catalog's art (credits in [demo/CREDITS.md](demo/CREDITS.md)). Other artists' work appears only in this README's screenshots and GIFs, as pictures of the app at work, never as files. GB Studio is by Chris Maltby and
+Bundled palettes: the author's own (CC0) and [SpicyGame's](https://spicygame.itch.io/palettes) (public domain), grouped into Game Boy palettes. Bundled graphics (the Art section): GB Cartographer's own placeholders, CC0, and eleven CC0 packs from OpenGameArt, turned into Game Boy shades and cut into tilesets, stamps, auto-tiles and sprites, each piece credited to its maker in the catalog: [4-Color Dungeon Bricks Extended](https://opengameart.org/content/4-color-dungeon-bricks-extended-16x16) by MoikMellah, [GB Mini Pixel World](https://opengameart.org/content/gb-mini-pixel-world) by pebonius, [Nestor](https://opengameart.org/content/nestor-tileset) by Demetrius (Garbata Team), [Gauntness](https://opengameart.org/content/gauntness) by surt, [Stonelands](https://opengameart.org/content/rpg-tile-set-stonelands-nes) by Chasersgaming, [NES CC0 Graphics 2](https://opengameart.org/content/nes-cc0-graphics-2) by ETTiNGRiNDER (with thanks to [gwes](http://opengameart.org/users/gwes)), [Wintery Pixel Art Pack](https://opengameart.org/content/wintery-pixel-art-pack) by Spencer "Raptorspank" Gerowe, [GB Platformer Starter Pack](https://opengameart.org/content/gb-platformer-starter-pack) (and Catila) by Fava Beans, [Tile Set Pack #1 GBE](https://opengameart.org/content/tile-set-pack-1-gbe) by Chasersgaming, [Green Robot + Enemy](https://opengameart.org/content/green-robot-enemy) by darkagent (Arbiyan) and [Choco Prairies](https://opengameart.org/content/choco-prairies-gb-pack) by GrafxKid. 3D Snapshot comes with a sample house (ours) and [Rubber Duck Toy](https://polyhaven.com/a/rubber_duck_toy) by Plat251 from Poly Haven (CC0), its colour texture shrunk to 256 px (`public/models/rubber-duck`). The demo project is the catalog's art (credits in [demo/CREDITS.md](demo/CREDITS.md)). GB Studio is by Chris Maltby and
 contributors; GB Cartographer is not affiliated with it. The collision tile definitions (`src/gb/collisions.ts`) come from GB Studio's engine (MIT).

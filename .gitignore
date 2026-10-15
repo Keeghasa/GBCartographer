@@ -36,12 +36,6 @@ docs/demo-tile-palettes.json
 # old screenshots that show it. The demo is the Asset Catalog (2026-10-14): our own art and credited CC0 packs, all shipped.
 docs/*.png
 docs/*.gif
-# …except the author's own demo GIFs (2026-10-10: "put back the gifs i made")
-!docs/demo.gif
-!docs/demo-spray.gif
-!docs/demo-select-move.gif
-!docs/demo-pencil.gif
-!docs/screenshot-paint-directly.png
 demo/Cartographer/
 
 # Installers made by electron-builder (npm run dist)
