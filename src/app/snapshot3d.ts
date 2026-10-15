@@ -13,8 +13,11 @@ export interface ShotSettings {
   width: number; height: number;
   /** Light strengths, 0–100: key (the main light), fill (softens the shadows), rim (lights the edges from behind). */
   key: number; fill: number; rim: number;
-  /** Where each light stands in the rig, seen from above: x left–right, y front (−1, the camera's side) to back. */
-  rig: Record<"key" | "fill" | "rim", [number, number]>;
+  /** Where each light stands in the rig: x left–right and y front (−1, the camera's side) to back, seen from above;
+   * z its height, 0 (the ground) to 1 (straight overhead), seen from the side. */
+  rig: Record<"key" | "fill" | "rim", [number, number, number]>;
+  /** What's behind the model: a shade 0–3, or "clear" (see-through on a sprite, the lightest shade otherwise). */
+  background: "clear" | 0 | 1 | 2 | 3;
   /** Lens, degrees (narrow: flatter, wide: more depth). */
   fov: number;
   /** -50…50 and 0…100: shift and spread of the shades. */
@@ -65,9 +68,9 @@ export function createStage(handle: HTMLElement): Stage {
     // The rig is seen from above with the camera at the front: turn it with the camera so the lights stay put in the picture.
     const view = Math.atan2(camera.position.x, camera.position.z);
     for (const name of ["key", "fill", "rim"] as const) {
-      const [x, y] = settings.rig[name], light = lights[name];
-      const angle = Math.atan2(x, -y) + view, reach = Math.hypot(x, y);
-      light.position.set(Math.sin(angle) * radius * 4 * reach, radius * (1.5 + 2 * (1 - reach)), Math.cos(angle) * radius * 4 * reach);
+      const [x, y, z] = settings.rig[name], light = lights[name];
+      const angle = Math.atan2(x, -y) + view, reach = Math.max(0.05, Math.hypot(x, y));
+      light.position.set(Math.sin(angle) * radius * 4 * reach, radius * (-1 + 6 * z), Math.cos(angle) * radius * 4 * reach);
       light.intensity = (name === "key" ? 3 : name === "fill" ? 1.2 : 2) * settings[name] / 100;
     }
     renderer.setRenderTarget(target);
@@ -110,7 +113,8 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /** The render as shades: brightness to four levels (light 0 … dark 3), dithered and outlined if asked; rows flipped (WebGL reads bottom up). */
 export function toShades(rgba: Uint8Array, settings: ShotSettings): Uint8Array {
-  const { width, height, brightness, contrast, dither, outline, sprite } = settings;
+  const { width, height, brightness, contrast, dither, outline, sprite, background } = settings;
+  const behind = background === "clear" ? (sprite ? CLEAR : 0) : sprite ? Math.max(1, background) : background;
   const out = new Uint8Array(width * height);
   const spread = 0.5 + contrast / 50; // 0.5 … 2.5
   // The render is linear: brought to what the eye sees (sRGB-ish), then exposed like a camera would: the model's own
@@ -125,7 +129,7 @@ export function toShades(rgba: Uint8Array, settings: ShotSettings): Uint8Array {
   seen.sort((a, b) => a - b);
   const low = seen[Math.floor(seen.length * 0.02)] ?? 0, high = seen[Math.floor(seen.length * 0.98)] ?? 1, range = Math.max(0.05, high - low);
   for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
-    if (luma[y * width + x] < 0) { out[y * width + x] = sprite ? CLEAR : 0; continue; }
+    if (luma[y * width + x] < 0) { out[y * width + x] = behind; continue; }
     let light = (luma[y * width + x] - low) / range;
     light = Math.min(1, Math.max(0, (light - 0.5) * spread + 0.5 + brightness / 100));
     const levels = sprite ? 3 : 4;

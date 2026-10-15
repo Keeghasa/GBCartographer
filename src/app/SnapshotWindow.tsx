@@ -34,25 +34,38 @@ const urlOf = (pixels: Uint8Array, width: number, height: number) => {
   return canvas.toDataURL();
 };
 
-/** The light rig, seen from above: the model in the middle, the camera at the bottom, a dot per light to drag. */
-function Rig({ rig, onMove }: { rig: ShotSettings["rig"]; onMove: (light: Light, at: [number, number]) => void }) {
-  const box = useRef<HTMLDivElement>(null), [held, setHeld] = useState<Light | null>(null);
-  const place = (event: PointerEvent, light: Light) => {
-    const rect = box.current!.getBoundingClientRect();
-    let x = ((event.clientX - rect.left) / rect.width) * 2 - 1, y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-    const reach = Math.hypot(x, y);
-    if (reach > 1) { x /= reach; y /= reach; }
-    // Front of the rig (the camera's side) is down: y −1 is the camera's side, so flip.
-    onMove(light, [x, -y]);
+/**
+ * The light rig, seen from above (left: the model in the middle, you at the bottom) and from the side (right: the
+ * ground along the bottom, you on the left): a dot per light to drag. Above sets where a light stands round the
+ * model; the side view its height (and how far in front or behind).
+ */
+function Rig({ rig, onMove }: { rig: ShotSettings["rig"]; onMove: (light: Light, at: [number, number, number]) => void }) {
+  const top = useRef<HTMLDivElement>(null), side = useRef<HTMLDivElement>(null);
+  const [held, setHeld] = useState<{ light: Light; view: "top" | "side" } | null>(null);
+  const place = (event: PointerEvent) => {
+    if (!held) return;
+    const box = (held.view === "top" ? top : side).current!.getBoundingClientRect();
+    const u = Math.min(1, Math.max(-1, ((event.clientX - box.left) / box.width) * 2 - 1)), v = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
+    const [x, , z] = rig[held.light];
+    if (held.view === "top") {
+      let nx = u, ny = -(v * 2 - 1);
+      const reach = Math.hypot(nx, ny);
+      if (reach > 1) { nx /= reach; ny /= reach; }
+      onMove(held.light, [nx, ny, z]);
+    } else onMove(held.light, [x, u, 1 - v]);
   };
+  const dots = (view: "top" | "side") => LIGHTS.map(({ id, letter, name, about }) => {
+    const [x, y, z] = rig[id];
+    return (
+      <button key={id} type="button" className={`sw-light sw-light--${id}`} title={`${name}: ${about}. Drag it ${view === "top" ? "round the model" : "up or down"}.`} aria-label={`${name} light, ${view === "top" ? "from above" : "from the side"}`}
+        style={view === "top" ? { left: `${(x + 1) * 50}%`, top: `${(1 - y) * 50}%` } : { left: `${(y + 1) * 50}%`, top: `${(1 - z) * 100}%` }}
+        onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setHeld({ light: id, view }); }}>{letter}</button>
+    );
+  });
   return (
-    <div ref={box} className="sw-rig" onPointerMove={(event) => held && place(event, held)} onPointerUp={() => setHeld(null)} onPointerLeave={() => setHeld(null)}>
-      <span className="sw-rig-ring" /><span className="sw-rig-model">model</span><span className="sw-rig-camera">▲ you</span>
-      {LIGHTS.map(({ id, letter, name, about }) => (
-        <button key={id} type="button" className={`sw-light sw-light--${id}`} title={`${name}: ${about}. Drag it round the model.`} aria-label={`${name} light`}
-          style={{ left: `${(rig[id][0] + 1) * 50}%`, top: `${(1 - rig[id][1]) * 50}%` }}
-          onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setHeld(id); }}>{letter}</button>
-      ))}
+    <div className="sw-rigs" onPointerMove={place} onPointerUp={() => setHeld(null)}>
+      <div ref={top} className="sw-rig"><span className="sw-rig-ring" /><span className="sw-rig-model">model</span><span className="sw-rig-camera">▲ you</span><span className="sw-rig-label">above</span>{dots("top")}</div>
+      <div ref={side} className="sw-rig sw-rig--side"><span className="sw-rig-ground" /><span className="sw-rig-model sw-rig-model--side">model</span><span className="sw-rig-you">you ▶</span><span className="sw-rig-label">side</span>{dots("side")}</div>
     </div>
   );
 }
@@ -83,14 +96,15 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
   const stage = useRef<Stage | null>(null), engine = useRef<typeof import("./snapshot3d") | null>(null);
   const [size, setSize] = useState<Size>("screen");
   const [key, setKey] = useState(70), [fill, setFill] = useState(30), [rim, setRim] = useState(50);
-  const [rig, setRig] = useState<ShotSettings["rig"]>({ key: [-0.55, -0.55], fill: [0.6, -0.35], rim: [0.1, 0.7] });
+  const [rig, setRig] = useState<ShotSettings["rig"]>({ key: [-0.55, -0.55, 0.7], fill: [0.6, -0.35, 0.45], rim: [0.1, 0.7, 0.6] });
   const [fov, setFov] = useState(35), [brightness, setBrightness] = useState(0), [contrast, setContrast] = useState(45);
-  const [dither, setDither] = useState(false), [outline, setOutline] = useState(true);
+  const [dither, setDither] = useState(true), [outline, setOutline] = useState(true);
   const [model, setModel] = useState("Sample house"), [triangles, setTriangles] = useState(0), [problem, setProblem] = useState<string | null>(null);
   const [pictures, setPictures] = useState<Picture[]>([]);
+  const [background, setBackground] = useState<ShotSettings["background"]>("clear");
   const [builtIn, setBuiltIn] = useState<BuiltIn | null>("house");
   const [, setTick] = useState(0);
-  const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite" };
+  const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite", background };
   const shades = useRef<Uint8Array | null>(null);
 
   // three.js loads when the window opens; the stage starts with the sample house, turned by dragging the print.
@@ -177,6 +191,16 @@ export function SnapshotWindow({ onClose, onTake, onSend }: { onClose: () => voi
             <label className="sw-row"><span>Contrast</span><Slider label="Contrast" min={0} max={100} value={contrast} onChange={setContrast} /><b>{contrast}</b></label>
             <label className="sw-row"><span>Lens</span><Slider label="Lens (field of view)" min={15} max={75} value={fov} onChange={setFov} /><b>{fov}°</b></label>
             <div className="sw-switches"><Switch checked={outline} onChange={setOutline}>Outline</Switch><Switch checked={dither} onChange={setDither}>Dither</Switch></div>
+          </div>
+          <div className="sw-group">
+            <h2 className="k-heading">Background</h2>
+            <div className="sw-backs" role="radiogroup" aria-label="Background">
+              <button type="button" role="radio" aria-checked={background === "clear"} className="sw-back sw-back--clear" title={size === "sprite" ? "See-through (GB Studio's color 0)" : "None: the lightest shade"} onClick={() => setBackground("clear")}>{size === "sprite" ? "Clear" : "None"}</button>
+              {([0, 1, 2, 3] as const).map((shade) => (
+                <button key={shade} type="button" role="radio" aria-checked={background === shade} className="sw-back" style={{ background: ["#e0f8cf", "#86c06c", "#306850", "#071821"][shade] }}
+                  disabled={size === "sprite" && shade === 0} title={size === "sprite" && shade === 0 ? "Sprites can't use shade 0 (it's see-through)" : `Shade ${shade}`} aria-label={`Shade ${shade}`} onClick={() => setBackground(shade)} />
+              ))}
+            </div>
           </div>
         </aside>
         <section className="sw-main">
