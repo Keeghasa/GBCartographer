@@ -62,7 +62,9 @@ export function paintXp(out: Canvas, art: Canvas, filled: Filled, cellsW: number
 export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH: number, x0 = 0, y0 = 0, tall = false, beyond = false) {
   // With `beyond`, rock runs on past the picture's edge (the author, 2026-10-14: no bevelled cliff sides at the border).
   const art = sheet("cliff"), is = (x: number, y: number) => x < 0 || y < 0 || x >= cellsW || y >= cellsH ? beyond : filled(x, y);
-  const corners = hasCliffCorners(art);
+  // The author's pick (2026-10-14, cliff corner review): the old foot piece where a strip meets a wider plateau, not
+  // the row 7 corners (kept in the sheet, unused).
+  const corners = false && hasCliffCorners(art);
   if (!tall) {
     for (let y = 0; y < cellsH; y += 1) for (let x = 0; x < cellsW; x += 1) {
       xpCliffCell(is, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });

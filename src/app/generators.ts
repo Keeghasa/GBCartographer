@@ -82,7 +82,10 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
   // 32-pixel cells don't divide a 144-pixel screen: the grid runs one row past it and the picture is cut to the screens.
   const w = Math.max(3, Math.ceil(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.ceil(settings.rows * SCREEN_H / settings.cell));
   const random = seeded(settings.seed);
-  const edge = (x: number, y: number) => x === 0 || y === 0 || x === w - 1 || y === h - 1;
+  // The rock along the top is thick enough to show cliff top above its face (the author, 2026-10-14: the top row was
+  // all wall): a cliff face is one cell (16 px walls) or two (32 px) tall, plus a row of top above it.
+  const walls = wallsOf(settings), top = settings.cell === 16 && walls === "cliff32" ? 3 : settings.cell === 16 && walls === "cliff16" ? 2 : 1;
+  const edge = (x: number, y: number) => x === 0 || y < top || x === w - 1 || y === h - 1;
   let grid = new Uint8Array(w * h).fill(1);
   if (settings.style === "cave") {
     for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) grid[y * w + x] = edge(x, y) || random() * 100 < settings.fill ? 1 : 0;
@@ -90,7 +93,7 @@ export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: 
     const perX = SCREEN_W / settings.cell, perY = SCREEN_H / settings.cell, radius = Math.max(1.5, Math.min(perX, perY) / 4);
     for (let sy = 0; sy < settings.rows; sy += 1) for (let sx = 0; sx < settings.columns; sx += 1) {
       const cx = (sx + 0.5) * perX + (random() - 0.5) * perX / 3, cy = (sy + 0.5) * perY + (random() - 0.5) * perY / 3;
-      for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (Math.hypot(x - cx, y - cy) <= radius) grid[y * w + x] = 0;
+      for (let y = top; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (Math.hypot(x - cx, y - cy) <= radius) grid[y * w + x] = 0;
     }
     for (let pass = 0; pass < settings.smooth; pass += 1) {
       const next = new Uint8Array(w * h);
