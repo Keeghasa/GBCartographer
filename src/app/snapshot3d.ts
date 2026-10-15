@@ -85,7 +85,7 @@ export function createStage(handle: HTMLElement): Stage {
 
   return {
     show(next) {
-      if (model) scene.remove(model);
+      if (model) { scene.remove(model); disposeObject(model); }
       model = next;
       scene.add(next);
       const box = new THREE.Box3().setFromObject(next), center = box.getCenter(new THREE.Vector3());
@@ -105,8 +105,23 @@ export function createStage(handle: HTMLElement): Stage {
       model?.traverse((child) => { const mesh = child as THREE.Mesh; if (mesh.isMesh) { const geometry = mesh.geometry; count += (geometry.index ? geometry.index.count : geometry.attributes.position.count) / 3; } });
       return Math.round(count);
     },
-    dispose() { controls.dispose(); target?.dispose(); renderer.dispose(); },
+    // Everything on the GPU goes: the model, the render target, and the WebGL context itself (browsers allow only a
+    // handful at once, and the window may open many times).
+    dispose() { if (model) disposeObject(model); controls.dispose(); target?.dispose(); renderer.dispose(); renderer.forceContextLoss(); },
   };
+}
+
+/** Frees a model's GPU memory: every mesh's geometry, its materials and the textures they hold. */
+function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    for (const material of materials) {
+      for (const value of Object.values(material)) if (value instanceof THREE.Texture) value.dispose();
+      material.dispose();
+    }
+  });
 }
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -182,7 +197,9 @@ export async function loadModel(files: File[]): Promise<{ model: THREE.Object3D;
   const main = files.find((file) => MODEL_FILE.test(file.name));
   if (!main) throw new Error("Pick a model: .glb, .gltf, .fbx, .obj, .dae, .usdz, .3mf, .stl or .ply (and any files that come with it).");
   const urls: string[] = [];
-  const manager = new THREE.LoadingManager();
+  const release = () => { for (const url of urls.splice(0)) URL.revokeObjectURL(url); };
+  // The dropped files are let go once everything the model asked for has loaded (textures finish after parsing).
+  const manager = new THREE.LoadingManager(release, undefined, undefined);
   // The model's own files point at each other by name: the dropped ones, by name.
   manager.setURLModifier((url) => {
     const file = byName.get(decodeURIComponent(url.split(/[\\/]/).pop() ?? "").toLowerCase());
@@ -221,8 +238,8 @@ export async function loadModel(files: File[]): Promise<{ model: THREE.Object3D;
     const gltf = await new GLTFLoader(manager).parseAsync(data, "");
     return { model: gltf.scene, name: main.name };
   } finally {
-    // Textures have been read by now; the object URLs can go after a moment.
-    setTimeout(() => urls.forEach((url) => URL.revokeObjectURL(url)), 5000);
+    // A fallback for models whose loader never reports "all loaded": let the files go after a minute.
+    setTimeout(release, 60000);
   }
 }
 

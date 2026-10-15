@@ -107,7 +107,12 @@ export function renameOwn(project: string, kind: string, from: string, to: strin
   const old = unsavedFile(project, kind, from), next = unsavedFile(project, kind, to);
   if (old && next && existsSync(old)) {
     const data = readJson(old);
-    if (data) { data.name = to; writeJson(next, data); }
+    // Only a file that was read moves (a damaged one stays where it is), and a case-only rename (the same file on
+    // macOS and Windows) is written in place, never written and then deleted.
+    if (!data) return;
+    data.name = to;
+    if (old.toLowerCase() === next.toLowerCase()) { writeJson(old, data); if (old !== next) renameSync(old, next); return; }
+    writeJson(next, data);
     unlinkSync(old);
   }
 }

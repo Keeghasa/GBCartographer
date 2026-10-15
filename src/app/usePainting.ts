@@ -667,13 +667,16 @@ export function usePainting(app: Painting) {
       drag.current = { kind: "cells", last: point };
       lastPoint.current = point;
     } else if (tool === "patternFill") {
+      const redo = doc.redo;
       app.pushUndo(doc);
-      if (!floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value, pattern)) doc.undo.pop();
+      // Nothing filled: the undo step goes, and the redo history stays as it was.
+      if (!floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value, pattern)) { doc.undo.pop(); doc.redo = redo; }
     } else if (tool === "fill" || tool === "fillErase") {
+      const redo = doc.redo;
       app.pushUndo(doc);
       // Alt-click replaces that shade everywhere (inside the selection, if any) instead of filling one area.
       const changed = event.altKey ? replaceShade(doc.pixels, doc.width, doc.height, doc.pixels[point.y * doc.width + point.x], value, doc.sel) > 0 : floodFill(doc.pixels, doc.width, doc.height, point.x, point.y, value);
-      if (!changed) doc.undo.pop();
+      if (!changed) { doc.undo.pop(); doc.redo = redo; }
     } else if (tool === "pencil" || tool === "eraser") {
       app.pushUndo(doc);
       for (const [x, y] of event.shiftKey && lastPoint.current ? linePoints(lastPoint.current.x, lastPoint.current.y, point.x, point.y) : [[point.x, point.y]]) mark(doc, { x, y }, value);

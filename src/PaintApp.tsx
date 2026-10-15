@@ -422,6 +422,8 @@ export default function PaintApp() {
     // A resize undone or redone: the picture takes that size again (and its view fits it).
     if (width && height && (width !== doc.width || height !== doc.height)) Object.assign(doc, { width, height, resized: true, zoom: fitZoom(width, height) });
     if (opened && doc.asset) doc.asset.opened = opened;
+    // A snapshot from before the priority flags existed: keep them, sized to the picture's cells again.
+    if (doc.priority && doc.priority.length !== doc.cells.length) doc.priority = new Uint8Array(doc.cells.length);
     if (collisionValues && doc.collision) collisionValues.forEach((values, index) => { if (doc.collision!.scenes[index]) doc.collision!.scenes[index].values = values; });
     // Palette colors come back too; a restored list that predates a palette added since keeps the newer ones.
     if (palettes) palettes.forEach((palette, index) => { if (doc.palettes[index]) doc.palettes[index] = palette; });
@@ -1958,7 +1960,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
 
   function keyDown(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
-    if (target.matches?.("input, select, textarea")) return;
+    if (target.matches?.("input, select, textarea") || target.isContentEditable || target.closest?.('[role="dialog"]')) return;
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     // Tabs: Ctrl+Tab / Ctrl+PageDown next, with Shift / PageUp previous; Alt+W (and Ctrl+W in the desktop app) closes.
     if (event.ctrlKey && (key === "Tab" || key === "PageDown" || key === "PageUp")) {
@@ -2778,23 +2780,24 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
                   <div className="gbp-brush-outline" ref={brushRef} />
                 </div>
                 {/* Grow the canvas a step (the author, 2026-10-13): a frame (16 px) on sprite sheets, a tile (8 px) elsewhere. */}
-                {(() => { const step = doc.asset?.kind === "sprites" ? 16 : CELL, what = doc.asset?.kind === "sprites" ? "16 px (a frame)" : "8 px (a tile)"; return (<>
+                {(() => { const sheet = doc.asset?.kind === "sprites", step = sheet ? 16 : CELL, what = doc.asset?.kind === "sprites" ? "16 px (a frame)" : "8 px (a tile)"; return (<>
+                  {/* A sprite sheet only grows to the right and down (its .gbsres frames point at fixed pixels), as in Resize. */}
                   <span className="gbp-grow-x" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a column: ${what} wider (Ctrl+Z undoes it)`} aria-label="Wider" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false)}><Plus /></IconButton>
-                    <IconButton label={`Take a column off the right: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false)}><Minus /></IconButton>
+                    {!sheet && <IconButton label={`Take a column off the right: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false)}><Minus /></IconButton>}
                   </span>
                   {/* And on the left and top (the author, 2026-10-14): the picture moves over, the new column or row is blank. */}
-                  <span className="gbp-grow-x gbp-grow-x--left" onPointerDown={(event) => event.stopPropagation()}>
+                  {!sheet && <><span className="gbp-grow-x gbp-grow-x--left" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a column on the left: ${what} wider (Ctrl+Z undoes it)`} aria-label="Wider on the left" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false, [step, 0])}><Plus /></IconButton>
                     <IconButton label={`Take a column off the left: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower on the left" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false, [-step, 0])}><Minus /></IconButton>
                   </span>
                   <span className="gbp-grow-y gbp-grow-y--top" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a row on top: ${what} taller (Ctrl+Z undoes it)`} aria-label="Taller on top" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false, [0, step])}><Plus /></IconButton>
                     <IconButton label={`Take a row off the top: ${what} shorter (Ctrl+Z undoes it)`} aria-label="Shorter on top" variant="ghost" disabled={doc.height <= step} onClick={() => resizePicture(doc.width, doc.height - step, false, [0, -step])}><Minus /></IconButton>
-                  </span>
+                  </span></>}
                   <span className="gbp-grow-y" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a row: ${what} taller (Ctrl+Z undoes it)`} aria-label="Taller" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false)}><Plus /></IconButton>
-                    <IconButton label={`Take a row off the bottom: ${what} shorter (Ctrl+Z undoes it)`} aria-label="Shorter" variant="ghost" disabled={doc.height <= step} onClick={() => resizePicture(doc.width, doc.height - step, false)}><Minus /></IconButton>
+                    {!sheet && <IconButton label={`Take a row off the bottom: ${what} shorter (Ctrl+Z undoes it)`} aria-label="Shorter" variant="ghost" disabled={doc.height <= step} onClick={() => resizePicture(doc.width, doc.height - step, false)}><Minus /></IconButton>}
                   </span>
                 </>); })()}
               </div>

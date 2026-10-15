@@ -464,8 +464,13 @@ export function renameAsset(project: string, kind: AssetKind, path: string, name
   if (!base || !/^[\w ()\-.]+$/.test(base) || base.startsWith(".")) throw new AssetWriteError("Use a plain name: letters, digits, spaces, - _ ( ) and dots.", 400);
   const file = `${base}.png`, target = join(dirname(path), file);
   if (target === path) return { file };
-  // A case-only change is the same file on macOS and Windows: allowed, the rename goes through.
-  if (existsSync(target) && target.toLowerCase() !== path.toLowerCase()) throw new AssetWriteError(`${relative(project, target).split(sep).join("/")} already exists.`, 409);
+  // A case-only change is the same file on macOS and Windows: allowed when the target really is this file (same inode);
+  // on Linux "Foo.png" and "foo.png" can be two pictures, and the other one must never be replaced.
+  const same = (a: string, b: string) => { try { const x = statSync(a), y = statSync(b); return x.ino === y.ino && x.dev === y.dev; } catch { return false; } };
+  const taken = (at: string, from: string) => existsSync(at) && !same(at, from);
+  if (taken(target, path)) throw new AssetWriteError(`${relative(project, target).split(sep).join("/")} already exists.`, 409);
+  // A stamp's own .json: never over a leftover one beside the new name.
+  if (kind === "stamps" && taken(`${target}.json`, `${path}.json`)) throw new AssetWriteError(`${relative(project, target).split(sep).join("/")}.json already exists.`, 409);
   renameSync(path, target);
   if (kind === "stamps" && existsSync(`${path}.json`)) renameSync(`${path}.json`, `${target}.json`);
   return { file };

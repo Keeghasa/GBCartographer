@@ -557,7 +557,8 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
     }
     reply(res, 404, { error: "Unknown endpoint" });
   } catch (error) {
-    reply(res, 500, { error: error instanceof Error ? error.message : "Request failed" });
+    // A malformed request body is the caller's mistake (400), not the server's.
+    reply(res, error instanceof SyntaxError ? 400 : 500, { error: error instanceof Error ? error.message : "Request failed" });
   }
   return true;
 }
