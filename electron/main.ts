@@ -20,7 +20,10 @@ const APP_NAME = "GB Cartographer";
 const TYPES: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".ttf": "font/ttf", ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain" };
 
 const settingsFile = () => join(app.getPath("userData"), "settings.json");
-const serverOptions = () => ({ root: ROOT, backupDir: join(app.getPath("userData"), "backups"), settingsFile: settingsFile() });
+// The demo ships beside the app's packed files (electron-builder's extraResources): resources/demo when installed,
+// demo/ in the source folder otherwise.
+const DEMO_ROOT = app.isPackaged ? process.resourcesPath : ROOT;
+const serverOptions = () => ({ root: DEMO_ROOT, backupDir: join(app.getPath("userData"), "backups"), settingsFile: settingsFile() });
 
 function startServer(): Promise<{ server: Server; url: string }> {
   const server = createServer((req, res) => {

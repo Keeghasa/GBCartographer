@@ -73,7 +73,9 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
     let live = true;
     const stamp = tileStamps.find((item) => item.file === file);
     if (!stamp) { set(null); return; }
-    void loadTiles(stamp).then((loaded) => { if (live) set(loaded); });
+    // The old sheet goes first, so a stamp that fails to load never leaves the previous one's tiles in use.
+    set(null);
+    void loadTiles(stamp).then((loaded) => { if (live) set(loaded); }).catch(() => { if (live) set(null); });
     return () => { live = false; };
   }, [file]);
   useSheet(tilesFile, setSheet);
@@ -96,14 +98,14 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   const valid = /^[\w ()\-.]+$/.test(name.trim());
   async function save() {
     setBusy(true);
-    const done = await onSave(picture, name.trim());
-    setBusy(false);
+    let done = false;
+    try { done = await onSave(picture, name.trim()); } finally { setBusy(false); }
     if (done) onClose();
   }
   async function saveMap() {
     setBusy(true);
-    const done = await onSaveMap(picture, name.trim(), columns, rows);
-    setBusy(false);
+    let done = false;
+    try { done = await onSaveMap(picture, name.trim(), columns, rows); } finally { setBusy(false); }
     if (done) onClose();
   }
 

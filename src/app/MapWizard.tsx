@@ -118,7 +118,7 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
     if (!picked) return;
     try {
       const image = await createImageBitmap(picked, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
-      setSource({ image, name: label ?? (picked instanceof File ? picked.name : "picture") });
+      setSource((was) => { was?.image.close(); return { image, name: label ?? (picked instanceof File ? picked.name : "picture") }; });
       setStart("picture");
     } catch { /* not a picture */ }
   };
@@ -133,10 +133,10 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
   const framed = useMemo(() => start === "picture" && source ? cover(source.image, total.width, total.height, pan.x, pan.y) : null, [start, source, total.width, total.height, pan.x, pan.y]);
   // The fit is the slow part on a big map: run it a beat after the last change.
   useEffect(() => {
-    if (!framed) return setResult(null);
+    if (!framed) { setWorking(false); return setResult(null); }
     setWorking(true);
     const timer = window.setTimeout(() => { setResult(fitPicture(framed, total.width, total.height, { keep, dither, max, budget: false })); setWorking(false); }, 150);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); setWorking(false); };
   }, [framed, keep, dither, max]);
   // A result from before the grid changed size doesn't cut into this grid.
   const fits = result && result.width === total.width && result.height === total.height ? result : null;

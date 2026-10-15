@@ -118,7 +118,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
         const loaded = await loadFontFile(file);
         setFont(loaded); setFontError("");
         setSize([128, 112]);
-        if (!name.trim()) setName(loaded.name);
+        setName((now) => now.trim() ? now : loaded.name);
       } catch {
         setFontError(`${file.name} could not be read as a font.`);
       }
@@ -135,8 +135,8 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
   };
   async function create() {
     setBusy(true);
-    const done = await onCreate({ kind: where === "file" ? null : where, name: name.trim() || "Untitled", width: size[0], height: size[1], ...(fromFont && size[0] === 128 && size[1] === 112 ? { pixels: fromFont.pixels } : {}) });
-    setBusy(false);
+    let done = false;
+    try { done = await onCreate({ kind: where === "file" ? null : where, name: name.trim() || "Untitled", width: size[0], height: size[1], ...(fromFont && size[0] === 128 && size[1] === 112 ? { pixels: fromFont.pixels } : {}) }); } finally { setBusy(false); }
     if (done) onClose();
   }
   const whereTile = (id: AssetKind | "file", icon: ReactNode, label: string, title: string) => (

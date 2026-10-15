@@ -1,17 +1,6 @@
 /* Project check-up (src/app/CheckupWizard.tsx): a strip of issues, one issue card, its fixes with old → new on them. */
 
 /* The strip: one pill an issue (✓ when fixed), the one on screen lit, a Done pill at the end. */
-.cw-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--k-4); }
-.cw-step { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 5px; border-radius: 999px; color: var(--k-ink-3); background: var(--k-sunk); border: 1px solid var(--k-edge); font: 600 var(--k-text-xs) var(--k-font); white-space: nowrap; cursor: pointer; }
-.cw-step:hover { border-color: var(--k-hover-edge); }
-.cw-step b { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: #2a2e35; color: var(--k-ink-2); font-size: 10px; }
-.cw-step--problem b { box-shadow: 0 0 0 1px var(--k-bad); }
-.cw-step--warning b { box-shadow: 0 0 0 1px var(--k-warn); }
-.cw-step--end { padding-right: 10px; }
-.cw-step.is-passed { opacity: .6; }
-.cw-step.is-done { color: var(--k-acc-text); } .cw-step.is-done b { background: var(--k-acc-lo); color: var(--k-on-acc); box-shadow: none; }
-.cw-step.is-now { color: var(--k-on-acc); background: var(--k-acc); border-color: var(--k-acc); opacity: 1; }
-.cw-step.is-now b { background: var(--k-on-acc); color: var(--k-acc-text); box-shadow: none; }
 
 /* The issue card, a bar on the left in its level's color. */
 .cw-issue { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-left: 3px solid var(--k-edge-2); }

@@ -64,7 +64,8 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   useEffect(() => {
     let live = true;
     panelFor.current = null;
-    void fetch("./__cartographer/panel", { cache: "no-cache" }).then((response) => response.json() as Promise<{ exists?: boolean; hidden?: string[]; pinned?: string[] }>).then((panel) => {
+    // Only a panel that was read lets changes be written (a failed read must never let one change replace the list).
+    void fetch("./__cartographer/panel", { cache: "no-cache" }).then((response) => { if (!response.ok) throw new Error(response.statusText); return response.json() as Promise<{ exists?: boolean; hidden?: string[]; pinned?: string[] }>; }).then((panel) => {
       if (!live) return;
       if (panel.exists) { setHidden(new Set(panel.hidden ?? [])); setPinned(new Set(panel.pinned ?? [])); }
       else {
@@ -73,7 +74,7 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         if (old.hidden.length || old.pinned.length) void fetch("./__cartographer/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(old) }).catch(() => null);
       }
       panelFor.current = project.path;
-    }).catch(() => { panelFor.current = project.path; });
+    }).catch(() => { panelFor.current = null; });
     return () => { live = false; };
   }, [project.path]);
   const savePanel = (nextHidden: Set<string>, nextPinned: Set<string>) => {

@@ -16,8 +16,9 @@ const LICENCES: [string, string][] = [
   ["OpenDyslexic", "Abbie Gonzalez, SIL Open Font License 1.1. Downloaded the first time you turn it on."],
   ["Demo project and Asset Catalog", "GB Cartographer's own graphics (Keegan, CC0) and eleven CC0 packs from OpenGameArt, each piece credited to its maker in the catalog and the demo's CREDITS.md."],
   ["3D Snapshot", "Rubber Duck Toy by Plat251 (Poly Haven, CC0)."],
+  ["Sample photo", "Sammie, the author's dog, in Picture to background: the author's own photo."],
   ["Libraries", "React (MIT), lucide icons (ISC) and three.js (MIT, for 3D Snapshot). The desktop app runs on Electron (MIT)."],
-  ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licenses are in the app's licenses folder."],
+  ["More icons", "A few from Pixelarticons by Gerrit Halfmann and from Phosphor Icons, both MIT. Their licenses, and those of React, three.js, Radix and lucide, are in the app's licenses folder."],
 ];
 
 /** "0.1.0-alpha.1" → comparable parts; a release without a pre-release suffix sorts after its pre-releases. */

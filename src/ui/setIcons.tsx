@@ -68,11 +68,6 @@ export function PxMessageReply({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel flip paths={["M4 18h2v2H4v2H2V4h2v14Zm6 0H6v-2h4v2Zm6-6h4v2h-4v4h-2v-2h-2v-2h-2v-2h2v-2h2V8h2v4Zm6 4h-2v-2h2v2Zm0-6h-2V4h2v6Zm-2-6H4V2h16v2Z"]} />;
 }
 
-/** Pixelarticons: robot-face-happy (Wizards). */
-export function PxRobotHappy({ size }: { size?: number | string }) {
-  return <Icon size={size} box={24} pixel paths={["M4 6h16v2H4zm0 14h16v2H4zM2 8h2v12H2zm18 0h2v12h-2z", "M11 4h2v4h-2zm-3 6h2v2H8zm6 0h2v2h-2zm-1-8h4v2h-4zM0 12h2v2H0zm22 0h2v2h-2zM7 14h10v2H7zm2 2h6v2H9z"]} />;
-}
-
 /**
  * The Wizards' icon: the author's own Wizard avatar (2026-10-14, drawn in the Asset Catalog project), its dark pixels
  * on a 16 px grid, so an edit to the avatar (imported) is the icon too.
