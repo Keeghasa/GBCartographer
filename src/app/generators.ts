@@ -425,7 +425,7 @@ export function worldGrid(settings: WorldSettings): { w: number; h: number; grid
   // Clean-up (the author, 2026-10-14: the overworld looked messy): mountains, forests and lakes only where they make
   // whole 2 × 2 blocks (no one-cell nubs, stray trees or puddles), after smoothing away lone specks.
   for (let pass = 0; pass < 2; pass += 1) smoothTerrain(grid, w, h);
-  keepBlocks(grid, w, h, MOUNTAIN, GRASS); keepUnits(grid, w, h, FOREST, GRASS); keepBlocks(grid, w, h, WATER, GRASS, true);
+  keepBlocks(grid, w, h, MOUNTAIN, GRASS); keepBlocks(grid, w, h, FOREST, GRASS); keepBlocks(grid, w, h, WATER, GRASS, true);
   // Shore: land (not mountain) beside water.
   for (let at = 0; at < w * h; at += 1) {
     if (grid[at] !== GRASS && grid[at] !== FOREST) continue;
@@ -458,15 +458,6 @@ function keepBlocks(grid: Uint8Array, w: number, h: number, kind: number, instea
     for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) if (x + dx >= 0 && y + dy >= 0 && x + dx < w && y + dy < h) keep[(y + dy) * w + x + dx] = 1;
   }
   for (let at = 0; at < w * h; at += 1) if (grid[at] === kind && !keep[at]) grid[at] = instead;
-}
-
-/** Keeps `kind` only in whole 32 px units (2 × 2 cells on even cells), the forest brush's own grid. */
-function keepUnits(grid: Uint8Array, w: number, h: number, kind: number, instead: number) {
-  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
-    const cells = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => (y + dy) * w + x + dx).filter((_, i) => x + (i % 2) < w && y + (i >> 1) < h);
-    const whole = cells.length === 4 && cells.every((at) => grid[at] === kind);
-    if (!whole) for (const at of cells) if (grid[at] === kind) grid[at] = instead;
-  }
 }
 
 function edgeCell(at: number, w: number, h: number) {
@@ -584,19 +575,14 @@ function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number,
   paintXp(canvasOut, sheet("xp-sand"), sandy, w, h, settings.island);
   paintXp(canvasOut, sheet("water"), wet, w, h, settings.island);
   paintXp(canvasOut, sheet("xp-dirt"), (x, y) => at(x, y) === ROAD, w, h);
-  paintCliffs(canvasOut, (x, y) => at(x, y) === MOUNTAIN, w, h);
-  // Forests: a 32 px unit is forest when all four of its cells are; forest cells left over get a lone tree.
-  const uw = Math.floor(w / 2), uh = Math.floor(h / 2), forest = (x: number, y: number) => at(x, y) === FOREST;
-  const unit = (ux: number, uy: number) => forest(ux * 2, uy * 2) && forest(ux * 2 + 1, uy * 2) && forest(ux * 2, uy * 2 + 1) && forest(ux * 2 + 1, uy * 2 + 1);
-  paintForest(canvasOut, sheet(settings.seed % 2 ? "pines" : "round"), unit, uw, uh);
-  const lone = sheet(settings.seed % 2 ? "round" : "pines");
+  // Map-scale pieces (the author, 2026-10-14: "an overworld, so don't use big trees or mounds"): the Outdoor sheet's
+  // repeating Mountain tile on each mountain cell, a small tree on each forest cell (pines or round trees by seed).
+  const tree = settings.seed % 2 ? "pine" : "tree";
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
-    if (!forest(x, y) || (x < uw * 2 && y < uh * 2 && unit(x >> 1, y >> 1))) continue;
-    // A lone tree, the sheet's single tree shrunk to its top-left 16 px quarter's place: drawn whole at half size.
-    for (let py = 0; py < 16; py += 1) for (let px = 0; px < 16; px += 1) {
-      const value = lone.pixels[(py * 2) * lone.width + 32 + px * 2];
-      if (value <= 3) out.pixels[(y * 16 + py) * out.width + x * 16 + px] = value;
-    }
+    const cell = at(x, y);
+    if (cell !== MOUNTAIN && cell !== FOREST) continue;
+    const id = cell === MOUNTAIN ? "mountain" : tree;
+    if (!outdoorTile(out, id, x * 16, y * 16)) OUTDOOR[id].draw(new Pen(out, x * 16, y * 16, 16));
   }
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     if (grid[y * w + x] !== TOWN) continue;
