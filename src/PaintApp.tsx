@@ -920,10 +920,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
    * Gives the open picture a new size in whole tiles, at the top-left or centered on tile edges. Tile palettes stay
    * with their tiles; new space is blank. Undo starts over (the sizes differ); Save writes the new size.
    */
-  function resizePicture(width: number, height: number, center: boolean) {
+  /** `shift`: where the old picture lands in the new one, for growing or trimming on the left or top (whole tiles). */
+  function resizePicture(width: number, height: number, center: boolean, shift?: [number, number]) {
     if (!doc) return;
     dropFloat(doc);
-    const dx = center ? Math.floor((width - doc.width) / 2 / CELL) * CELL : 0, dy = center ? Math.floor((height - doc.height) / 2 / CELL) * CELL : 0;
+    const dx = shift ? shift[0] : center ? Math.floor((width - doc.width) / 2 / CELL) * CELL : 0, dy = shift ? shift[1] : center ? Math.floor((height - doc.height) / 2 / CELL) * CELL : 0;
     const pixels = new Uint8Array(width * height).fill(blank(doc));
     for (let y = 0; y < doc.height; y += 1) {
       const ty = y + dy;
@@ -2781,6 +2782,15 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
                   <span className="gbp-grow-x" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a column: ${what} wider (Ctrl+Z undoes it)`} aria-label="Wider" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false)}><Plus /></IconButton>
                     <IconButton label={`Take a column off the right: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false)}><Minus /></IconButton>
+                  </span>
+                  {/* And on the left and top (the author, 2026-10-14): the picture moves over, the new column or row is blank. */}
+                  <span className="gbp-grow-x gbp-grow-x--left" onPointerDown={(event) => event.stopPropagation()}>
+                    <IconButton label={`Add a column on the left: ${what} wider (Ctrl+Z undoes it)`} aria-label="Wider on the left" variant="ghost" onClick={() => resizePicture(doc.width + step, doc.height, false, [step, 0])}><Plus /></IconButton>
+                    <IconButton label={`Take a column off the left: ${what} narrower (Ctrl+Z undoes it)`} aria-label="Narrower on the left" variant="ghost" disabled={doc.width <= step} onClick={() => resizePicture(doc.width - step, doc.height, false, [-step, 0])}><Minus /></IconButton>
+                  </span>
+                  <span className="gbp-grow-y gbp-grow-y--top" onPointerDown={(event) => event.stopPropagation()}>
+                    <IconButton label={`Add a row on top: ${what} taller (Ctrl+Z undoes it)`} aria-label="Taller on top" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false, [0, step])}><Plus /></IconButton>
+                    <IconButton label={`Take a row off the top: ${what} shorter (Ctrl+Z undoes it)`} aria-label="Shorter on top" variant="ghost" disabled={doc.height <= step} onClick={() => resizePicture(doc.width, doc.height - step, false, [0, -step])}><Minus /></IconButton>
                   </span>
                   <span className="gbp-grow-y" onPointerDown={(event) => event.stopPropagation()}>
                     <IconButton label={`Add a row: ${what} taller (Ctrl+Z undoes it)`} aria-label="Taller" variant="ghost" onClick={() => resizePicture(doc.width, doc.height + step, false)}><Plus /></IconButton>
