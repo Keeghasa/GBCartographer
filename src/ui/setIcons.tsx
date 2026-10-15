@@ -1,3 +1,4 @@
+import { AUTHORED } from "../graphics/authored";
 /**
  * Icons from two other MIT sets, picked in the icon reviews (2026-10-10), copied here as plain paths:
  * - Pixelarticons by Gerrit Halfmann (MIT, https://github.com/halfmage/pixelarticons): Px… icons, drawn on a
@@ -72,9 +73,17 @@ export function PxRobotHappy({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M4 6h16v2H4zm0 14h16v2H4zM2 8h2v12H2zm18 0h2v12h-2z", "M11 4h2v4h-2zm-3 6h2v2H8zm6 0h2v2h-2zm-1-8h4v2h-4zM0 12h2v2H0zm22 0h2v2h-2zM7 14h10v2H7zm2 2h6v2H9z"]} />;
 }
 
-/** Ours (the author's pick C, 2026-10-14): a wizard's bearded face under a pointed hat (the Wizards). */
+/**
+ * The Wizards' icon: the author's own Wizard avatar (2026-10-14, drawn in the Asset Catalog project), its dark pixels
+ * on a 16 px grid, so an edit to the avatar (imported) is the icon too.
+ */
+const WIZARD_PATH = (AUTHORED["avatar-wizard"] ?? []).map((row, y) => {
+  let path = "";
+  for (const run of row.matchAll(/[23]+/g)) path += `M${run.index} ${y}h${run[0].length}v1H${run.index}z`;
+  return path;
+}).join("");
 export function PxWizard({ size }: { size?: number | string }) {
-  return <Icon size={size} box={24} pixel paths={["M11 1h2v1H11zM10 2h4v1H10zM9 3h6v1H9zM9 4h7v1H9zM8 5h9v1H8zM8 6h10v1H8zM7 7h11v1H7zM7 8h12v1H7zM2 9h20v1H2zM1 10h22v1H1zM6 11h2v1H6zM17 11h2v1H17zM6 12h1v1H6zM9 12h2v1H9zM14 12h2v1H14zM18 12h1v1H18zM6 13h1v1H6zM18 13h1v1H18zM6 14h2v1H6zM10 14h5v1H10zM17 14h2v1H17zM7 15h3v1H7zM15 15h3v1H15zM8 16h1v1H8zM16 16h1v1H16zM8 17h2v1H8zM15 17h2v1H15zM9 18h2v1H9zM14 18h2v1H14zM10 19h2v1H10zM13 19h2v1H13zM11 20h3v1H11zM12 21h1v1H12z"]} />;
+  return <Icon size={size} box={16} pixel paths={[WIZARD_PATH]} />;
 }
 
 /** Pixelarticons: lightbulb (Help). */
