@@ -114,7 +114,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
     <div className={`ss-splash k${intro ? " is-intro" : " is-in"}`}>
       {intro && <Intro onDone={() => setIntro(false)} />}
       <header className="ss-bar">
-        <span className="ss-brand"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={32} height={32} /><span className="k-wordmark">GB Cartographer</span> <Chip tone="acc">ALPHA</Chip></span>
+        <span className="ss-brand"><img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width={32} height={32} /><span className="k-wordmark">GB Cartographer</span> <Chip tone="acc">BETA</Chip></span>
         <nav className="ss-ways">
           <Button variant="primary" icon={<FolderTree />} onClick={onChooseProject} title="The folder with the .gbsproj file: backgrounds, sprites, tilesets and fonts open here and save back">Open a project</Button>
           {onDemo && <Button icon={<Gamepad2 />} onClick={onDemo} title="A small project with CC0 and MIT art, credited inside; opens a copy you can paint in">Try the demo</Button>}
@@ -129,7 +129,7 @@ export function StartScreen({ recent, onChooseProject, onDemo, onOpenFiles, onOp
       ) : (
         <section className="ss-empty"><h2>Open a GB Studio project to start.</h2><p className="k-muted">Its backgrounds, sprites, tilesets and fonts open here and save back. Projects you open show up here next time.</p></section>
       )}
-      <p className="ss-alpha" role="note"><TriangleAlert size={16} aria-hidden /><span><b>Experimental alpha.</b> Only use it on GB Studio projects you have backed up: Save writes into the project. Close GB Studio while you work.</span></p>
+      <p className="ss-beta" role="note"><TriangleAlert size={16} aria-hidden /><span><b>Beta.</b> Use it on GB Studio projects you have backed up: Save writes into the project. Close GB Studio while you work.</span></p>
       <footer className="ss-foot"><span>Save writes only the PNG, tile and slice palettes, palette files and palette slots into your project. The old file is kept in Backups.</span><Button variant="ghost" size="sm" onClick={onAbout}>About · {__APP_VERSION__}</Button></footer>
     </div>
   );

@@ -1,11 +1,11 @@
 # GB Cartographer
 
-**Alpha:** a pixel painting and color palette companion app for [GB Studio](https://www.gbstudio.dev) projects.
+**Beta:** a pixel painting and color palette companion app for [GB Studio](https://www.gbstudio.dev) projects.
 Paint backgrounds, sprite sheets, tilesets and fonts, give each tile its palette, and save the PNGs and per-tile
 palettes straight back into the project.
 
 > [!WARNING]
-> **Experimental alpha.** Only use GB Cartographer on GB Studio projects you have backed up (a copy, or version
+> **Beta.** Use GB Cartographer on GB Studio projects you have backed up (a copy, or version
 > control). It writes into your project when you save, features and file handling are still changing, and there
 > will be bugs. Close GB Studio while you work, and please report problems in the repository's issues.
 
@@ -19,7 +19,7 @@ palettes straight back into the project.
 
 <sub>The main screenshot shows GB Studio's sample project (`appData/templates/gbs2` in the [GB Studio repository](https://github.com/chrismaltby/gb-studio)), Copyright (c) 2019-2026 Chris Maltby, used under the MIT license. The art in these GIFs is from an earlier demo project: Winter Tileset by Spencer "Raptorspank" Gerowe (CC0) and Free Furniture by yoanqwp (MIT, from the GB Studio Community Assets); see [demo/CREDITS.md](demo/CREDITS.md). It appears here only as screen recordings: the art files themselves aren't in this repository or the downloads.</sub>
 
-**[Download the alpha](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
+**[Download the beta](https://github.com/Keeghasa/GBCartographer/releases)** for macOS, Windows or Linux (see
 [Install](#install)).
 
 ## Features
@@ -132,7 +132,7 @@ files, GB Cartographer follows in its next release, and this table says which ve
 
 | GB Cartographer | GB Studio | Project file format |
 | --- | --- | --- |
-| 0.1.0 (alpha) | 4.2.0 – 4.3.2 (newest checked: 4.3.2) | 4.2.0, release 10 |
+| 0.1.0 (beta) | 4.2.0 – 4.3.2 (newest checked: 4.3.2) | 4.2.0, release 10 |
 
 A project from an older GB Studio (including GB Studio 3): open it in the newest GB Studio and save once (it
 converts the project; keep a copy first), then open it here. A project saved by a newer GB Studio than the table
@@ -186,7 +186,7 @@ npm run dev            # or the page on a local dev server, http://127.0.0.1:517
 npm run dist           # installers for this computer, in release/ (dist:mac, dist:win, dist:linux)
 ```
 
-A tag like `v0.1.0-alpha.1` makes GitHub build the installers for all three systems and publish them as a
+A tag like `v0.1.0-beta.1` makes GitHub build the installers for all three systems and publish them as a
 pre-release (`.github/workflows/release.yml`, notes from `docs/releases/<tag>.md`).
 
 In the desktop app, **Open project…** shows a file dialog: pick the project's `.gbsproj` file (or its folder). On the dev server it asks for the folder's path; you

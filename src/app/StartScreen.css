@@ -1,5 +1,5 @@
 /* The start screen (the author's pick C2e, 2026-10-12): a bar with the ways in, recent projects as big names with
-   their backgrounds lined up behind them (dim greens at rest, their own colors on hover), the alpha note, About. */
+   their backgrounds lined up behind them (dim greens at rest, their own colors on hover), the beta note, About. */
 .ss-splash { min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--k-6); width: min(1100px, 100%); margin: 0 auto; padding: var(--k-8) var(--k-6); background: var(--k-bg); }
 .ss-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--k-4); flex-wrap: wrap; padding-bottom: var(--k-3); border-bottom: 2px solid var(--k-ink); }
 .ss-brand { display: inline-flex; align-items: center; gap: 10px; font: 800 18px var(--k-font); letter-spacing: -.03em; }
@@ -34,9 +34,9 @@
 .ss-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--k-4); font: 400 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); }
 @media (max-width: 760px) { .ss-name b { font-size: 30px; } .ss-cell:nth-child(n + 3) { display: none; } .ss-foot { flex-direction: column; align-items: flex-start; } }
 
-/* The alpha warning: a soft amber box, so it reads as a warning without shouting. */
-.ss-alpha { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 14px; text-align: left; font-size: var(--k-text-sm); color: var(--k-ink); background: rgba(240, 180, 80, .1); border: 1px solid rgba(240, 180, 80, .45); border-radius: 12px; }
-.ss-alpha svg { flex: none; margin-top: 2px; color: #f0b450; }
+/* The beta note: a soft amber box, so it reads as a warning without shouting. */
+.ss-beta { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 14px; text-align: left; font-size: var(--k-text-sm); color: var(--k-ink); background: rgba(240, 180, 80, .1); border: 1px solid rgba(240, 180, 80, .45); border-radius: 12px; }
+.ss-beta svg { flex: none; margin-top: 2px; color: #f0b450; }
 
 /* The intro: the icon pops in, the name slides up beside it, then the whole card fades (about 1.25 s). */
 .ss-intro { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; gap: 22px; background: var(--k-bg, #000); animation: ss-intro-out .4s ease-in 2.2s both; cursor: pointer; }

@@ -58,7 +58,7 @@ export function AboutWindow({ onClose }: { onClose: () => void }) {
         <div className="ab-hero">
           <LogoMark size={48} />
           <div className="ab-hero-text">
-            <h1>GB Cartographer <Chip tone="acc">ALPHA</Chip></h1>
+            <h1>GB Cartographer <Chip tone="acc">BETA</Chip></h1>
             <span className="k-small">Version {__APP_VERSION__} · a pixel painter and palette companion for GB Studio projects</span>
             <span className="k-muted k-small">Follows GB Studio {GB_STUDIO.latest}. Reads projects from GB Studio {GB_STUDIO.oldest} to {GB_STUDIO.latest} (file format {GB_STUDIO.format.version}, release {GB_STUDIO.format.release}).</span>
           </div>
