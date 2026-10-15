@@ -1,14 +1,15 @@
 /**
  * Dawn, sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one
  * go. The palettes as painted are the day (the author, 2026-10-10); the versions are Dawn (D), Sunset (S) and Night
- * (N). Three steps: pick the palettes and times, look at the versions (with a strength and the open picture under
- * each time), then add them to the project. Versions are named "<base> D", "<base> S" and "<base> N", so with
+ * (N). One page (the author, 2026-10-14: no steps): the palettes and times on the left, the versions with a strength
+ * and the open picture under each time on the right, Add in the footer. Versions are named "<base> D", "<base> S" and "<base> N", so with
  * Time-of-day palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
  */
-import { ArrowLeft, ArrowRight, Check, Moon, Sunrise, Sunset } from "lucide-react";
+import { Check, Moon, Sunrise, Sunset } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba } from "../paint";
-import { Button, Checkbox, Chip, Dialog, Field, Slider } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
+import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
 import "./DnsWizard.css";
 
@@ -34,7 +35,6 @@ const TIMES: { key: Time; name: string; icon: ReactNode; hint: string }[] = [
   { key: "S", name: "Sunset", icon: <Sunset size={14} />, hint: "Warm and saturated" },
   { key: "N", name: "Night", icon: <Moon size={14} />, hint: "Dark and blue" },
 ];
-const STEPS = ["Palettes", "Versions", "Create"];
 
 interface Version { base: SlotPalette; time: Time; name: string; colors: string[]; exists: boolean; close: number }
 
@@ -80,7 +80,6 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
     return { usable, variants };
   }, [slots]);
 
-  const [step, setStep] = useState(0);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(bases.usable.map((base) => base.id)));
   const [times, setTimes] = useState<Set<Time>>(() => new Set<Time>(["D", "S", "N"]));
   const [strength, setStrength] = useState(100);
@@ -109,14 +108,14 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
 
   // The open picture as it is and under each chosen time: slot palettes swap for their versions, others stay.
   const previews = useMemo(() => {
-    if (step !== 1 || !picture) return [];
+    if (!picture) return [];
     const draw = (time: Time | null) => toRgba(picture.pixels, picture.cells, picture.width, picture.palettes.map((palette) => {
       if (!time) return palette;
       const version = versions.find((entry) => entry.time === time && (palette.id ? entry.base.id === palette.id : entry.base.name === palette.name));
       return version ? { ...palette, colors: version.colors } : palette;
     }));
     return [{ key: "now", label: "Day (as painted)", rgba: draw(null) }, ...pickedTimes.map((time) => ({ key: time.key, label: time.name, rgba: draw(time.key) }))];
-  }, [step, picture, versions, pickedTimes]);
+  }, [picture, versions, pickedTimes]);
 
   const toggle = <T,>(set: Set<T>, value: T, on: boolean) => { const next = new Set(set); if (on) next.add(value); else next.delete(value); return next; };
 
@@ -129,24 +128,14 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   };
 
   const first = picked[0];
-  const steps = (
-    <div className="dw-steps">{STEPS.map((name, index) => {
-      const state = done !== null || index < step ? "done" : index === step ? "now" : "";
-      return (
-        <button key={name} type="button" className={`dw-step ${state}`} disabled={done !== null || index >= step || busy} onClick={() => setStep(index)}>
-          <b>{state === "done" ? <Check size={10} strokeWidth={3} /> : index + 1}</b>{name}
-        </button>
-      );
-    })}</div>
-  );
-
   const palettesStep = (
-    <div className="dw-two">
+    <div className="wp-panel">
       <div className="k-stack k-stack--tight">
-        <div className="k-row"><span className="k-eyebrow">From {where}</span><span className="k-spacer" />
+        <div className="k-row"><h2 className="k-heading">Palettes</h2><span className="k-spacer" />
           <Button size="sm" variant="ghost" onClick={() => setChosen(new Set(bases.usable.map((base) => base.id)))}>All</Button>
           <Button size="sm" variant="ghost" onClick={() => setChosen(new Set())}>None</Button>
         </div>
+        <span className="k-eyebrow">From {where}</span>
         {bases.usable.length === 0 && <div className="k-well dw-note">No palettes in {where} to make versions of.</div>}
         <div className="dw-list">{bases.usable.map((base) => (
           <div key={base.id} className="dw-item">
@@ -159,7 +148,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
         {bases.variants.length > 0 && <span className="k-muted k-xs">Skipped, already a time-of-day version: {bases.variants.map((variant) => variant.name).join(", ")}.</span>}
       </div>
       <div className="k-stack k-stack--tight">
-        <span className="k-eyebrow">Times to make</span>
+        <h2 className="k-heading">Times</h2>
         <span className="k-muted k-xs">Day is your palettes as painted.</span>
         {TIMES.map((time) => (
           <button key={time.key} type="button" className="k-card k-card--button dw-time" aria-pressed={times.has(time.key)} onClick={() => setTimes(toggle(times, time.key, !times.has(time.key)))}>
@@ -170,8 +159,9 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
     </div>
   );
 
-  const versionsStep = first && (
-    <div className="k-stack">
+  const versionsStep = first ? (
+    <div className="wp-panel">
+      <h2 className="k-heading">Versions</h2>
       <div className="k-row"><Chip>{first.name}</Chip>{picked.length > 1 && <span className="k-muted k-small">and {picked.length - 1} more from {where}</span>}</div>
       <div className="dw-trio" style={{ gridTemplateColumns: `repeat(${pickedTimes.length}, minmax(0, 1fr))` }}>{pickedTimes.map((time) => {
         const mine = versions.filter((version) => version.time === time.key);
@@ -191,7 +181,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       <Field label={<>Strength <span className="k-muted">· {strength}%</span></>} hint="From a hint of the time of day to the full version"><Slider label="Strength" value={strength} onChange={setStrength} min={0} max={100} /></Field>
       {previews.length > 0 && picture && (
         <div className="k-stack k-stack--tight">
-          <span className="k-eyebrow">The open picture under each time</span>
+          <h2 className="k-heading">Your picture</h2><span className="k-eyebrow">The open picture under each time</span>
           <div className="dw-pics">{previews.map((preview) => (
             <figure key={preview.key} className="dw-pic"><figcaption className="k-muted k-xs">{preview.label}</figcaption><Pixels rgba={preview.rgba} width={picture.width} height={picture.height} /></figure>
           ))}</div>
@@ -201,39 +191,19 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
         {skipped > 0 && <Chip title="Versions whose name is already in the project are not added again">{skipped} exist — skipped</Chip>}
         {tooClose > 0 && <Chip tone="warn" title="Some neighbouring shades are hard to tell apart; a lower strength or a tweak in the palette manager helps">{plural(tooClose, "version")} with shades too close</Chip>}
       </div>
-    </div>
-  );
-
-  const createStep = done !== null ? (
-    <div className="k-well dw-note dw-done"><Check size={16} /><span>Added {plural(done, "palette")}. With Time-of-day palettes on, tiles painted with a version save in their base's slot.</span></div>
-  ) : (
-    <div className="k-stack">
-      <div className="k-well dw-note">Adds {plural(toAdd.length, "palette")} to the project{pickedTimes.length ? ` (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : ""}. Time-of-day palettes then save them in their bases' slots.</div>
-      <div className="dw-list dw-list--grid">{versions.map((version) => (
-        <div key={version.name} className={`dw-item${version.exists ? " is-skipped" : ""}`}>
-          <span className="dw-name">{version.name}</span><span className="k-spacer" />
-          {version.exists ? <Chip>exists — skipped</Chip> : version.close > 0 && <Chip tone="warn">too close</Chip>}
-          <Swatches colors={version.colors} small />
-        </div>
-      ))}</div>
       {error && <span className="dw-error k-small">Couldn't add them: {error}</span>}
     </div>
-  );
+  ) : <div className="wp-panel"><h2 className="k-heading">Versions</h2><span className="k-muted k-small">Pick at least one palette and one time of day.</span></div>;
 
-  const canNext = step === 0 ? picked.length > 0 && times.size > 0 : true;
-  const footer = done !== null ? <><span className="k-spacer" /><Button variant="primary" onClick={onClose}>Close</Button></> : <>
-    <span className="k-muted k-small">Step {step + 1} of {STEPS.length}</span>
-    <span className="k-spacer" />
-    {step > 0 && <Button icon={<ArrowLeft />} disabled={busy} onClick={() => setStep(step - 1)}>Back</Button>}
-    {step < 2
-      ? <Button variant="primary" disabled={!canNext} title={canNext ? undefined : "Pick at least one palette and one time of day"} onClick={() => setStep(step + 1)}>Next<ArrowRight /></Button>
-      : <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button>}
-  </>;
+  const footer = done !== null
+    ? <><span className="k-muted k-small dw-done"><Check size={14} /> Added {plural(done, "palette")}. With Time-of-day palettes on, tiles painted with a version save in their base's slot.</span><span className="k-spacer" /><Button variant="primary" onClick={onClose}>Close</Button></>
+    : <><span className="k-muted k-small">{toAdd.length ? `Adds ${plural(toAdd.length, "palette")} (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : "Nothing new to add"}</span><span className="k-spacer" />
+      <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button></>;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} wide title="Dawn, sunset and night" sub="Your palettes are the day: dawn, sunset and night versions, named so GB Studio events can swap them" icon={<PxCloudMoon size={18} />} footer={footer}>
-      {steps}
-      {step === 0 ? palettesStep : step === 1 ? versionsStep : createStep}
-    </Dialog>
+    <WizardPage title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
+      line={["Your palettes are the day", `${plural(picked.length, "palette")} · ${pickedTimes.map((time) => time.name).join(", ") || "no times"} · ${plural(toAdd.length, "new palette")}`]}>
+      <div className="wp-cols">{palettesStep}{versionsStep}</div>
+    </WizardPage>
   );
 }

@@ -1,0 +1,11 @@
+/* A wizard as one page, in the neo-grotesk look (the Wizards gallery's, the Asset Catalog's, 3D Snapshot's). */
+.wp { display: flex; flex-direction: column; gap: var(--k-3); min-height: 100%; padding: 0 4px 16px 0; }
+.wp-top { display: flex; justify-content: space-between; gap: var(--k-4); flex-wrap: wrap; padding-bottom: var(--k-2); border-bottom: 2px solid var(--k-ink); font: 500 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); text-transform: uppercase; letter-spacing: .08em; }
+.wp-top span:last-child { text-transform: none; letter-spacing: 0; }
+.wp-h1 { margin: 0; font: 800 56px/.95 var(--k-font); letter-spacing: -.05em; color: var(--k-ink); }
+.wp-h1 b::after { content: "."; color: var(--k-acc); }
+/* Panels: flat, as the mosaic's tiles. */
+.wp-panel { display: flex; flex-direction: column; gap: var(--k-2); padding: var(--k-3); border-radius: 6px; background: var(--k-panel-2, #161c17); min-width: 0; }
+.wp-cols { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: var(--k-3); align-items: start; }
+.wp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--k-2); flex-wrap: wrap; }
+@media (max-width: 860px) { .wp-cols { grid-template-columns: 1fr; } .wp-h1 { font-size: 40px; } }
