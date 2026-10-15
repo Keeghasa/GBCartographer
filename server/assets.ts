@@ -526,6 +526,8 @@ export function writeSceneCollisions(project: string, sceneFile: string, values:
   const scene = readJson(file);
   if (!scene || scene._resourceType !== "scene") throw new AssetWriteError("That file isn't a GB Studio scene.", 400);
   if (!values.every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) throw new AssetWriteError("Collisions are numbers 0–255.", 400);
+  // One value per tile of the scene, no more and no fewer.
+  if (Number.isInteger(scene.width) && Number.isInteger(scene.height) && values.length !== (scene.width as number) * (scene.height as number)) throw new AssetWriteError(`The scene has ${(scene.width as number) * (scene.height as number)} tiles; ${values.length} collisions were sent.`, 400);
   const mtime = statSync(file).mtimeMs;
   if (!force && expectedMtime !== null && Math.abs(mtime - expectedMtime) > 1) throw new AssetWriteError("The scene changed on disk since it was read.", 409, mtime);
   return { mtime: writeSidecar(file, { ...scene, collisions: encodeTileColors(values) }, backup) };
@@ -781,6 +783,8 @@ export function createAsset(project: string, kind: AssetKind, name: string, byte
   if (!size) throw new AssetWriteError("Not a PNG", 400);
   // A stamp may be any size (a block of a picture); everything else is whole tiles.
   if (!size.width || !size.height || (kind !== "stamps" && (size.width % 8 || size.height % 8))) throw new AssetWriteError("A new picture must be whole 8 × 8 tiles.", 400);
+  // GB Studio's backgrounds: a screen at least, 2040 px at most each way.
+  if (kind === "backgrounds" && (size.width < 160 || size.height < 144 || size.width > 2040 || size.height > 2040)) throw new AssetWriteError("A background is 160 × 144 at least and 2040 px at most each way.", 400);
   const base = name.trim().replace(/\.png$/i, "");
   if (!base || !/^[\w ()\-.]+$/.test(base) || base.startsWith(".")) throw new AssetWriteError("Use a plain name: letters, digits, spaces, - _ ( ) and dots.", 400);
   const folder = kindFolder(project, kind);

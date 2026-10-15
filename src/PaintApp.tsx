@@ -1447,14 +1447,21 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const asset = target.asset!;
     const slotOf = paletteSlots(target.palettes, asset.slots!, namedSlotsRef.current);
     let outside = 0;
+    // After a resize the sidecar's old tileColors are laid out for the old width, so every cell is sent (the server
+    // would otherwise fill the unsent ones from the wrong places): a tile's slot as painted, else as it was opened
+    // (moved with the picture), else slot 0 for a new tile.
+    const all = Boolean(target.resized);
     const slots = Array.from(target.cells, (wear, cell) => {
-      if (!wear) return null;
+      const was = asset.opened?.[cell];
+      const keep = all ? (was !== undefined && was >= 0 ? was : 0) : null;
+      if (!wear) return keep;
       const slot = slotOf.get(wear);
       if (slot === undefined) outside += 1;
-      return slot === undefined || slot === asset.opened?.[cell] ? null : slot;
+      if (slot === undefined) return keep;
+      return !all && slot === was ? null : slot;
     });
-    // Priority flags that changed since opening (backgrounds and tilesets).
-    const priority = target.priority ? Array.from(target.priority, (on, cell) => on === (asset.openedPriority?.[cell] ?? 0) ? null : on === 1) : [];
+    // Priority flags that changed since opening (backgrounds and tilesets); all of them after a resize.
+    const priority = target.priority ? Array.from(target.priority, (on, cell) => !all && on === (asset.openedPriority?.[cell] ?? 0) ? null : on === 1) : [];
     const flagged = priority.filter((value) => value !== null).length;
     if (!await okToWriteProjectJson()) return ["Tile palettes not written"];
     const post = (force: boolean) => fetch(`./__cartographer/gbstudio-tile-colors?${new URLSearchParams({ kind: asset.kind, file: asset.file })}${asset.metaMtime != null ? `&metaMtime=${asset.metaMtime}` : ""}${force ? "&force=1" : ""}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slots, ...(flagged ? { priority } : {}) }) });
@@ -1540,7 +1547,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const canvas = document.createElement("canvas");
     canvas.width = target.width;
     canvas.height = target.height;
-    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(target.pixels, target.cells, target.width, [], target.keyGreen ? KEY_GREEN : target.keyMagenta ? KEY_MAGENTA : undefined), target.width, target.height), 0, 0);
+    // A picture GB Studio reads without a see-through key (backgrounds, tilesets, avatars, UI) never gets transparent
+    // pixels: they're written as the lightest shade (GB Studio would read alpha-0 black as an off-palette color).
+    const keyed = target.keyGreen || target.keyMagenta, kind = target.asset?.kind;
+    const pixels = !keyed && kind && kind !== "stamps" && target.pixels.includes(CLEAR) ? target.pixels.map((value) => value === CLEAR ? 0 : value) : target.pixels;
+    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, target.cells, target.width, [], target.keyGreen ? KEY_GREEN : target.keyMagenta ? KEY_MAGENTA : undefined), target.width, target.height), 0, 0);
     return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("No PNG")), "image/png"));
   }
 

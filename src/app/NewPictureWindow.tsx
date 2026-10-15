@@ -125,7 +125,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
     };
     input.click();
   }
-  const valid = wholeTiles(size) && (where === "file" || /^[\w ()\-.]+$/.test(name.trim()));
+  const valid = wholeTiles(size) && (where !== "backgrounds" || (size[0] >= 160 && size[1] >= 144 && size[0] <= 2040 && size[1] <= 2040)) && (where === "file" || /^[\w ()\-.]+$/.test(name.trim()));
   const pick = (next: AssetKind | "file") => {
     setWhere(next);
     setSize([PRESETS[next][0][0], PRESETS[next][0][1]]);
@@ -165,7 +165,7 @@ export function NewPictureWindow({ projectName, initialKind, onClose, onCreate, 
         <div className="npw-section">
           <span className="k-label">Size</span>
           <SizeCards presets={presets} size={size} onPick={setSize} screens={(w, h) => where === "backgrounds" && w % 160 === 0 && h % 144 === 0} />
-          <CustomSize size={size} onChange={setSize} problem={size[0] > 2048 || size[1] > 2048 ? "2048 px at most" : undefined} />
+          <CustomSize size={size} onChange={setSize} problem={where === "backgrounds" && (size[0] < 160 || size[1] < 144) ? "a background is at least 160 × 144" : size[0] > (where === "backgrounds" ? 2040 : 2048) || size[1] > (where === "backgrounds" ? 2040 : 2048) ? `${where === "backgrounds" ? 2040 : 2048} px at most` : undefined} />
         </div>
         {where === "fonts" && (
           <div className="npw-section">
