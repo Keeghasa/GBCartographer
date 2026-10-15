@@ -61,12 +61,12 @@ export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose
         <div className="wg-head"><span>Pick one to start</span><span>{cards.length} wizards · {ready} ready now</span></div>
         <h1 className="wg-h1"><b>Wizards</b></h1>
         <div className="wg-mosaic">
-          {sorted.map((card, index) => (
+          {sorted.map((card) => (
             <button key={card.thumb} type="button" className={`wg-tile ${SIZE[card.thumb]}`} disabled={Boolean(card.blocked)} title={card.blocked ?? card.needs ?? card.about}
               onClick={() => { onClose(); card.onStart(); }}>
               <span className="wg-art"><Thumb id={card.thumb} playing={!card.blocked} /></span>
               <span className="wg-text">
-                <span className="wg-top"><span className="wg-icon">{card.icon}</span><span className="wg-num">{String(index + 1).padStart(2, "0")}</span></span>
+                <span className="wg-icon">{card.icon}</span>
                 <span className="wg-name">{card.name}</span>
                 <span className="wg-about">{card.blocked ?? card.needs ?? card.about}</span>
               </span>

@@ -51,12 +51,17 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
     return out;
   }
   if (id === "dns") {
-    // One scene in four strips: day (the palette as painted), dawn, sunset, night.
-    const out = blank(["DWC-1-Cliffs", "DWC-1-Cliffs D", "DWC-1-Cliffs S", "DWC-1-Cliffs N"]), p = new Pen(out);
+    // The day going round (the author, 2026-10-14: a smooth loop): dawn → day → sunset → night → dawn, each frame's
+    // palette a blend of the two versions it lies between (the wizard itself makes only the four).
+    const [day, dawn, sunset, night] = ["DWC-1-Cliffs", "DWC-1-Cliffs D", "DWC-1-Cliffs S", "DWC-1-Cliffs N"].map(palette);
+    const stops = [dawn, day, sunset, night], per = WIZARD_FRAMES.dns.count / stops.length;
+    const at = frame / per, from = stops[Math.floor(at) % stops.length], to = stops[(Math.floor(at) + 1) % stops.length];
+    const mix = (a: string, b: string, t: number) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
+    const ease = (t: number) => t * t * (3 - 2 * t);
+    const out = blank([]), p = new Pen(out);
+    out.palettes = [{ name: "Time of day", colors: from.colors.map((color, i) => mix(color, to.colors[i], ease(at % 1))) }];
     landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
     for (let y = 0; y < 12; y += 4) p.dot(10 + y * 10, 6 + y, 1);
-    // Day, dawn, sunset, night in turn: the whole scene wears one version a frame.
-    wearBox(out, 0, 0, 160, 96, 1 + (frame % 4));
     return out;
   }
   if (id === "paletteSet") {
@@ -106,6 +111,6 @@ export function wizardThumb(id: WizardThumb, frame = 0): Generated {
 
 /** How many frames each wizard's loop has, and how long each shows (ms). */
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
-  picture: { count: 8, ms: 260 }, dns: { count: 4, ms: 900 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
+  picture: { count: 8, ms: 260 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 10, ms: 260 }, budget: { count: 6, ms: 700 },
   cave: { count: 4, ms: 1100 }, world: { count: 4, ms: 1100 }, checkup: { count: 6, ms: 600 },
 };
