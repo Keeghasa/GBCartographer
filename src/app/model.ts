@@ -115,6 +115,12 @@ export interface Doc extends Snapshot {
   priority?: Uint8Array;
   /** Resized since it was opened or saved: Save writes the new size (a project asset's size is otherwise fixed). */
   resized?: boolean;
+  /**
+   * The draft layer (retried 2026-10-15): the picture as it was when the draft began. The tools paint the picture as
+   * usual; every pixel that now differs from this is the draft, shown at 50 % over the old picture. Commit keeps the
+   * draft (one undo back), Wipe puts this back. Only in memory: a resize drops it.
+   */
+  draft?: { pixels: Uint8Array };
   /** A font sheet: see-through pixels are magenta in the file (a variable-width glyph's unused columns). */
   keyMagenta?: boolean;
   /** A sprite sheet: see-through pixels are GB Studio's key green in the file. */

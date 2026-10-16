@@ -1,5 +1,5 @@
 /** The paint tools: one button per tool, the view and painting toggles, and the brush size for the tool in hand. */
-import { Contrast, Dna, FlipHorizontal, FlipVertical, Grid2x2, Minus, Plus } from "lucide-react";
+import { Contrast, Dna, FlipHorizontal, FlipVertical, Grid2x2, Layers, Minus, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { PATTERNS, inPattern, type Mirror, type Pattern } from "../paint";
 import { type ToolId } from "./model";
@@ -13,6 +13,8 @@ import { PhCheckerboard } from "../ui/setIcons";
 interface Props {
   tool: ToolId; onTool: (tool: ToolId) => void;
   seamless: boolean; onSeamless: (on: boolean) => void;
+  /** The draft layer: on while the open picture has one. */
+  draft: boolean; onDraft: () => void;
   linked: boolean; onLinked: (on: boolean) => void;
   mirror: Mirror; onMirror: (mirror: Mirror) => void;
   /** Invert: the selection's (or the picture's) shades turned over, lightest ↔ darkest. */
@@ -46,7 +48,7 @@ function PatternSwatch({ pattern, label, shade, shades, onPattern }: { pattern: 
   );
 }
 
-export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinked, mirror, onMirror, onInvert, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
+export function ToolColumn({ tool, onTool, draft, onDraft, seamless, onSeamless, linked, onLinked, mirror, onMirror, onInvert, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
   const patternLabel = PATTERNS.find((item) => item.id === pattern)?.label;
   return (
     <aside className="k-panel app-tools gbp-tools" role="toolbar" aria-label="Paint tools">
@@ -55,6 +57,7 @@ export function ToolColumn({ tool, onTool, seamless, onSeamless, linked, onLinke
       {/* The tile tools on their own (the author, 2026-10-14): palette brush and fill, priority, collision. */}
       {TOOLS.filter(([id]) => TILE_TOOLS.includes(id)).map(([id, label, Icon, keys]) => <IconButton key={id} label={label} keys={keys} pressed={tool === id} onClick={() => onTool(id)}><Icon size={17} /></IconButton>)}
       <hr />
+      <IconButton label="Draft layer: paint at 50 % over the picture, then Commit or Wipe it" aria-label="Draft layer" pressed={draft} onClick={onDraft}><Layers size={17} /></IconButton>
       <IconButton label="Seamless view: the tile under the pointer (or the selection) repeated 3 × 3" aria-label="Seamless view" pressed={seamless} onClick={() => onSeamless(!seamless)}><Grid2x2 size={17} /></IconButton>
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>
       {/* Mirror as two toggles (the author, 2026-10-13): left-right and top-bottom, both on for all four quarters. */}
