@@ -46,7 +46,7 @@ const pick = <T,>(...options: T[]): T => options[look % options.length];
 export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated {
   look = variant;
   if (id === "snapshot") {
-    // 3D Snapshot: a little house turning on its stand, drawn as lines, a print beside it.
+    // GB Snapshot: a little house turning on its stand, drawn as lines, a print beside it.
     const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
     p.fill(3);
     const turn = (frame / WIZARD_FRAMES.snapshot.count) * Math.PI * 2;
@@ -151,7 +151,7 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
 }
 
 /** How many frames each wizard's loop has, and how long each shows (ms). */
-/** The look each card shows (the author's picks, 2026-10-14 review): 3D Snapshot, the palette set, the budget fixer
+/** The look each card shows (the author's picks, 2026-10-14 review): GB Snapshot, the palette set, the budget fixer
  * and the check-up in their third look; Picture to background cycles through all three. */
 export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 2, world: 0, cave: 0, dns: 0, paletteSet: 2, budget: 2, checkup: 2 };
 

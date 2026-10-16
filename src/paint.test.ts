@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, paletteSlots, quantize, snapRect, toRgba , timeVariant } from "./paint";
+import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, paletteSlots, quantize, snapRect, toRgba , timeVariant, snapLine, rotatedShape } from "./paint";
 
 describe("GB Cartographer pixels", () => {
   it("fits colored art to four colors a tile and at most eight palettes, reporting what changed", () => {
@@ -331,5 +331,38 @@ describe("Picture to background", () => {
     expect(fitted.tiles).toBeLessThanOrEqual(2);
     expect(fitted.merged).toBeGreaterThan(0);
     expect(fitTileBudget(pixels, 64, 8, false, 400).merged).toBe(0);
+  });
+});
+
+describe("snapLine", () => {
+  const o = { x: 10, y: 10 };
+  it("snaps to across, down, 45° and 2:1", () => {
+    expect(snapLine(o, { x: 20, y: 11 })).toEqual({ x: 20, y: 10 });
+    expect(snapLine(o, { x: 9, y: 2 })).toEqual({ x: 10, y: 2 });
+    expect(snapLine(o, { x: 17, y: 16 })).toEqual({ x: 17, y: 17 });
+    expect(snapLine(o, { x: 20, y: 15 })).toEqual({ x: 20, y: 15 });
+    expect(snapLine(o, { x: 4, y: 16 })).toEqual({ x: 4, y: 16 });
+  });
+});
+
+describe("rotatedShape", () => {
+  it("turns a filled rectangle without losing its area", () => {
+    const flat = rotatedShape("rect", { x: 0, y: 0 }, { x: 20, y: 10 }, 0, true).length;
+    const turned = rotatedShape("rect", { x: 0, y: 0 }, { x: 20, y: 10 }, Math.PI / 6, true).length;
+    expect(Math.abs(turned - flat) / flat).toBeLessThan(0.1);
+  });
+  it("a quarter turn swaps width and height", () => {
+    const xs = rotatedShape("rect", { x: 0, y: 0 }, { x: 20, y: 10 }, Math.PI / 2, false).map(([x]) => x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBe(10);
+  });
+});
+
+describe("rotatedShape in 3D", () => {
+  it("a yaw makes one side shorter than the other (perspective)", () => {
+    const points = rotatedShape("rect", { x: 0, y: 0 }, { x: 40, y: 40 }, 0, false, { pitch: 0, yaw: 0.8 });
+    const xs = points.map(([x]) => x), left = Math.min(...xs), right = Math.max(...xs);
+    const height = (x: number) => { const ys = points.filter(([px]) => px === x).map(([, y]) => y); return Math.max(...ys) - Math.min(...ys); };
+    expect(right - left).toBeLessThan(40);
+    expect(height(left)).not.toBe(height(right));
   });
 });

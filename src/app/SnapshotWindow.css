@@ -1,4 +1,4 @@
-/* The 3D Snapshot window, the Darkroom (the author, 2026-10-14): controls on the left, the print in the middle with
+/* The GB Snapshot window, the Darkroom (the author, 2026-10-14): controls on the left, the print in the middle with
    the pictures taken under it. */
 .sw { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--k-3); min-height: 100%; }
 .sw-controls { display: flex; flex-direction: column; gap: var(--k-4); padding: var(--k-3); align-self: start; }

@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Box, Settings as SettingsIcon, Check, Layers, Eraser, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Box, Settings as SettingsIcon, Check, Layers, Eraser, FlipHorizontal, FlipVertical, RotateCw, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -41,7 +41,7 @@ import type { FitResult } from "./app/pictureFit";
 /** A finished picture from a wizard: shades, each tile's palette (1-based, 0 none) and those palettes. */
 type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[] };
 import { NewPictureWindow, ResizeWindow, type NewPicture } from "./app/NewPictureWindow";
-import { Button, Chip, IconButton, Kbd, Menu, MenuAt, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
+import { Button, Chip, IconButton, Kbd, Menu, MenuAt, Slider, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
 import "./app/shell.css";
 import { StartScreen } from "./app/StartScreen";
 import { ProjectPanel } from "./app/ProjectPanel";
@@ -53,7 +53,6 @@ import { usePainting } from "./app/usePainting";
 import { PhCheckerboard, PhPiggyBank, PhSticker, PxCloudMoon, PxGamepad, PxHeart, PxLightbulb, PxWizard } from "./ui/setIcons";
 import { PalettesPane } from "./app/PalettesPane";
 import { FramesStrip } from "./app/FramesStrip";
-import { StampsStrip } from "./app/StampsStrip";
 import { TextStrip, type TextSettings } from "./app/TextStrip";
 import { readFontSheet, renderText, type FontSheet } from "./app/textTool";
 import { encodeText, fetchFontMap, glyphOf, textWidth } from "./gb/font";
@@ -121,8 +120,12 @@ export default function PaintApp() {
   const collisionCanvas = useRef<HTMLCanvasElement>(null);
   /** Atlas water in hand: its frames played over every painted cell (the author, 2026-10-12; Save writes frame 1). */
   const atlasAnimCanvas = useRef<HTMLCanvasElement>(null);
-  /** The draft layer's new pixels, drawn at 50 % over the old picture. */
+  /** The draft layer's new pixels, drawn at full strength over the faded old picture. */
   const draftCanvas = useRef<HTMLCanvasElement>(null);
+  /** The small view of the whole picture at the top of the side panel (the author, 2026-10-16). */
+  const navCanvas = useRef<HTMLCanvasElement>(null);
+  /** The draft layer's slider: how much the old picture shows under the draft, 0–100 %. */
+  const [draftOld, setDraftOld] = useState(20);
   const [atlasPlaying, setAtlasPlaying] = useState(false);
   /** The animated stamp's frames over the picture stopped (the author, 2026-10-13: a button to stop them); kept per computer. */
   const [animStopped, setAnimStopped] = useState(() => readStored("gbc-anim-stopped", false));
@@ -426,7 +429,7 @@ export default function PaintApp() {
       dropFloat(doc);
       doc.draft = { pixels: doc.pixels.slice() };
       bump();
-      return say("Draft layer on: what you paint shows at 50 % over the picture; Commit keeps it, Wipe takes it back.");
+      return say("Draft layer on: the old picture fades so what you paint stands out (the Old slider); Commit keeps it, Wipe takes it back.");
     }
     if (draftChanges(doc)) return say("Commit or wipe the draft first (the strip above the picture).");
     delete doc.draft;
@@ -1781,6 +1784,26 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /**
+   * Paste flipped copy (the author, 2026-10-16): a mirrored duplicate of the selection, floating right beside it (to
+   * the right for left-right, below for top-bottom; inside the picture), ready to drag into place. The original stays.
+   */
+  function pasteFlipped(axis: "x" | "y") {
+    if (!doc) return;
+    const floating = floatSelection(doc, true);
+    if (!floating) return;
+    const flipped = flipFloat(floating, axis);
+    const x = axis === "x" ? Math.min(floating.x + floating.w, Math.max(0, doc.width - floating.w)) : floating.x;
+    const y = axis === "y" ? Math.min(floating.y + floating.h, Math.max(0, doc.height - floating.h)) : floating.y;
+    doc.float = { ...flipped, x, y };
+    // Off the tile grid the copy can't carry tile palettes.
+    if (doc.float.cells && (x % CELL || y % CELL)) delete doc.float.cells;
+    doc.sel = { x, y, w: flipped.w, h: flipped.h };
+    setToolState("select");
+    touch(doc);
+    say(`Flipped copy placed ${axis === "x" ? "to the right" : "below"}: drag it where you want it.`);
+  }
+
+  /**
    * Flips the selection (or the whole picture) left-right or top-bottom, or turns the selection a quarter turn
    * clockwise. Tile-aligned pieces take their tile palettes along.
    */
@@ -2522,7 +2545,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         dropCells(cells, doc.width, doc.height, doc.float);
       }
     }
-    // The draft layer: the picture canvas shows the old picture where the draft drew, the draft canvas the new pixels.
+    // The draft layer: the picture canvas shows the old picture (faded by the Old slider), the draft canvas the new pixels.
     const base = draftOf(doc), drafted = base ? pixels : null;
     if (base && drafted) pixels = base.pixels;
     const paint = (from: Uint8Array, image: ImageData) => {
@@ -2541,6 +2564,16 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const words = new Uint32Array(image.data.buffer);
     for (let at = 0; at < drafted.length; at += 1) if (drafted[at] === base.pixels[at]) words[at] = 0;
     layer.getContext("2d")!.putImageData(image, 0, 0);
+  });
+  // The side panel's small view: the picture as drawn (and the draft over it), scaled to fit.
+  useLayoutEffect(() => {
+    const view = navCanvas.current, sheet = canvasRef.current;
+    if (!view || !sheet || !doc) return;
+    if (view.width !== doc.width || view.height !== doc.height) Object.assign(view, { width: doc.width, height: doc.height });
+    const context = view.getContext("2d")!;
+    context.clearRect(0, 0, doc.width, doc.height);
+    context.drawImage(sheet, 0, 0);
+    if (draftCanvas.current && draftOf(doc)) context.drawImage(draftCanvas.current, 0, 0);
   });
   // The font sample, at a Game Boy screen's width (160 px, 8 px margins), wrapped at word breaks like a text box:
   // each character's glyph copied from the sheet as just drawn. Which glyph a character draws and how wide it is
@@ -2722,6 +2755,12 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { label: "Use as stamp", icon: <PhSticker size={15} />, onSelect: () => setTool("stamp") },
     { label: "Save as stamp…", icon: <Save />, disabled: !project, title: project ? `Saves a PNG in ${project.name}/Cartographer/stamps (tile palettes too, on whole tiles)` : "Open a GB Studio project to save stamps in it", onSelect: () => void saveAsStamp() },
     { separator: true },
+    { label: "Flip left-right", icon: <FlipHorizontal size={15} />, keys: "F", onSelect: () => transformSelection("x") },
+    { label: "Flip top-bottom", icon: <FlipVertical size={15} />, keys: "Shift+F", onSelect: () => transformSelection("y") },
+    { label: "Turn a quarter", icon: <RotateCw size={15} />, keys: "Ctrl+T", onSelect: () => transformSelection("turn") },
+    { label: "Paste flipped copy left-right", icon: <FlipHorizontal size={15} />, title: "A mirrored copy beside the selection (the original stays), ready to drag", onSelect: () => pasteFlipped("x") },
+    { label: "Paste flipped copy top-bottom", icon: <FlipVertical size={15} />, title: "A mirrored copy under the selection (the original stays), ready to drag", onSelect: () => pasteFlipped("y") },
+    { separator: true },
     { label: "Copy", icon: <Copy />, keys: "Ctrl+C", onSelect: () => { if (copySelection()) say("Copied the selection"); } },
     { label: "Deselect", icon: <X />, keys: "Esc", onSelect: () => { dropFloat(doc); doc.sel = null; bump(); } },
   ] : [];
@@ -2750,7 +2789,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
       onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
     { thumb: "paletteSet", name: "Palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
-    { thumb: "snapshot", name: "3D Snapshot", icon: <Box />, about: "Turn a 3D model (.glb, .gltf or .obj), light it, and take its picture in the four shades: a screen, a smaller picture or a sprite.", blocked: null, onStart: () => setShowSnapshot(true) },
+    { thumb: "snapshot", name: "GB Snapshot", icon: <Box />, about: "Turn a 3D model (.glb, .gltf or .obj), light it, and take its picture in the four shades: a screen, a smaller picture or a sprite.", blocked: null, onStart: () => setShowSnapshot(true) },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
     { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms drawn with the catalog’s cliffs and floors, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
     { thumb: "world", name: "Overworld", icon: <Mountain />, about: "An RPG-style overworld: water, forest, mountains, towns and roads, in the palettes you pick.", blocked: null, onStart: () => setWizard("world") },
@@ -2827,19 +2866,19 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
-        <ToolColumn tool={tool} onTool={setTool} draft={Boolean(doc && draftOf(doc))} onDraft={toggleDraft} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={patternInUse} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
+        <ToolColumn tool={tool} onTool={setTool} draft={Boolean(doc && draftOf(doc))} onDraft={toggleDraft} draftChanged={Boolean(doc && draftChanges(doc))} onCommit={() => doc && commitDraft(doc)} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={patternInUse} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && draftOf(doc) && (() => { const changed = draftChanges(doc); return (
             <div className="k-card app-strip" role="group" aria-label="Draft layer">
-              <span className="app-strip-label"><Layers size={14} /> Draft layer, 50 % · {changed ? `${changed} pixel${changed === 1 ? "" : "s"} new` : "nothing painted yet"}</span>
+              <span className="app-strip-label"><Layers size={14} /> Draft layer · {changed ? `${changed} pixel${changed === 1 ? "" : "s"} new` : "nothing painted yet"}</span>
               <Button size="sm" variant="primary" icon={<Check />} disabled={!changed} title="Keep the draft as part of the picture (one undo takes it back)" onClick={() => commitDraft(doc)}>Commit</Button>
               <Button size="sm" icon={<Eraser />} disabled={!changed} title="Put the picture back as it was when the draft began; the draft layer stays on" onClick={() => wipeDraft(doc)}>Wipe</Button>
               <Button size="sm" variant="ghost" icon={<X />} disabled={changed > 0} title={changed ? "Commit or wipe the draft first" : "Turn the draft layer off"} onClick={toggleDraft}>Off</Button>
+              <span className="k-muted k-xs app-draft-old" title="How much the old picture shows under the draft">Old <Slider label="Old picture's opacity" value={draftOld} min={0} max={100} step={5} onChange={setDraftOld} /> {draftOld}%</span>
             </div>
           ); })()}
           {doc && tool === "text" && <TextStrip fonts={project?.assets.filter((asset) => asset.kind === "fonts") ?? []} settings={{ ...textSettings, font: textSettings.font || project?.assets.find((asset) => asset.kind === "fonts")?.file || "" }} onChange={(settings) => void updateText(settings)} shades={swatchColors} placed={Boolean(doc.float) && doc.float === textFloat.current} onStamp={stampText} onCancel={cancelText} />}
           {doc && tool === "collision" && <CollisionStrip collision={doc.collision} isBackground={doc.asset?.kind === "backgrounds"} defs={collisionDefs(doc)} picked={collisionPick} onPick={setCollisionPick} onScene={(index) => { if (doc.collision) { doc.collision.scene = index; setCollisionPick(["solid"]); bump(); } }} />}
-          {doc && tool === "stamp" && project && project.assets.some((asset) => asset.kind === "stamps") && <StampsStrip stamps={project.assets.filter((asset) => asset.kind === "stamps")} slotsVersion={slotsVersion} onUse={(asset) => void useSavedStamp(asset)} onOpen={(asset) => { setProjectKind("stamps"); void openAsset(asset); }} onAutotile={(asset, autotile) => void setStampAutotile(asset, autotile)} />}
           {doc && frames.length > 0 && <FramesStrip animations={animations} frame={frame} onFrame={setFrame} playing={playing} onPlaying={setPlaying} animSpeed={animSpeed} fps={fps} canvases={frameCanvases} onBackground={project?.assets.some((asset) => asset.kind === "backgrounds") ? () => setOnBackground(composeFrames()) : undefined} backgrounds={project?.assets.filter((asset) => asset.kind === "backgrounds") ?? []} />}
           {doc?.changedOnDisk && !doc.changedOnDisk.kept && (
             <div className="k-card app-strip app-strip--alert" role="alert">
@@ -2865,7 +2904,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
               <div className="gbp-grow" style={repeatTile ? { margin: `${doc.height * doc.zoom}px ${doc.width * doc.zoom}px` } : undefined}>
                 {repeatTile && <canvas ref={repeatCanvas} className="gbp-repeat" aria-hidden style={{ width: doc.width * doc.zoom * 3, height: doc.height * doc.zoom * 3, left: -doc.width * doc.zoom, top: -doc.height * doc.zoom }} />}
                 <div className="gbp-wrap" ref={wrapRef} style={{ width: doc.width * doc.zoom, height: doc.height * doc.zoom }}>
-                  <canvas ref={canvasRef} />
+                  <canvas ref={canvasRef} style={draftOf(doc) ? { opacity: draftOld / 100 } : undefined} />
                   {gridLines && <div className="gbp-grid" style={{ backgroundSize: `${gridLines} ${gridLines}` }} />}
                   {budgetView && <canvas ref={usageCanvas} className="gbp-usage" />}
                   {tool === "priority" && doc.priority && <canvas ref={priorityCanvas} className="gbp-usage gbp-priority" />}
@@ -2910,6 +2949,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         </div>
         <button type="button" className="app-side-handle" aria-label={showSide ? "Hide the side panel" : "Show the side panel"} title={showSide ? "Hide the side panel" : "Show the side panel"} onClick={() => { setShowSide(!showSide); store("gbc-side", !showSide); }} />
         {showSide && <aside className="k-panel app-side">
+          {doc && <div className="app-nav" role="group" aria-label="Picture overview">
+            <canvas ref={navCanvas} className="app-nav-canvas" title={`${doc.name} · ${doc.width} × ${doc.height}`} />
+            <span className="k-muted k-xs app-nav-zoom"><Slider label="Zoom" value={Math.max(0, ZOOMS.indexOf(doc.zoom as typeof ZOOMS[number]))} min={0} max={ZOOMS.length - 1} onChange={(at) => { doc.zoom = ZOOMS[at]; bump(); }} /> {Math.round(doc.zoom * 100)}%</span>
+          </div>}
           <div className="app-swatches">
             {swatchColors.slice(0, 4).map((color, index) => (
               <button key={index} className={doc?.keyGreen && index === 0 ? "app-swatch app-ignored" : "app-swatch"} aria-pressed={shade === index} style={{ background: color }} aria-label={`Shade ${index + 1}`} title={doc?.keyGreen && index === 0 ? "Shade 1 · GB Studio draws a sprite's or emote's lightest shade as see-through, so it never shows in the game: paint with 2, 3 and 4" : `Shade ${index + 1} · ${index + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => { if (shade === index) shadeInputs.current[index]?.click(); else { setShade(index); if (tool === "eyedropper") setToolState(paintTool.current); } }}>

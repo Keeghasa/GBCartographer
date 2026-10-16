@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { forestLayout, moundLayout, rpgCell, xpCell, xpCliffCell, type Piece } from "./autopaint";
-import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
+import { CELL, CLEAR, cellsWide, clipRect, dot, drop, dropCells, ellipsePoints, fillRect, floodFill, lift, liftCells, linePoints, snapLine, rotatedShape, inPattern, linkGroups, mirrorPoints, onTiles, rectFrom, replaceShade, snapRect, spray, syncLinked, type Floating, type Mirror, type Palette, type Pattern } from "../paint";
 import type { Doc, Drag, Point, ToolId } from "./model";
 import { paintCollision } from "../gb/collisions";
 import { ATLAS_H, ATLAS_W, atlasWallCell, CORNER_NE, CORNER_NW, CORNER_SE, CORNER_SW, edgeMask, maskAt, slot16, WANG_COLUMNS, WANG_MASKS, wangSlot, type AutotileKind } from "./autotile";
@@ -75,6 +75,42 @@ export function usePainting(app: Painting) {
     const box = app.wrapRef.current!.getBoundingClientRect();
     return { x: Math.floor((event.clientX - box.left) / box.width * doc!.width), y: Math.floor((event.clientY - box.top) / box.height * doc!.height) };
   }
+
+  /**
+   * Where a plain stamp lands: the pointer holds its middle (rounded to whole tiles), so it can hang off any edge of
+   * the picture and only the part over it is painted (the author, 2026-10-16).
+   */
+  const stampCorner = ({ x, y }: Point): Point => {
+    const source = stamp.current;
+    const halfW = source ? Math.floor(source.w / 16) * CELL : 0, halfH = source ? Math.floor(source.h / 16) * CELL : 0;
+    return { x: (x - halfW) & ~7, y: (y - halfH) & ~7 };
+  };
+
+  /**
+   * The 16 px auto-tiles' cell grid (water, cliffs, the mound): where it starts, in tiles (0 or 1), so a stroke can
+   * begin on any tile, not only every other one (the author, 2026-10-16). Chosen when a stroke starts (`grid16For`)
+   * and kept for the stroke.
+   */
+  const grid16 = useRef({ ox: 0, oy: 0 });
+  /** The grid for a stroke at `point`: the one the same sheet's tiles nearby already sit on, else the pointer's tile starts a cell. */
+  function grid16For(target: Doc, point: Point): { ox: number; oy: number } {
+    const source = stamp.current, tx = point.x >> 3, ty = point.y >> 3;
+    const mine = { ox: tx & 1, oy: ty & 1 };
+    if (!source) return mine;
+    const keys = sheetKeys(Math.max(1, Math.floor(source.w / CELL)), Math.floor(source.w / CELL) * Math.floor(source.h / CELL), app.blank(target));
+    const ours = (x: number, y: number) => x >= 0 && y >= 0 && (x + 1) * CELL <= target.width && (y + 1) * CELL <= target.height && keys.has(tileKey(target.pixels, target.width, x * CELL, y * CELL));
+    let best = mine, bestScore = 0;
+    for (const oy of [0, 1]) for (const ox of [0, 1]) {
+      // The cell with the pointer's tile on this grid, and the cells beside it: count the sheet's tiles at their corners.
+      const x0 = tx - ((tx - ox) & 1), y0 = ty - ((ty - oy) & 1);
+      let score = 0;
+      for (const [dx, dy] of [[0, 0], [-2, 0], [2, 0], [0, -2], [0, 2]]) if (ours(x0 + dx, y0 + dy)) score += 1;
+      if (score > bestScore) { bestScore = score; best = { ox, oy }; }
+    }
+    return best;
+  }
+  /** The 16 px cell under a point on the current grid. */
+  const cell16 = (point: Point): Point => ({ x: Math.floor((point.x - grid16.current.ox * CELL) / 16), y: Math.floor((point.y - grid16.current.oy * CELL) / 16) });
 
   const inside = (target: Doc, { x, y }: Point) => x >= 0 && y >= 0 && x < target.width && y < target.height;
 
@@ -277,19 +313,19 @@ export function usePainting(app: Painting) {
    */
   function paintAtlas(target: Doc, cx: number, cy: number, erase: boolean) {
     const auto = stamp.current?.auto;
-    const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
+    const { ox, oy } = grid16.current, cw = Math.floor((cellsWide(target.width) - ox) / 2), ch = Math.floor((Math.ceil(target.height / CELL) - oy) / 2);
     if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const wall = auto === "atlasWall", blank = app.blank(target);
     // The block's tiles are indexed across one block (water has three side by side; painting uses the first).
     const columns = ATLAS_W / CELL, roofTiles = columns * (ATLAS_H / CELL);
     const keys = sheetKeys(columns, wall ? roofTiles + 16 : roofTiles, blank);
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
-    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
+    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, (x * 2 + ox) * CELL, (y * 2 + oy) * CELL);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
     const roof = (x: number, y: number) => !inside(x, y) ? true : marked.get(`${x},${y}`) ?? (() => { const index = keys.get(keyAt(x, y)); return index !== undefined && index < roofTiles; })();
     const face = (x: number, y: number) => inside(x, y) && !roof(x, y) && (roof(x, y - 1) || (roof(x, y - 2) && !roof(x, y - 1)));
-    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + (quarter % 2), y * 2 + Math.floor(quarter / 2), column, row, true));
-    const clear = (x: number, y: number) => fillRect(target.pixels, target.width, target.height, { x: x * 2 * CELL, y: y * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
+    const put = (x: number, y: number, tiles: [number, number][]) => tiles.forEach(([column, row], quarter) => putSheetTile(target, x * 2 + ox + (quarter % 2), y * 2 + oy + Math.floor(quarter / 2), column, row, true));
+    const clear = (x: number, y: number) => fillRect(target.pixels, target.width, target.height, { x: (x * 2 + ox) * CELL, y: (y * 2 + oy) * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
     if (erase) clear(cx, cy);
     for (let dy = -1; dy <= (wall ? 3 : 1); dy += 1) for (let dx = wall ? -2 : -1; dx <= (wall ? 2 : 1); dx += 1) {
       const x = cx + dx, y = cy + dy;
@@ -314,7 +350,7 @@ export function usePainting(app: Painting) {
    */
   function paintXp(target: Doc, cx: number, cy: number, erase: boolean) {
     const auto = stamp.current?.auto;
-    const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
+    const { ox, oy } = grid16.current, cw = Math.floor((cellsWide(target.width) - ox) / 2), ch = Math.floor((Math.ceil(target.height / CELL) - oy) / 2);
     if (!auto || cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const tall = auto === "xpCliffTall", cliff = auto === "xpCliff" || tall, blank = app.blank(target);
     const keys = sheetKeys(6, tall ? 72 : cliff ? 60 : 48, blank);
@@ -322,7 +358,7 @@ export function usePainting(app: Painting) {
     const sheetNow = stamp.current!, cornerTop = tall ? 72 : 56;
     const corners = cliff && sheetNow.h >= cornerTop + 8 && Array.from({ length: 8 }, (_, y) => sheetNow.pixels.subarray((cornerTop + y) * sheetNow.w, (cornerTop + y) * sheetNow.w + 16)).some((row) => row.some((v) => v !== CLEAR));
     const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch;
-    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, x * 2 * CELL, y * 2 * CELL);
+    const keyAt = (x: number, y: number) => tileKey(target.pixels, target.width, (x * 2 + ox) * CELL, (y * 2 + oy) * CELL);
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
     const filled = (x: number, y: number) => !inside(x, y) ? !cliff : marked.get(`${x},${y}`) ?? keys.has(keyAt(x, y));
     // Every cell around is decided before anything is drawn (drawing changes what the neighbours read as).
@@ -347,8 +383,8 @@ export function usePainting(app: Painting) {
       if (!inside(x, y) || !filled(x, y)) continue;
       cells.push([x, y, tall ? tallCell(x, y) : cliff ? xpCliffCell(filledIn, x, y, corners) : xpCell(maskAt(filled, x, y))]);
     }
-    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
-    for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => { if (piece) putSheetTile(target, x * 2 + (quarter % 2), y * 2 + (quarter >> 1), piece[0], piece[1], true); });
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: (cx * 2 + ox) * CELL, y: (cy * 2 + oy) * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
+    for (const [x, y, pieces] of cells) pieces.forEach((piece, quarter) => { if (piece) putSheetTile(target, x * 2 + ox + (quarter % 2), y * 2 + oy + (quarter >> 1), piece[0], piece[1], true); });
   }
 
   /**
@@ -357,7 +393,7 @@ export function usePainting(app: Painting) {
    * (only over blank picture or the sheet's own tiles, so neighbouring art stays).
    */
   function paintMound(target: Doc, cx: number, cy: number, erase: boolean) {
-    const cw = Math.floor(cellsWide(target.width) / 2), ch = Math.floor(Math.ceil(target.height / CELL) / 2);
+    const { ox, oy } = grid16.current, cw = Math.floor((cellsWide(target.width) - ox) / 2), ch = Math.floor((Math.ceil(target.height / CELL) - oy) / 2);
     if (cx < 0 || cy < 0 || cx >= cw || cy >= ch) return;
     const blank = app.blank(target);
     const keys = sheetKeys(6, 60, blank);
@@ -367,15 +403,15 @@ export function usePainting(app: Painting) {
     const marked = new Map<string, boolean>([[`${cx},${cy}`, !erase]]);
     // Plateau: the cell's top-left tile is a plateau piece (columns 1–4 of rows 0–3, or an inner corner in row 8).
     const isPlateau = (index: number | undefined) => index !== undefined && ((index < 24 && index % 6 >= 1 && index % 6 <= 4) || (index >= 48 && index <= 51));
-    const plateau = (x: number, y: number) => inside(x, y) && (marked.get(`${x},${y}`) ?? isPlateau(keys.get(keyAt(x * 2, y * 2))));
+    const plateau = (x: number, y: number) => inside(x, y) && (marked.get(`${x},${y}`) ?? isPlateau(keys.get(keyAt(x * 2 + ox, y * 2 + oy))));
     const continues = (x: number, y: number) => !inside(x, y) || plateau(x, y);
     const ours = (tx: number, ty: number) => { const key = keyAt(tx, ty); return keys.has(key) || key === empty; };
-    if (erase) fillRect(target.pixels, target.width, target.height, { x: cx * 2 * CELL, y: cy * 2 * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
+    if (erase) fillRect(target.pixels, target.width, target.height, { x: (cx * 2 + ox) * CELL, y: (cy * 2 + oy) * CELL, w: 2 * CELL, h: 2 * CELL }, blank);
     for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) {
       const x = cx + dx, y = cy + dy;
       if (!inside(x, y)) continue;
       const { kind, pieces } = moundLayout(plateau, x, y, continues);
-      const tiles = [[x * 2, y * 2], [x * 2 + 1, y * 2], [x * 2, y * 2 + 1], [x * 2 + 1, y * 2 + 1]];
+      const tiles = [[x * 2 + ox, y * 2 + oy], [x * 2 + ox + 1, y * 2 + oy], [x * 2 + ox, y * 2 + oy + 1], [x * 2 + ox + 1, y * 2 + oy + 1]];
       // A cell that is none of the mound's any more: the sheet's own tiles go blank.
       if (kind !== "plateau" && kind !== "face") tiles.forEach(([tx, ty]) => { if (keys.has(keyAt(tx, ty))) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, blank); });
       pieces.forEach((piece, quarter) => {
@@ -484,7 +520,16 @@ export function usePainting(app: Painting) {
     }
   }
 
-  function drawShape(target: Doc, a: Point, b: Point, value: number) {
+  function drawShape(target: Doc, a: Point, b: Point, value: number, angle = 0, tilt?: { pitch: number; yaw: number }) {
+    // Turned (Alt): rectangles and ellipses drawn at an angle round their centre.
+    if ((angle || tilt?.pitch || tilt?.yaw) && tool !== "line") {
+      const filled = tool === "rectFill" || tool === "patternRect", fillPattern = tool === "patternRect" ? pattern : "solid";
+      for (const [x, y] of rotatedShape(tool === "ellipse" ? "ellipse" : "rect", a, b, angle, filled, tilt)) {
+        if (filled) { if (x >= 0 && y >= 0 && x < target.width && y < target.height && inPattern(fillPattern, x, y)) target.pixels[y * target.width + x] = value; }
+        else dot(target.pixels, target.width, target.height, x, y, brush, value);
+      }
+      return;
+    }
     if (tool === "rectFill" || tool === "patternRect") {
       // The filled rectangle is always solid; the Pattern fill tool draws its box in the pattern.
       return fillRect(target.pixels, target.width, target.height, rectFrom(a.x, a.y, b.x, b.y), value, tool === "patternRect" ? pattern : "solid");
@@ -516,15 +561,18 @@ export function usePainting(app: Painting) {
     if (!doc || !outline) return;
     if (tool === "stamp") {
       // The stamp's footprint where it would land.
-      const visible = inside(doc, point) && Boolean(stamp.current);
+      const plain = Boolean(stamp.current) && !stamp.current?.auto && !stamp.current?.repeat;
+      const corner0 = plain ? stampCorner(point) : null;
+      // A plain stamp shows while any of it is over the picture (it may hang off the edge).
+      const visible = Boolean(stamp.current) && (corner0 ? corner0.x < doc.width && corner0.y < doc.height && corner0.x + stamp.current!.w > 0 && corner0.y + stamp.current!.h > 0 : inside(doc, point));
       // An area auto-tile paints one cell a click (a 32 px tree unit, a 16 px block cell, an 8 px tile): the outline
       // shows that cell where it lands, not the whole sheet. Other stamps show their whole size.
       const auto = stamp.current?.auto;
       const unit = stamp.current?.repeat ? CELL : auto === "forest" ? 32 : auto === "mound" || auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "xpCliffTall" || auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall" ? 16 : auto === "wang" || auto === "edges" || auto === "path" || auto === "wallface" ? CELL : 0;
       const corner = auto === "corner";
       const state = drag.current, forest = auto === "forest" ? (state?.kind === "forest" ? state : forestOrigin(doc, point)) : null;
-      const left = forest ? forestUnit(point.x, forest.ox) * 32 + forest.ox * CELL : corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.x / unit) * unit : point.x & ~7;
-      const top = forest ? forestUnit(point.y, forest.oy) * 32 + forest.oy * CELL : corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit ? Math.floor(point.y / unit) * unit : point.y & ~7;
+      const left = forest ? forestUnit(point.x, forest.ox) * 32 + forest.ox * CELL : corner ? Math.round(point.x / CELL) * CELL - CELL / 2 : unit === 16 && auto !== "forest" ? (() => { const g = state && (state.kind === "xp" || state.kind === "mound" || state.kind === "atlas") ? grid16.current : grid16For(doc, point); return Math.floor((point.x - g.ox * CELL) / 16) * 16 + g.ox * CELL; })() : unit ? Math.floor(point.x / unit) * unit : corner0 ? corner0.x : point.x & ~7;
+      const top = forest ? forestUnit(point.y, forest.oy) * 32 + forest.oy * CELL : corner ? Math.round(point.y / CELL) * CELL - CELL / 2 : unit === 16 && auto !== "forest" ? (() => { const g = state && (state.kind === "xp" || state.kind === "mound" || state.kind === "atlas") ? grid16.current : grid16For(doc, point); return Math.floor((point.y - g.oy * CELL) / 16) * 16 + g.oy * CELL; })() : unit ? Math.floor(point.y / unit) * unit : corner0 ? corner0.y : point.y & ~7;
       const width = corner ? CELL : unit || (stamp.current?.w ?? CELL), height = corner ? CELL : unit || (stamp.current?.h ?? CELL);
       Object.assign(outline.style, { display: visible ? "block" : "none", left: `${left * doc.zoom}px`, top: `${top * doc.zoom}px`, width: `${width * doc.zoom}px`, height: `${height * doc.zoom}px` });
     } else {
@@ -612,11 +660,15 @@ export function usePainting(app: Painting) {
         drag.current = { kind: "auto", last: point, erase };
       } else if (auto === "xp" || auto === "xpAnim" || auto === "xpCliff" || auto === "xpCliffTall") {
         const erase = event.altKey;
-        paintXp(doc, point.x >> 4, point.y >> 4, erase);
+        grid16.current = grid16For(doc, point);
+        const at = cell16(point);
+        paintXp(doc, at.x, at.y, erase);
         drag.current = { kind: "xp", last: point, erase };
       } else if (auto === "mound") {
         const erase = event.altKey;
-        paintMound(doc, point.x >> 4, point.y >> 4, erase);
+        grid16.current = grid16For(doc, point);
+        const at = cell16(point);
+        paintMound(doc, at.x, at.y, erase);
         drag.current = { kind: "mound", last: point, erase };
       } else if (auto === "forest") {
         const erase = event.altKey;
@@ -625,7 +677,9 @@ export function usePainting(app: Painting) {
         drag.current = { kind: "forest", last: point, erase, ox, oy };
       } else if (auto === "atlas" || auto === "atlasAnim" || auto === "atlasWall") {
         const erase = event.altKey;
-        paintAtlas(doc, point.x >> 4, point.y >> 4, erase);
+        grid16.current = grid16For(doc, point);
+        const at = cell16(point);
+        paintAtlas(doc, at.x, at.y, erase);
         drag.current = { kind: "atlas", last: point, erase };
       } else if (auto === "corner") {
         const erase = event.altKey, vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
@@ -638,8 +692,9 @@ export function usePainting(app: Painting) {
         putRepeatTile(doc, point.x >> 3, point.y >> 3);
         drag.current = { kind: "stamp", origin: point, last: point };
       } else {
-        putStamp(doc, point);
-        drag.current = { kind: "stamp", origin, last: origin };
+        const at = stampCorner(point);
+        putStamp(doc, at);
+        drag.current = { kind: "stamp", origin: at, last: at };
       }
     } else if (tool === "collision") {
       if (!doc.collision?.scenes.length) { app.say(doc.asset?.kind === "backgrounds" ? "GB Studio hasn't put this background in a scene yet: add it to a scene in GB Studio first, then open it here again." : "Collisions belong to a project background's GB Studio scene."); return; }
@@ -712,8 +767,18 @@ export function usePainting(app: Painting) {
       return;
     }
     if (state.kind === "stroke") {
-      for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) mark(doc, { x, y }, value);
-      state.last = lastPoint.current = point;
+      // Shift held: a straight line from where Shift began, snapped across, down, 45° or a clean pixel step.
+      if (event.shiftKey) {
+        state.lock ??= { origin: state.last, base: doc.pixels.slice() };
+        const end = snapLine(state.lock.origin, point);
+        doc.pixels.set(state.lock.base);
+        for (const [x, y] of linePoints(state.lock.origin.x, state.lock.origin.y, end.x, end.y)) mark(doc, { x, y }, value);
+        state.last = lastPoint.current = end;
+      } else {
+        state.lock = undefined;
+        for (const [x, y] of linePoints(state.last.x, state.last.y, point.x, point.y)) mark(doc, { x, y }, value);
+        state.last = lastPoint.current = point;
+      }
     } else if (state.kind === "spray") {
       for (const [x, y] of mirrorPoints(point.x, point.y, doc.width, doc.height, mirror)) spray(doc.pixels, doc.width, doc.height, x, y, brush, value);
     } else if (state.kind === "cells") {
@@ -737,16 +802,16 @@ export function usePainting(app: Painting) {
       for (const [x, y] of linePoints(state.last.x >> 3, state.last.y >> 3, point.x >> 3, point.y >> 3)) paintAuto(doc, x, y, state.erase);
       state.last = point;
     } else if (state.kind === "xp") {
-      for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintXp(doc, x, y, state.erase);
+      { const from = cell16(state.last), to = cell16(point); for (const [x, y] of linePoints(from.x, from.y, to.x, to.y)) paintXp(doc, x, y, state.erase); }
       state.last = point;
     } else if (state.kind === "mound") {
-      for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintMound(doc, x, y, state.erase);
+      { const from = cell16(state.last), to = cell16(point); for (const [x, y] of linePoints(from.x, from.y, to.x, to.y)) paintMound(doc, x, y, state.erase); }
       state.last = point;
     } else if (state.kind === "forest") {
       for (const [x, y] of linePoints(forestUnit(state.last.x, state.ox), forestUnit(state.last.y, state.oy), forestUnit(point.x, state.ox), forestUnit(point.y, state.oy))) paintForest(doc, x, y, state.erase, state.ox, state.oy);
       state.last = point;
     } else if (state.kind === "atlas") {
-      for (const [x, y] of linePoints(state.last.x >> 4, state.last.y >> 4, point.x >> 4, point.y >> 4)) paintAtlas(doc, x, y, state.erase);
+      { const from = cell16(state.last), to = cell16(point); for (const [x, y] of linePoints(from.x, from.y, to.x, to.y)) paintAtlas(doc, x, y, state.erase); }
       state.last = point;
     } else if (state.kind === "corner") {
       const vertex = { x: Math.round(point.x / CELL), y: Math.round(point.y / CELL) };
@@ -765,7 +830,27 @@ export function usePainting(app: Painting) {
     } else if (state.kind === "shape") {
       if (point.x !== state.start.x || point.y !== state.start.y) state.moved = true;
       doc.pixels.set(state.base);
-      drawShape(doc, state.start, point, value);
+      // Alt held: the box stays as it was and the pointer turns it round its centre; Shift+Alt tilts it in 3D
+      // (across: swing a side away, up and down: lean the top away). Let go and the drag resizes again.
+      if (event.altKey && event.shiftKey && tool !== "line") {
+        const end = state.tilting?.end ?? state.turn?.end ?? point;
+        state.turn = undefined;
+        state.tilting ??= { end, at: point, pitch: state.tilt?.pitch ?? 0, yaw: state.tilt?.yaw ?? 0 };
+        const span = Math.max(16, Math.abs(end.x - state.start.x), Math.abs(end.y - state.start.y));
+        const limit = Math.PI * 0.45, clamp = (value: number) => Math.max(-limit, Math.min(limit, value));
+        state.tilt = { yaw: clamp(state.tilting.yaw + ((point.x - state.tilting.at.x) / span) * Math.PI / 2), pitch: clamp(state.tilting.pitch - ((point.y - state.tilting.at.y) / span) * Math.PI / 2) };
+        drawShape(doc, state.start, end, value, state.angle, state.tilt);
+      } else if (event.altKey && tool !== "line") {
+        const end = state.turn?.end ?? state.tilting?.end ?? point, cx = (state.start.x + end.x) / 2, cy = (state.start.y + end.y) / 2;
+        const toPointer = Math.atan2(point.y - cy, point.x - cx);
+        state.turn ??= { end, from: toPointer, angle: state.angle ?? 0 };
+        state.tilting = undefined;
+        state.angle = state.turn.angle + toPointer - state.turn.from;
+        drawShape(doc, state.start, state.turn.end, value, state.angle, state.tilt);
+      } else {
+        state.turn = state.tilting = undefined;
+        drawShape(doc, state.start, point, value, state.angle, state.tilt);
+      }
     } else if (state.kind === "marquee") {
       const rect = rectFrom(state.start.x, state.start.y, point.x, point.y);
       doc.sel = clipRect(snap ? snapRect(rect, CELL) : rect, doc.width, doc.height);

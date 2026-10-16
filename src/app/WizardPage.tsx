@@ -1,7 +1,7 @@
 /**
  * A wizard as one neo-grotesk page (the author, 2026-10-14: "single page wizards, none of this steps and pages"): a
  * mono line over a 2 px rule, the big title with its green full stop, then everything the wizard needs at once. The
- * Wizards gallery, the Asset Catalog and 3D Snapshot share the look.
+ * Wizards gallery, the Asset Catalog and GB Snapshot share the look.
  */
 import type { ReactNode } from "react";
 import { Dialog } from "../ui/kit";

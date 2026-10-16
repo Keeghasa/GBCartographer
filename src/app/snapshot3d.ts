@@ -1,5 +1,5 @@
 /**
- * 3D Snapshot (the author, 2026-10-14; the Darkroom mockup, review/camera-2026-10-13): a 3D model on a little stage,
+ * GB Snapshot (the author, 2026-10-14; the Darkroom mockup, review/camera-2026-10-13): a 3D model on a little stage,
  * turned by dragging its print, lit by a key, fill and rim light, and its picture taken at a Game Boy size in the four shades. three.js is loaded
  * only when the window opens (this module is imported lazily), so the app stays light.
  */
@@ -185,7 +185,7 @@ export function sampleModel(): THREE.Object3D {
   return group;
 }
 
-/** The model files 3D Snapshot opens (with whatever files they bring: .bin, textures, .mtl). */
+/** The model files GB Snapshot opens (with whatever files they bring: .bin, textures, .mtl). */
 export const MODEL_FILE = /\.(glb|gltf|fbx|obj|dae|usdz|usda|3mf|stl|ply)$/i;
 
 /**

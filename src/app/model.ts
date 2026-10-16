@@ -131,7 +131,8 @@ export interface Doc extends Snapshot {
 }
 export type Point = { x: number; y: number };
 export type Drag =
-  | { kind: "stroke" | "spray" | "cells"; last: Point }
+  | { kind: "stroke"; last: Point; /** Shift held: the line's start and the picture before it. */ lock?: { origin: Point; base: Uint8Array } }
+  | { kind: "spray" | "cells"; last: Point }
   | { kind: "priority"; last: Point; on: boolean }
   | { kind: "stamp"; origin: Point; last: Point }
   /** A box auto-tile stamp stretched over a dragged rectangle (redrawn over `base` as the pointer moves). */
@@ -146,7 +147,9 @@ export type Drag =
   | { kind: "corner"; last: Point; erase: boolean }
   /** The collision brush painting GB Studio collisions tile by tile (Alt or right-drag clears). */
   | { kind: "collision"; last: Point; erase: boolean }
-  | { kind: "shape"; start: Point; base: Uint8Array; /** Dragged off its first pixel (a Pattern fill click floods instead). */ moved?: boolean }
+  | { kind: "shape"; start: Point; base: Uint8Array; /** Dragged off its first pixel (a Pattern fill click floods instead). */ moved?: boolean;
+      /** Alt while dragging turns a rectangle or ellipse: its angle (radians), and where the turn began. */ angle?: number; turn?: { end: Point; from: number; angle: number };
+      /** Shift+Alt tilts it in 3D: pitch and yaw (radians), and where the tilt began. */ tilt?: { pitch: number; yaw: number }; tilting?: { end: Point; at: Point; pitch: number; yaw: number } }
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }
   | { kind: "pan"; x: number; y: number; left: number; top: number };

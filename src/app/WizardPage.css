@@ -1,4 +1,4 @@
-/* A wizard as one page, in the neo-grotesk look (the Wizards gallery's, the Asset Catalog's, 3D Snapshot's). */
+/* A wizard as one page, in the neo-grotesk look (the Wizards gallery's, the Asset Catalog's, GB Snapshot's). */
 .wp { display: flex; flex-direction: column; gap: var(--k-3); min-height: 100%; padding: 0 4px 16px 0; }
 .wp-top { display: flex; justify-content: space-between; gap: var(--k-4); flex-wrap: wrap; padding-bottom: var(--k-2); border-bottom: 2px solid var(--k-ink); font: 500 11px 'JetBrains Mono', ui-monospace, monospace; color: var(--k-ink-3); text-transform: uppercase; letter-spacing: .08em; }
 .wp-top span:last-child { text-transform: none; letter-spacing: 0; }

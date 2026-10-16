@@ -279,6 +279,62 @@ export function linePoints(x0: number, y0: number, x1: number, y1: number): [num
   return points;
 }
 
+/**
+ * Shift on the brush: the point pulled onto the nearest pixel-art line through the origin: across, down, 45°, and the
+ * 2:1 and 1:2 steps (and 3:1 / 1:3), so the line stays clean on the pixel grid.
+ */
+const SNAP_STEPS: readonly [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1], [2, 1], [2, -1], [1, 2], [1, -2], [3, 1], [3, -1], [1, 3], [1, -3]];
+export function snapLine(origin: { x: number; y: number }, point: { x: number; y: number }): { x: number; y: number } {
+  const dx = point.x - origin.x, dy = point.y - origin.y;
+  if (!dx && !dy) return { ...origin };
+  let best = origin, bestOff = Infinity;
+  for (const [sx, sy] of SNAP_STEPS) {
+    // Whole steps along the direction, so every point lands on the grid.
+    const steps = Math.round((dx * sx + dy * sy) / (sx * sx + sy * sy));
+    const x = origin.x + steps * sx, y = origin.y + steps * sy;
+    const off = Math.hypot(point.x - x, point.y - y);
+    if (off < bestOff) { bestOff = off; best = { x, y }; }
+  }
+  return best;
+}
+
+/**
+ * A rectangle or ellipse turned round its box's centre (the author, 2026-10-16): `angle` flat on the picture (Alt
+ * while dragging), and `tilt` in 3D (Shift+Alt): pitch leans the top away, yaw swings a side away, seen in a little
+ * perspective. Outline: the pixels along its edge. Filled: every pixel whose centre is inside.
+ */
+export function rotatedShape(kind: "rect" | "ellipse", a: { x: number; y: number }, b: { x: number; y: number }, angle: number, filled: boolean, tilt: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 }): [number, number][] {
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, rx = Math.abs(b.x - a.x) / 2 + (filled ? 0.5 : 0), ry = Math.abs(b.y - a.y) / 2 + (filled ? 0.5 : 0);
+  const distance = 3 * Math.max(rx, ry, 4);
+  const [cp, sp, cw, sw, cr, sr] = [Math.cos(tilt.pitch), Math.sin(tilt.pitch), Math.cos(tilt.yaw), Math.sin(tilt.yaw), Math.cos(angle), Math.sin(angle)];
+  // A point of the flat shape, tilted (pitch round x, then yaw round y), seen in perspective, then turned on the picture.
+  const place = (x: number, y: number): [number, number] => {
+    const y1 = y * cp, z1 = y * sp;
+    const x2 = x * cw + z1 * sw, z2 = -x * sw + z1 * cw;
+    const scale = distance / (distance + z2), px = x2 * scale, py = y1 * scale;
+    return [cx + px * cr - py * sr, cy + px * sr + py * cr];
+  };
+  const count = kind === "rect" ? 0 : Math.max(24, Math.ceil((rx + ry) * 2));
+  const polygon = kind === "rect" ? [place(-rx, -ry), place(rx, -ry), place(rx, ry), place(-rx, ry)]
+    : Array.from({ length: count }, (_, at) => { const t = (at / count) * Math.PI * 2; return place(rx * Math.cos(t), ry * Math.sin(t)); });
+  if (filled) {
+    const out: [number, number][] = [];
+    const ys = polygon.map(([, y]) => y), xs = polygon.map(([x]) => x);
+    for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y += 1) for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x += 1) {
+      // Even-odd: a pixel centre is inside when a ray from it crosses the edge an odd number of times.
+      let inside = false;
+      for (let at = 0, back = polygon.length - 1; at < polygon.length; back = at, at += 1) {
+        const [x1, y1] = polygon[at], [x0, y0] = polygon[back];
+        if ((y1 > y) !== (y0 > y) && x < ((x0 - x1) * (y - y1)) / (y0 - y1) + x1) inside = !inside;
+      }
+      if (inside) out.push([x, y]);
+    }
+    return out;
+  }
+  const corners = polygon.map(([x, y]) => [Math.round(x), Math.round(y)] as [number, number]);
+  return corners.flatMap((corner, at) => { const next = corners[(at + 1) % corners.length]; return linePoints(corner[0], corner[1], next[0], next[1]); });
+}
+
 export function rectFrom(x0: number, y0: number, x1: number, y1: number): Rect {
   return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0) + 1, h: Math.abs(y1 - y0) + 1 };
 }

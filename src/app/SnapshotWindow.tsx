@@ -1,5 +1,5 @@
 /**
- * The 3D Snapshot window (the author, 2026-10-14: the Darkroom mockup, improved; the pictures under the print). Left:
+ * The GB Snapshot window (the author, 2026-10-14: the Darkroom mockup, improved; the pictures under the print). Left:
  * the model, the light rig (key, fill and rim, dragged round the model seen from above) and the settings. Middle: the
  * print, live in the four shades at a Game Boy size; drag it to turn the model, scroll to zoom. Take picture adds the
  * print to the pictures below it; each opens as a new picture to paint and save. Never called a camera after any
@@ -181,10 +181,10 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} full title="3D Snapshot" sub="Turn a 3D model, light it, and take its picture in the four shades" icon={<Box size={18} />}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} full title="GB Snapshot" sub="Turn a 3D model, light it, and take its picture in the four shades" icon={<Box size={18} />}>
       <div className="sw-page">
       <div className="sw-top"><span>Turn · light · take</span><span>{model} · {triangles.toLocaleString()} triangles · {settings.width} × {settings.height}</span></div>
-      <h1 className="sw-h1"><b>3D Snapshot</b></h1>
+      <h1 className="sw-h1"><b>GB Snapshot</b></h1>
       <div className="sw" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void open([...event.dataTransfer.files]); }}>
         <aside className="k-card sw-controls">
           <div className="sw-group">

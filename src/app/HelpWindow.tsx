@@ -47,7 +47,7 @@ export function HelpWindow({ onClose, onAbout }: { onClose: () => void; onAbout:
           <Row name="Shades" keys={["1–4", "0"]}>Pick a shade. 0 is see-through, in a picture that has see-through pixels.</Row>
           <Row name="Brush size" keys={["[", "]"]}>Smaller or bigger: pixels, or tiles with the palette brush.</Row>
           <Row name="Mirror" keys={["Shift+M"]}>Paint both halves at once: off, left-right, top-bottom, both.</Row>
-          <Row name="Draft layer">A see-through layer (the layers button in the tool column): what you paint shows at 50 % over the picture, so the old picture stays visible under the new. Commit keeps it (one undo takes it back), Wipe puts the picture back. Save writes the picture with the draft on it.</Row>
+          <Row name="Draft layer">A layer to paint on (Draft, under the brush size): the old picture fades (20 % to start, the Old slider changes it) and what you paint shows at full strength. Commit keeps it (one undo takes it back), Wipe puts the picture back. Save writes the picture with the draft on it.</Row>
           <Row name="Linked tiles" keys={["K"]}>Painting a tile paints every identical copy of it too (one-color tiles aren't linked). One undo step per stroke.</Row>
           <Row name="Seamless view">The tile under the pointer (or the selection) repeated 3 × 3 above the picture, to check that it tiles cleanly.</Row>
         </Section>

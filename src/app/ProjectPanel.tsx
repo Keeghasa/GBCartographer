@@ -52,6 +52,8 @@ const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchPa
 
 export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages, unreadMessages, slotsVersion, stateOf, onOpen, onUseStamp, onUseFont, onAutotile, onMenu }: ProjectPanelProps) {
   const [filter, setFilter] = useState("");
+  /** The stamps' tag filter (moved here from the old saved-stamps strip, the author, 2026-10-16). */
+  const [tag, setTag] = useState<string | null>(null);
   // Which stamp shelf shows when the folder is stamps (Objects, Repeat tiles, Autotiles, Animated tiles).
   const [group, setGroup] = useState<StampGroup>(() => readStored("gbc-stamp-group", "objects" as StampGroup));
   const [sheet, setSheet] = useState<{ kind: AssetKind; image: HTMLImageElement; cells: Map<string, SheetCell> } | null>(null);
@@ -124,7 +126,9 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
 
   const label = kind === "stamps" ? STAMP_GROUPS.find(([id]) => id === group)![1] : ASSET_KINDS.find(([id]) => id === kind)?.[1] ?? "";
   const wanted = filter.trim().toLowerCase();
-  const matching = project.assets.filter((asset) => asset.kind === kind && (kind !== "stamps" || stampGroup(asset) === group) && (!wanted || asset.name.toLowerCase().includes(wanted)));
+  const stampTags = kind === "stamps" ? [...new Set(project.assets.filter((asset) => asset.kind === "stamps" && stampGroup(asset) === group).flatMap((asset) => asset.tags ?? []))].sort() : [];
+  const activeTag = tag && stampTags.includes(tag) ? tag : null;
+  const matching = project.assets.filter((asset) => asset.kind === kind && (kind !== "stamps" || stampGroup(asset) === group) && (!wanted || asset.name.toLowerCase().includes(wanted)) && (!activeTag || Boolean(asset.tags?.includes(activeTag))));
   // Hidden ones go into the Hidden folder; pinned ones first, then the rest.
   const hiddenHere = matching.filter((asset) => hidden.has(hideKey(asset)));
   const visible = matching.filter((asset) => !hidden.has(hideKey(asset)));
@@ -160,6 +164,10 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span></div>
         <h2 className="k-heading">{label}</h2>
         <input type="search" className="k-input" placeholder={`Filter ${label.toLowerCase()}`} aria-label={`Filter ${label.toLowerCase()} by name`} value={filter} onChange={(event) => setFilter(event.target.value)} />
+        {stampTags.length > 0 && <div className="app-strip-tags" role="group" aria-label="Filter stamps by tag">
+          <button type="button" className="k-btn k-btn--sm" aria-pressed={!activeTag} onClick={() => setTag(null)}>All</button>
+          {stampTags.map((item) => <button key={item} type="button" className="k-btn k-btn--sm" aria-pressed={tag === item} onClick={() => setTag(tag === item ? null : item)}>{item}</button>)}
+        </div>}
         <div className="app-cards gbp-assets" role="list">
           {folderShows && (
             <span role="listitem" className="app-card-slot">
