@@ -9,6 +9,7 @@
  * path>/: the first time a project's backups are touched, those are copied in, checked, and the old folder is renamed
  * "<name>.moved-to-project" (kept, never deleted).
  */
+import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
@@ -44,7 +45,20 @@ export interface BackupFile { file: string; versions: BackupVersion[]; current?:
 /** The folder holding one project's backups: <project>/Cartographer/backups (`backupDir`: where older ones may wait). */
 export function projectBackupDir(backupDir: string, project: string): string {
   migrateBackups(backupDir, project);
+  // The dev server keeps its own data folder, so a project's old backups from the desktop app are looked for there too
+  // (Chorbi's waited in the desktop app's folder while it was opened on the dev server, 2026-10-15).
+  const desktop = desktopBackupDir();
+  if (resolve(desktop) !== resolve(backupDir)) migrateBackups(desktop, project);
   return join(resolve(project), OWN_FOLDER, "backups");
+}
+
+/** The desktop app's backups folder (Electron's userData for "GB Cartographer", then backups). */
+export function desktopBackupDir(): string {
+  const home = homedir();
+  const data = process.platform === "darwin" ? join(home, "Library", "Application Support")
+    : process.platform === "win32" ? (process.env.APPDATA ?? join(home, "AppData", "Roaming"))
+    : (process.env.XDG_CONFIG_HOME ?? join(home, ".config"));
+  return join(data, "GB Cartographer", "backups");
 }
 
 /** Where a project's backups were kept before they moved into it: the app's data folder, keyed by the project's path. */
