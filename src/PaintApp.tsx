@@ -12,7 +12,7 @@ import { applyFont, loadFont, type FontChoice } from "./ui/theme";
 import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
-import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
+import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
 import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
@@ -1259,8 +1259,9 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       const context = canvas.getContext("2d", { willReadFrequently: true })!;
       context.drawImage(bitmap, 0, 0);
       const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, false, false);
-      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" ? asset.autotile : null;
-      return kind ? { kind, pixels: Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
+      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest" ? asset.autotile : null;
+      // A forest keeps its see-through pixels: its trees stand on the grass drawn under them.
+      return kind ? { kind, pixels: kind === "forest" ? Uint8Array.from(picture.pixels) : Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
       return null;
@@ -1781,6 +1782,21 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
     if (reloaded.length) say(`${reloaded.join(", ")} changed on disk and ${reloaded.length === 1 ? "was" : "were"} reloaded.`);
     bump();
+  }
+
+  /**
+   * Make shade 1 transparent (the author, 2026-10-16): the selection's lightest shade becomes see-through, e.g. to cut
+   * a sprite or stamp out of its background. Only where GB Studio has see-through pixels (sprites, emotes, stamps…).
+   */
+  function clearLightest() {
+    if (!doc?.sel || !(doc.hasAlpha || canSeeThrough(doc))) return;
+    dropFloat(doc);
+    pushUndo(doc);
+    doc.hasAlpha = true;
+    const changed = replaceShade(doc.pixels, doc.width, doc.height, 0, CLEAR, doc.sel);
+    if (!changed) { doc.undo.pop(); return say("No shade 1 pixels in the selection."); }
+    touch(doc);
+    say(`${changed} shade 1 pixel${changed === 1 ? "" : "s"} made see-through.`);
   }
 
   /**
@@ -2761,6 +2777,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { label: "Paste flipped copy left-right", icon: <FlipHorizontal size={15} />, title: "A mirrored copy beside the selection (the original stays), ready to drag", onSelect: () => pasteFlipped("x") },
     { label: "Paste flipped copy top-bottom", icon: <FlipVertical size={15} />, title: "A mirrored copy under the selection (the original stays), ready to drag", onSelect: () => pasteFlipped("y") },
     { separator: true },
+    { label: "Make shade 1 transparent", icon: <Eraser size={15} />, disabled: !(doc.hasAlpha || canSeeThrough(doc)), title: doc.hasAlpha || canSeeThrough(doc) ? "The selection's lightest shade becomes see-through" : `GB Studio has no see-through pixels on ${doc.asset?.kind ?? "this kind of picture"} (only pictures with see-through pixels and stamps)`, onSelect: clearLightest },
+    { separator: true },
     { label: "Copy", icon: <Copy />, keys: "Ctrl+C", onSelect: () => { if (copySelection()) say("Copied the selection"); } },
     { label: "Deselect", icon: <X />, keys: "Esc", onSelect: () => { dropFloat(doc); doc.sel = null; bump(); } },
   ] : [];
@@ -3064,7 +3082,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       {(wizard === "cave" || wizard === "world") && (
         <GeneratorWizard mode={wizard} projectName={project?.name ?? null} limit={budget.limit} onClose={() => setWizard(null)}
           onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
-          takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
+          takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
       {wizard === "budget" && doc && (
         <BudgetFixer picture={{ name: doc.name, pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }}

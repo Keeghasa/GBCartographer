@@ -245,7 +245,7 @@ function placeStairs(grid: Uint8Array, w: number, h: number) {
 }
 
 /** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
-export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "path"; pixels: Uint8Array; width: number }
+export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "path" | "forest"; pixels: Uint8Array; width: number }
 
 /**
  * The cave drawn in the author's style (2026-10-10), tile by tile: black for nothing (shade 3), light floors (shade 1),
@@ -254,7 +254,11 @@ export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "p
  * With `tiles`, the project's own auto-tile stamp draws it instead: a wall-face sheet (F) the floor, walls and
  * nothing; a Wang sheet (W, or E for edges only) the rock around the floor (the floor stays plain).
  */
-export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Generated {
+export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Generated {
+  // A forest stamp of the project's (the author, 2026-10-17: "Teal forest") stands in for the catalog's pine or round
+  // forest; it needs 16 px cells, like them.
+  const forest = given?.kind === "forest" ? { width: given.width, height: given.pixels.length / given.width, pixels: given.pixels } : null;
+  const tiles = forest ? null : given;
   const { w, h, grid } = caveGrid(settings);
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
@@ -274,13 +278,14 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
     const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
     out.pixels.fill(3);
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
-    if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32", true);
+    if (forest) paintWoods(canvasOut, rock, cw, ch, false, forest);
+    else if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32", true);
     // Room Border (the author's, 2026-10-14): the dungeon's walls by default, an XP area beyond the map's edge too.
     else if (walls === "room") paintXp(canvasOut, sheet("room-border"), rock, cw, ch, true);
     else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
     else if (walls === "pines" || walls === "oaks") paintWoods(canvasOut, rock, cw, ch, walls === "pines");
     else paintSliced(canvasOut, sheet("pat-stone-wall"), rock, cw, ch);
-    const woods = walls === "pines" || walls === "oaks";
+    const woods = Boolean(forest) || walls === "pines" || walls === "oaks";
     if (!woods) paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
   } else for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
@@ -321,11 +326,11 @@ export function drawCave(settings: CaveSettings, tiles?: CaveTiles | null): Gene
  * then the rock as the pine or round forest brush on 32 px units wherever a whole unit is rock, and a lone tree from
  * the author's Outdoor tiles in each rock cell left over, so no rock is left bare.
  */
-function paintWoods(out: { width: number; height: number; pixels: Uint8Array }, rock: (x: number, y: number) => boolean, cw: number, ch: number, pines: boolean) {
+function paintWoods(out: { width: number; height: number; pixels: Uint8Array }, rock: (x: number, y: number) => boolean, cw: number, ch: number, pines: boolean, art?: { width: number; height: number; pixels: Uint8Array }) {
   paintXp(out, sheet("xp-grass"), () => true, cw, ch, true);
   const uw = Math.ceil(cw / 2), uh = Math.ceil(ch / 2);
   const unit = (ux: number, uy: number) => [0, 1].every((dy) => [0, 1].every((dx) => { const x = ux * 2 + dx, y = uy * 2 + dy; return x >= cw || y >= ch || rock(x, y); }));
-  paintForest(out, sheet(pines ? "pines" : "round"), unit, uw, uh);
+  paintForest(out, art ?? sheet(pines ? "pines" : "round"), unit, uw, uh);
   for (let y = 0; y < ch; y += 1) for (let x = 0; x < cw; x += 1) {
     if (!rock(x, y) || unit(x >> 1, y >> 1)) continue;
     if (!outdoorTile(out, pines ? "pine" : "tree", x * 16, y * 16)) OUTDOOR[pines ? "pine" : "tree"].draw(new Pen(out, x * 16, y * 16, 16));
