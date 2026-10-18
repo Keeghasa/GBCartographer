@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
 import { Button, Chip, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
-import { CAVE_DEFAULTS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, wallsOf, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
+import { CAVE_DEFAULTS, CAVE_FLOORS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, floorOf, wallsOf, type CaveFloor, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
 import { defaultName, isSuggestedName, type NameKind } from "./names";
@@ -29,7 +29,7 @@ interface Props {
   onSave: (picture: Generated, name: string) => Promise<boolean>;
   /** Cuts it into one background per screen (sharing a tile at each edge) and lays them out as a Map Room map. */
   onSaveMap: (picture: Generated, name: string, columns: number, rows: number) => Promise<boolean>;
-  /** The project's stamps a cave can be drawn with (Wall face F, Wang W, Wang edges E), and how to read one. */
+  /** The project's stamps a cave can be drawn with (F, W, E sheets; forest, cliff and area stamps for its walls, area stamps for its floor), and how to read one. */
   tileStamps: Asset[];
   loadTiles: (stamp: Asset) => Promise<CaveTiles | null>;
   /** Names the project's backgrounds already have (a suggested name is never one of them). */
@@ -62,8 +62,11 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   const theme = themeOf(themes, (mode === "cave" ? cave.theme : world.theme) ?? "");
   const columns = mode === "cave" ? cave.columns : world.columns, rows = mode === "cave" ? cave.rows : world.rows;
 
-  // Own tiles: the cave's from an F / W / E stamp; the overworld's shores from a C stamp and roads from a P stamp.
+  // Own tiles: the cave's walls from an F / W / E / forest / cliff / area stamp and its floor from an area stamp; the
+  // overworld's shores from a C stamp and roads from a P stamp.
   const [tilesFile, setTilesFile] = useState("");
+  const [floorFile, setFloorFile] = useState("");
+  const [floorSheet, setFloorSheet] = useState<CaveTiles | null>(null);
   const [shoreFile, setShoreFile] = useState("");
   const [roadFile, setRoadFile] = useState("");
   const [sheet, setSheet] = useState<CaveTiles | null>(null);
@@ -79,11 +82,14 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
     return () => { live = false; };
   }, [file]);
   useSheet(tilesFile, setSheet);
+  useSheet(floorFile, setFloorSheet);
   useSheet(shoreFile, setShore);
   useSheet(roadFile, setRoad);
-  const stampsOf = (...kinds: string[]) => tileStamps.filter((stamp) => kinds.includes(stamp.autotile ?? ""));
+  // An area (X) stamp must be the 3 × 4 layout (48 × 64) to paint a cave; RPG Maker's 2 × 3 ground sheets can't yet.
+  const stampsOf = (...kinds: string[]) => tileStamps.filter((stamp) => kinds.includes(stamp.autotile ?? "") && (stamp.autotile !== "xp" || (stamp.width === 48 && stamp.height === 64)));
+  const WALL_KINDS = ["wallface", "wang", "edges", "forest", "xpCliff", "xpCliffTall", "xp"];
   const stampOptions = (kinds: string[], none: string) => [{ value: "placeholder", label: none }, ...stampsOf(...kinds).map((stamp) => { const glyph = autotileOf(stamp.autotile)?.glyph ?? ""; return { value: stamp.file, label: stamp.name.endsWith(`(${glyph})`) ? stamp.name : `${stamp.name} (${glyph})` }; })];
-  const picture = useMemo(() => mode === "cave" ? drawCave(cave, sheet) : drawWorld(world, { shore, road }), [mode, cave, world, sheet, shore, road]);
+  const picture = useMemo(() => mode === "cave" ? drawCave(cave, sheet, floorSheet) : drawWorld(world, { shore, road }), [mode, cave, world, sheet, floorSheet, shore, road]);
   const tiles = useMemo(() => countUniqueTiles(picture.pixels, picture.width, picture.height, false), [picture]);
 
   // A state ref: the dialog mounts its content after this component's first effects, so redraw when the canvas arrives.
@@ -130,17 +136,22 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
               options={[{ value: "greens", label: "GB greens" }, ...themes.map((theme) => ({ value: theme.id, label: theme.name }))]} />
             <span className="k-muted k-xs">{theme ? theme.credit : "No palettes: the greens"}</span>
           </div>
-          {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff for caves, Stone wall for dungeons, or a forest) or one of the project's auto-tile stamps set to Wang (47) for the rock">
+          {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff for caves, Room Border for dungeons, a forest…) or one of the project's stamps: a Wall face (F), Wang (W or E), forest, cliff or area (X) stamp">
             <Select label="Walls" value={tilesFile || `cat:${wallsOf(cave)}`} onChange={(file) => { if (file.startsWith("cat:")) { setTilesFile(""); setC({ walls: file.slice(4) as CaveWalls }); } else setTilesFile(file); }}
-              options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["wallface", "wang", "edges", "forest", "xpCliff"], "").slice(1)]} />
-            <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges", "forest", "xpCliff").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W, E, forest or cliff stamps") : "Stamps marked F, W, E, forest or cliff (Asset Catalog → Auto-tiles) can draw it"}</span>
+              options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(WALL_KINDS, "").slice(1)]} />
+            <span className="k-muted k-xs">{stampsOf(...WALL_KINDS).length ? (tilesFile ? "Your stamp draws the walls; Make background keeps its tiles" : "Or one of your F, W, E, forest, cliff or area stamps") : "Your own F, W, E, forest, cliff or area stamps (Asset Catalog → Auto-tiles) can draw it too"}</span>
+          </div>}
+          {mode === "cave" && !(sheet && sheet.kind !== "forest" && sheet.kind !== "xpCliff" && sheet.kind !== "xpCliffTall" && sheet.kind !== "xp") && <div className="k-stack k-stack--tight" title="The catalog's floor over the open cells (Plain: the flat light shade), or one of the project's area (X) stamps of 48 × 64">
+            <Select label="Floor" value={floorFile || `cat:${floorOf(cave, sheet?.kind === "forest")}`} onChange={(file) => { if (file.startsWith("cat:")) { setFloorFile(""); setC({ floor: file.slice(4) as CaveFloor }); } else setFloorFile(file); }}
+              options={[...CAVE_FLOORS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["xp"], "").slice(1)]} />
+            <span className="k-muted k-xs">{floorFile ? "Your stamp draws the floor" : stampsOf("xp").length ? "Or one of your area (X) stamps" : "Under a forest the floor shows all round"}</span>
           </div>}
           {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
             <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Catalog shores")} />
             <Select label="Roads" value={roadFile || "placeholder"} onChange={(file) => setRoadFile(file === "placeholder" ? "" : file)} options={stampOptions(["path"], "Catalog roads")} />
             <span className="k-muted k-xs">{stampsOf("corner", "path").length ? "Your Corner Wang stamp for shores, your Road stamp for roads" : "Corner Wang and Road stamps (Asset Catalog → Auto-tiles: Overworld shore, Overworld road) can draw them"}</span>
           </div>}
-          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style, walls: undefined }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
+          {mode === "cave" && <Segmented fill size="sm" label="Style" value={cave.style} onChange={(style) => { setC({ style, walls: undefined, floor: undefined }); if (isSuggestedName(nameKind(), name)) rollName(nameKind(style)); }} options={[{ value: "cave", label: "Cave" }, { value: "dungeon", label: "Dungeon" }]} />}
           <Setting label="Screens wide" value={columns} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ columns: value }) : setW({ columns: value })} />
           <Setting label="Screens tall" value={rows} min={1} max={mode === "cave" ? 4 : 6} onChange={(value) => mode === "cave" ? setC({ rows: value }) : setW({ rows: value })} />
           {mode === "cave" && <>

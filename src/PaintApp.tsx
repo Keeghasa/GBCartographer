@@ -1259,9 +1259,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       const context = canvas.getContext("2d", { willReadFrequently: true })!;
       context.drawImage(bitmap, 0, 0);
       const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, false, false);
-      const kind = asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest" || asset.autotile === "xpCliff" ? asset.autotile : null;
-      // A forest or cliff keeps its see-through pixels: they're drawn over what's under them.
-      return kind ? { kind, pixels: kind === "forest" || kind === "xpCliff" ? Uint8Array.from(picture.pixels) : Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
+      const kinds = ["wallface", "wang", "edges", "corner", "path", "forest", "xpCliff", "xpCliffTall", "xp"] as const;
+      const kind = kinds.find((item) => item === asset.autotile) ?? null;
+      // An area stamp (forest, cliff, area) keeps its see-through pixels: its pieces are put over what's under them.
+      const areaKind = kind === "forest" || kind === "xpCliff" || kind === "xpCliffTall" || kind === "xp";
+      return kind ? { kind, pixels: areaKind ? Uint8Array.from(picture.pixels) : Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
       return null;
@@ -3082,7 +3084,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       {(wizard === "cave" || wizard === "world") && (
         <GeneratorWizard mode={wizard} projectName={project?.name ?? null} limit={budget.limit} onClose={() => setWizard(null)}
           onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
-          takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest" || asset.autotile === "xpCliff") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
+          takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest" || asset.autotile === "xpCliff" || asset.autotile === "xpCliffTall" || asset.autotile === "xp") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
       {wizard === "budget" && doc && (
         <BudgetFixer picture={{ name: doc.name, pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }}

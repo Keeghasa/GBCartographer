@@ -61,6 +61,8 @@ export interface CaveSettings {
   theme?: string;
   /** The catalog's walls (16 px cells and up; unset: cliff32 for a cave, stone for a dungeon). */
   walls?: CaveWalls;
+  /** The catalog's floor over the open cells (unset: a dungeon's tiled floor, grass under a forest, else the stone floor). */
+  floor?: CaveFloor;
 }
 
 /**
@@ -75,16 +77,31 @@ export const CAVE_WALLS: { value: CaveWalls; label: string }[] = [
 ];
 export const wallsOf = (settings: CaveSettings): CaveWalls => settings.walls ?? (settings.style === "dungeon" ? "room" : "cliff32");
 
+/**
+ * The catalog floors (the author, 2026-10-17: "why can't I choose a floor?"): an XP area sheet painted over the open
+ * cells, its edges fitted where it meets the walls; "plain" is the flat light shade, as the 8 px cave had.
+ */
+export type CaveFloor = "stone" | "tile" | "tiles" | "wood" | "carpet" | "grass" | "dirt" | "sand" | "snow" | "flowers" | "plain";
+export const CAVE_FLOORS: { value: CaveFloor; label: string }[] = [
+  { value: "stone", label: "Stone floor" }, { value: "tile", label: "Tiled floor" }, { value: "tiles", label: "Floor tiles" },
+  { value: "wood", label: "Wood floor" }, { value: "carpet", label: "Carpet" }, { value: "grass", label: "Grass" }, { value: "dirt", label: "Dirt" },
+  { value: "sand", label: "Sand" }, { value: "snow", label: "Snow" }, { value: "flowers", label: "Flower bed" }, { value: "plain", label: "Plain" },
+];
+const FLOOR_SHEETS: Record<Exclude<CaveFloor, "plain">, Parameters<typeof sheet>[0]> = { stone: "xp-stone-floor", tile: "xp-tile-floor", tiles: "xp-ice", wood: "xp-wood-floor", carpet: "xp-carpet", grass: "xp-grass", dirt: "xp-dirt", sand: "xp-sand", snow: "xp-snow", flowers: "xp-flowers" };
+/** The floor it wears: the one picked, else grass under a forest (`forest`: a forest stamp's), a dungeon's tiled floor, or a cave's stone floor. */
+export const floorOf = (settings: CaveSettings, forest = false): CaveFloor => settings.floor ?? (forest || settings.walls === "pines" || settings.walls === "oaks" ? "grass" : settings.style === "dungeon" ? "tile" : "stone");
+
 export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 16, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 5, connected: true, stairs: true };
 
 /** The cave's grid: 1 rock, 0 floor (2 stairs), the edge always rock. */
-export function caveGrid(settings: CaveSettings): { w: number; h: number; grid: Uint8Array } {
+export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array } {
   // 32-pixel cells don't divide a 144-pixel screen: the grid runs one row past it and the picture is cut to the screens.
   const w = Math.max(3, Math.ceil(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.ceil(settings.rows * SCREEN_H / settings.cell));
   const random = seeded(settings.seed);
   // The rock along the top is thick enough to show cliff top above its face (the author, 2026-10-14: the top row was
   // all wall): a cliff face is one cell (16 px walls) or two (32 px) tall, plus a row of top above it.
-  const walls = wallsOf(settings), top = settings.cell === 16 && walls === "cliff32" ? 3 : settings.cell === 16 && walls === "cliff16" ? 2 : 1;
+  // `topRows`: the rows a project's own cliff stamp needs (the wizard knows which it is; this grid only knows the catalog's).
+  const walls = wallsOf(settings), top = settings.cell !== 16 ? 1 : topRows ?? (walls === "cliff32" ? 3 : walls === "cliff16" ? 2 : 1);
   const edge = (x: number, y: number) => x === 0 || y < top || x === w - 1 || y === h - 1;
   let grid = new Uint8Array(w * h).fill(1);
   if (settings.style === "cave") {
@@ -245,7 +262,7 @@ function placeStairs(grid: Uint8Array, w: number, h: number) {
 }
 
 /** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
-export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "path" | "forest" | "xpCliff"; pixels: Uint8Array; width: number }
+export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "path" | "forest" | "xpCliff" | "xpCliffTall" | "xp"; pixels: Uint8Array; width: number }
 
 /**
  * The cave drawn in the author's style (2026-10-10), tile by tile: black for nothing (shade 3), light floors (shade 1),
@@ -254,15 +271,14 @@ export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "p
  * With `tiles`, the project's own auto-tile stamp draws it instead: a wall-face sheet (F) the floor, walls and
  * nothing; a Wang sheet (W, or E for edges only) the rock around the floor (the floor stays plain).
  */
-export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Generated {
-  // A forest stamp of the project's (the author, 2026-10-17: "Teal forest") stands in for the catalog's pine or round
-  // forest; it needs 16 px cells, like them.
-  // A Cliff stamp the same way for the catalog's Cliff, at the stamp's own height: its face one cell tall, as it paints
-  // (the author, 2026-10-17: two cells was too tall).
-  const art = given?.kind === "forest" || given?.kind === "xpCliff" ? { width: given.width, height: given.pixels.length / given.width, pixels: given.pixels } : null;
-  const forest = given?.kind === "forest" ? art : null, cliff = given?.kind === "xpCliff" ? art : null;
-  const tiles = art ? null : given;
-  const { w, h, grid } = caveGrid(settings);
+export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floorGiven?: CaveTiles | null): Generated {
+  // The project's own area stamps stand in for the catalog's (the author, 2026-10-17): a forest, a Cliff (its face one
+  // cell tall, as it paints) or a tall Cliff (two cells) or an area (X) for the walls, and an area (X) for the floor.
+  // They need 16 px cells, like the catalog's art; an F / W / E sheet draws tile by tile below instead.
+  const asArt = (t: CaveTiles) => ({ width: t.width, height: t.pixels.length / t.width, pixels: t.pixels });
+  const area = given && (given.kind === "forest" || given.kind === "xpCliff" || given.kind === "xpCliffTall" || given.kind === "xp") ? given : null;
+  const tiles = area ? null : given;
+  const { w, h, grid } = caveGrid(settings, area?.kind === "xpCliffTall" ? 3 : area?.kind === "xpCliff" ? 2 : area ? 1 : undefined);
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
   const theme = themeOf(CAVE_THEMES, settings.theme ?? "");
@@ -274,23 +290,31 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Gene
   const blit = (x: number, y: number, column: number, row: number) => {
     for (let py = 0; py < 8; py += 1) out.pixels.set(tiles!.pixels.subarray((row * 8 + py) * tiles!.width + column * 8, (row * 8 + py) * tiles!.width + column * 8 + 8), (y * 8 + py) * out.width + x * 8);
   };
-  // With no stamp of the author's chosen and cells of 16 px or more: drawn with the library's pieces (2026-10-13), the
-  // rock as cliffs (Cliff, its face where the floor begins below) and the floor a stone floor area (Stone floor).
+  // With no F / W / E sheet and cells of 16 px or more: drawn with the library's pieces (2026-10-13), the rock as the
+  // walls picked (or the project's own stamp) and the open cells as the floor picked.
   if (!tiles && size >= 16) {
     const sub = size / 16, cw = w * sub, ch = h * sub, canvasOut = { width: out.width, height: out.height, pixels: out.pixels };
     const open = (x: number, y: number) => grid[Math.floor(y / sub) * w + Math.floor(x / sub)] !== 1;
     out.pixels.fill(3);
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
-    if (forest) paintWoods(canvasOut, rock, cw, ch, false, forest);
-    else if (cliff) paintCliffs(canvasOut, rock, cw, ch, 0, 0, false, true, cliff);
+    const woods = area?.kind === "forest" || (!area && (walls === "pines" || walls === "oaks"));
+    const ground = floorOf(settings, area?.kind === "forest"), groundArt = floorGiven?.kind === "xp" ? asArt(floorGiven) : ground === "plain" ? null : sheet(FLOOR_SHEETS[ground]);
+    const paintGround = (where: (x: number, y: number) => boolean, beyond: boolean) => {
+      if (groundArt) paintXp(canvasOut, groundArt, where, cw, ch, beyond);
+      else for (let y = 0; y < ch; y += 1) for (let x = 0; x < cw; x += 1) if (where(x, y)) new Pen(out, x * 16, y * 16, 16).fill(1);
+    };
+    // A forest stands on its floor: the floor goes down everywhere first, the trees over the rock.
+    if (woods) paintGround(() => true, true);
+    if (area?.kind === "forest") paintWoods(canvasOut, rock, cw, ch, false, asArt(area));
+    else if (area?.kind === "xpCliff" || area?.kind === "xpCliffTall") paintCliffs(canvasOut, rock, cw, ch, 0, 0, area.kind === "xpCliffTall", true, asArt(area));
+    else if (area?.kind === "xp") paintXp(canvasOut, asArt(area), rock, cw, ch, true);
     else if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32", true);
     // Room Border (the author's, 2026-10-14): the dungeon's walls by default, an XP area beyond the map's edge too.
     else if (walls === "room") paintXp(canvasOut, sheet("room-border"), rock, cw, ch, true);
     else if (walls === "brick") paintXp(canvasOut, sheet("xp-brick-square"), rock, cw, ch, true);
     else if (walls === "pines" || walls === "oaks") paintWoods(canvasOut, rock, cw, ch, walls === "pines");
     else paintSliced(canvasOut, sheet("pat-stone-wall"), rock, cw, ch);
-    const woods = Boolean(forest) || walls === "pines" || walls === "oaks";
-    if (!woods) paintXp(canvasOut, sheet(settings.style === "dungeon" ? "xp-tile-floor" : "xp-stone-floor"), open, cw, ch);
+    if (!woods) paintGround(open, false);
   } else for (let y = 0; y < th; y += 1) for (let x = 0; x < tw; x += 1) {
     const pen = new Pen(out, x * 8, y * 8, 8);
     if (tiles?.kind === "wallface") {
@@ -326,12 +350,11 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Gene
 }
 
 /**
- * A forest for walls (the author, 2026-10-13: "a forest style, using the pine or oak"): grass everywhere (Grass),
- * then the rock as the pine or round forest brush on 32 px units wherever a whole unit is rock, and a lone tree from
- * the author's Outdoor tiles in each rock cell left over, so no rock is left bare.
+ * A forest for walls (the author, 2026-10-13: "a forest style, using the pine or oak"), over the floor already down:
+ * the rock as the pine or round forest brush (or `art`, a project's forest stamp) on 32 px units wherever a whole unit
+ * is rock, and a lone tree from the author's Outdoor tiles in each rock cell left over, so no rock is left bare.
  */
 function paintWoods(out: { width: number; height: number; pixels: Uint8Array }, rock: (x: number, y: number) => boolean, cw: number, ch: number, pines: boolean, art?: { width: number; height: number; pixels: Uint8Array }) {
-  paintXp(out, sheet("xp-grass"), () => true, cw, ch, true);
   const uw = Math.ceil(cw / 2), uh = Math.ceil(ch / 2);
   const unit = (ux: number, uy: number) => [0, 1].every((dy) => [0, 1].every((dx) => { const x = ux * 2 + dx, y = uy * 2 + dy; return x >= cw || y >= ch || rock(x, y); }));
   paintForest(out, art ?? sheet(pines ? "pines" : "round"), unit, uw, uh);

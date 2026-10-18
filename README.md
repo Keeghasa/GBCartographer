@@ -51,7 +51,7 @@ The code is free: [build it yourself](#running-it) (see [Install](#install)).
 - **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
-  palettes, drawn with your own auto-tile stamps if you like (the cave's walls, the overworld's shores and roads),
+  palettes, drawn with your own auto-tile stamps if you like (the cave's walls and floor, the overworld's shores and roads),
   as one background or cut into screens laid out in the Map Room.
 - **The Map Room.** Lay backgrounds of any size out as an adventure-style map: single screens, 2 × 2 or 3 × 3 pictures
   and odd sizes at their true size. Drag a piece to move it (pieces in the way move over), pan and zoom, see whether
