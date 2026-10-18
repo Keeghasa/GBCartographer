@@ -257,7 +257,8 @@ export interface CaveTiles { kind: "wallface" | "wang" | "edges" | "corner" | "p
 export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Generated {
   // A forest stamp of the project's (the author, 2026-10-17: "Teal forest") stands in for the catalog's pine or round
   // forest; it needs 16 px cells, like them.
-  // A Cliff stamp the same way for the catalog's Cliff (its face two cells tall, as the cave's default).
+  // A Cliff stamp the same way for the catalog's Cliff, at the stamp's own height: its face one cell tall, as it paints
+  // (the author, 2026-10-17: two cells was too tall).
   const art = given?.kind === "forest" || given?.kind === "xpCliff" ? { width: given.width, height: given.pixels.length / given.width, pixels: given.pixels } : null;
   const forest = given?.kind === "forest" ? art : null, cliff = given?.kind === "xpCliff" ? art : null;
   const tiles = art ? null : given;
@@ -281,7 +282,7 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null): Gene
     out.pixels.fill(3);
     const walls = wallsOf(settings), rock = (x: number, y: number) => !open(x, y);
     if (forest) paintWoods(canvasOut, rock, cw, ch, false, forest);
-    else if (cliff) paintCliffs(canvasOut, rock, cw, ch, 0, 0, true, true, cliff);
+    else if (cliff) paintCliffs(canvasOut, rock, cw, ch, 0, 0, false, true, cliff);
     else if (walls === "cliff32" || walls === "cliff16") paintCliffs(canvasOut, rock, cw, ch, 0, 0, walls === "cliff32", true);
     // Room Border (the author's, 2026-10-14): the dungeon's walls by default, an XP area beyond the map's edge too.
     else if (walls === "room") paintXp(canvasOut, sheet("room-border"), rock, cw, ch, true);
