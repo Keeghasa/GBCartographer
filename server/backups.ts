@@ -6,7 +6,7 @@
  *
  * Why not in the project (the author, 2026-10-18): GB Studio 4.3.2's save step "checksums" reads every path ending in
  * .gbsres anywhere under the project folder (loadProjectResourceChecksums globs **\/*.gbsres), Cartographer/ included.
- * A backup folder is named after the file it holds (…/DinerScene.png.gbsres/), so GB Studio tried to read a folder
+ * A backup folder is named after the file it holds (…/town.png.gbsres/), so GB Studio tried to read a folder
  * and every save failed with "Error While Saving [checksums]". From 2026-10-12 to 2026-10-18 the backups lived in
  * <project>/Cartographer/backups: the first time a project's backups are touched, those are moved out (every version
  * copied, checked, then the project's folder removed; if anything fails it stays where it is).
