@@ -34,7 +34,7 @@ install_app() {  # name, bundle id, extra electron argument
 ROOT="$ROOT"
 HERE="\${0:A:h}"
 # Rebuild first when a source file is newer than the build (a login shell finds npm).
-if [[ ! -f "\$ROOT/dist/index.html" || -n "\$(find "\$ROOT/src" "\$ROOT/electron" "\$ROOT/scripts" "\$ROOT/public" "\$ROOT/index.html" "\$ROOT/paint.html" -type f -newer "\$ROOT/dist-electron/main.cjs" 2>/dev/null | head -1)" ]]; then
+if [[ ! -f "\$ROOT/dist/index.html" || -n "\$(find "\$ROOT/src" "\$ROOT/server" "\$ROOT/electron" "\$ROOT/scripts" "\$ROOT/public" "\$ROOT/index.html" "\$ROOT/paint.html" -type f -newer "\$ROOT/dist-electron/main.cjs" 2>/dev/null | head -1)" ]]; then
   /bin/zsh -lc "cd '\$ROOT' && npm run desktop:build" >/tmp/gb-cartographer-build.log 2>&1 || true
 fi
 exec "\$HERE/Electron" $arg
