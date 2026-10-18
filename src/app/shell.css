@@ -197,3 +197,21 @@
 .app-color.app-ignored::after { inset: 4px; border-radius: 4px; }
 /* …and the lightest shade swatch above the picture, on a sprite or emote. */
 .app-swatch.app-ignored::after { border-radius: inherit; }
+
+/* Poster tabs (the author's pick, 2026-10-18: B1 with a palette strip): the picture fills the tab, the name and size on
+   a dark band over its foot, the palettes it wears in a strip along the bottom; a dot for unsaved, a green frame for
+   the open one. */
+.app-tabs { min-height: 80px; padding-top: 2px; }
+.app-tab { position: relative; overflow: hidden; display: block; width: 150px; max-width: none; height: 72px; padding: 0; border-radius: 10px; background: var(--k-sunk); }
+.app-tab-poster { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; object-fit: cover; }
+.app-tab-band { position: absolute; left: 0; right: 0; bottom: 5px; display: flex; align-items: center; gap: 6px; padding: 16px 8px 4px; background: linear-gradient(transparent, rgba(10, 12, 11, .9) 55%); color: #e7ece8; }
+.app-tab .app-tab-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.app-tab-size { flex: none; font: 500 10px "JetBrains Mono", ui-monospace, monospace; color: #9aa49c; }
+.app-tab-strip { position: absolute; left: 0; right: 0; bottom: 0; display: flex; height: 5px; background: rgba(10, 12, 11, .9); }
+.app-tab-strip > span { flex: 1; display: flex; } .app-tab-strip > span + span { margin-left: 1px; } .app-tab-strip i { flex: 1; }
+.app-tab > .k-btn { position: absolute; top: 5px; right: 5px; background: rgba(10, 12, 11, .8); color: #cfd8cf; opacity: 0; }
+.app-tab:hover > .k-btn, .app-tab.active > .k-btn, .app-tab > .k-btn:focus-visible { opacity: 1; }
+.app-tab-dirty { position: absolute; top: 7px; left: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--k-warn); box-shadow: 0 0 0 2px rgba(10, 12, 11, .9); }
+.app-tab:hover { background: var(--k-sunk); border-color: var(--k-hover-edge); }
+.app-tab.active { border: 2px solid var(--k-acc); box-shadow: 0 0 0 3px rgba(var(--k-acc-rgb), .15); }
+.app-tab .app-tab-foreign { width: 16px; height: 16px; }

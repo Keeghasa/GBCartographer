@@ -66,6 +66,7 @@ import { TIMES, palettesWithTimes, timeColors, useTimeOfDay } from "./app/useTim
 import { ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/autotile";
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
+import { TabPoster } from "./app/TabPoster";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
 import { applyUnsaved, fingerprint, unsavedOf, type UnsavedPicture } from "./app/unsaved";
 
@@ -2858,9 +2859,14 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         <div className="app-tabs-scroll" ref={tabsRef} role="tablist" aria-label="Open pictures" onScroll={tabFades} onWheel={(event) => { if (event.deltaY && !event.deltaX && tabsRef.current) tabsRef.current.scrollLeft += event.deltaY; }}>
           {docs.current.map((item) => { const from = foreignProject(item); return (
             <div key={item.id} role="tab" aria-selected={item.id === activeId} className={`app-tab ${item.id === activeId ? "active" : ""}`} title={`${item.name} · ${item.width} × ${item.height} px${from ? ` · from another project: ${from}` : ""} · middle-click closes, right-click for more`} onClick={() => setActiveId(item.id)} onMouseDown={(event) => { if (event.button === 1) event.preventDefault(); }} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeDoc(item); } }} onContextMenu={(event) => { event.preventDefault(); setTabMenu({ x: event.clientX, y: event.clientY, doc: item }); }}>
+              <TabPoster doc={item} />
+              {item.dirty && <i className="app-tab-dirty" title="Not saved to the GB Studio project yet" />}
               <button className="k-btn k-btn--ghost k-icon-btn" aria-label={`Close ${item.name}`} onClick={(event) => { event.stopPropagation(); closeDoc(item); }}><X /></button>
-              {from && <button type="button" className="app-tab-foreign" aria-label={`${item.name} is from another project`} title={`From another project (${from}): Save won't write it into this one. Click for Pictures from other projects.`} onClick={(event) => { event.stopPropagation(); setShowForeign(true); }}><Plane /></button>}
-              <span className={item.dirty ? "dirty" : undefined} title={item.dirty ? "Not saved to the GB Studio project yet" : undefined}>{item.name}{item.dirty && " *"}</span>
+              <span className="app-tab-band">
+                {from && <button type="button" className="app-tab-foreign" aria-label={`${item.name} is from another project`} title={`From another project (${from}): Save won't write it into this one. Click for Pictures from other projects.`} onClick={(event) => { event.stopPropagation(); setShowForeign(true); }}><Plane /></button>}
+                <span className={`app-tab-name${item.dirty ? " dirty" : ""}`}>{item.name}</span>
+                <small className="app-tab-size">{item.width} × {item.height}</small>
+              </span>
             </div>
           ); })}
           <IconButton label="Open PNG files" keys="Ctrl+O" size="sm" variant="ghost" onClick={() => void pickFiles()}><Plus /></IconButton>
