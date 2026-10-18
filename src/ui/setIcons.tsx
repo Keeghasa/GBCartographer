@@ -23,9 +23,9 @@ export function PxHand({ size }: { size?: number | string }) {
   return <Icon size={size} box={24} pixel paths={["M21 7h2v5h-2zm-4-2h2v7h-2zm-4-2h2v8h-2zM9 3h2v8H9zM5 5h2v8H5zm14 0h2v2h-2zm-4-2h2v2h-2zm-4-2h2v2h-2zM7 3h2v2H7zm-4 8h2v2H3zm-2 2h2v2H1zm0 2h2v2H1zm2 2h2v2H3zm2 2h2v2H5zm2 2h12v2H7zm12-2h2v2h-2zm2-7h2v7h-2zM5 13h2v2H5zm2 2h2v2H7z"]} />;
 }
 
-/** Pixelarticons: gamepad (Game Boy screens), mirrored left-right. */
+/** Pixelarticons: gamepad (Game Boy screens), d-pad on the left (the author, 2026-10-16). */
 export function PxGamepad({ size }: { size?: number | string }) {
-  return <Icon size={size} box={24} pixel flip paths={["M4 4h16v2H4zm0 14h16v2H4zM2 6h2v12H2zm18 0h2v12h-2zM8 9h2v6H8z", "M6 11h6v2H6zm8-2h2v2h-2zm2 4h2v2h-2z"]} />;
+  return <Icon size={size} box={24} pixel paths={["M4 4h16v2H4zm0 14h16v2H4zM2 6h2v12H2zm18 0h2v12h-2zM8 9h2v6H8z", "M6 11h6v2H6zm8-2h2v2h-2zm2 4h2v2h-2z"]} />;
 }
 
 /** Pixelarticons: image (backgrounds). */
