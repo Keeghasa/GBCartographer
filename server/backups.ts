@@ -1,13 +1,15 @@
 /**
  * Backups that keep history. Before GB Cartographer overwrites a project file, the old file is copied to
- *   <project>/Cartographer/backups/<path inside the project>/<time>.<ext>
- * inside the project, so they travel with it to another computer (the author, 2026-10-12; GB Studio 4.3.2 reads only
- * project/, assets/ and plugins/, so it never sees them). The newest KEEP versions of each file are kept.
+ *   <backupDir>/<project folder name>-<hash of its path>/<path inside the project>/<time>.<ext>
+ * in the app's data folder (`backupDir`), never inside the project. The newest KEEP versions of each file are kept.
  * A restore first backs up the file it replaces, so a restore can be undone the same way.
  *
- * Before 2026-10-12 they lived in the app's data folder (`backupDir`), in <backupDir>/<folder name>-<hash of its
- * path>/: the first time a project's backups are touched, those are copied in, checked, and the old folder is renamed
- * "<name>.moved-to-project" (kept, never deleted).
+ * Why not in the project (the author, 2026-10-18): GB Studio 4.3.2's save step "checksums" reads every path ending in
+ * .gbsres anywhere under the project folder (loadProjectResourceChecksums globs **\/*.gbsres), Cartographer/ included.
+ * A backup folder is named after the file it holds (…/DinerScene.png.gbsres/), so GB Studio tried to read a folder
+ * and every save failed with "Error While Saving [checksums]". From 2026-10-12 to 2026-10-18 the backups lived in
+ * <project>/Cartographer/backups: the first time a project's backups are touched, those are moved out (every version
+ * copied, checked, then the project's folder removed; if anything fails it stays where it is).
  */
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
@@ -19,14 +21,14 @@ export const KEEP = 10;
 /**
  * GB Cartographer's own folder inside a project, for what it needs and GB Studio doesn't (approved by the author
  * 2026-10-10): stamps (Cartographer/stamps/<name>.png, tile palettes in <name>.png.json), the Map Room's layouts
- * (Cartographer/maps.json, server/maps.ts) and the backups (Cartographer/backups). GB Studio reads only its own
- * folders (assets/, project/, plugins/), so it leaves this one alone.
+ * (Cartographer/maps.json, server/maps.ts), panel.json and unsaved/. Nothing in it may be named *.gbsres (file or
+ * folder): GB Studio's save reads every such path in the project. Backups live in the app's data folder instead.
  */
 export const OWN_FOLDER = "Cartographer";
 /** The format of what's in the folder: cartographer.json says which, so older data is converted once. */
 export const OWN_FORMAT = 1;
 
-const OWN_README = "This folder belongs to GB Cartographer (https://github.com/Keeghasa/GBCartographer), not to GB Studio.\nIt keeps what GB Cartographer needs and GB Studio doesn't:\n- stamps/ holds saved stamps (a PNG each, and its tile palettes in a .json beside it);\n- maps.json holds the Map Room's layouts (which background sits where in each map);\n- backups/ holds the last 10 versions of every project file GB Cartographer changed (Backups... in its project menu puts one back);\n- panel.json says which pictures are hidden and pinned in its project panel;\n- unsaved/ holds pictures' changes kept with Save to GB Cartographer only (they open again on any computer);\n- cartographer.json says which version of this folder's format it is, and this project's own choices.\nGB Studio ignores this folder; deleting it loses only these files. Copy it with the project to keep them.\n";
+const OWN_README = "This folder belongs to GB Cartographer (https://github.com/Keeghasa/GBCartographer), not to GB Studio.\nIt keeps what GB Cartographer needs and GB Studio doesn't:\n- stamps/ holds saved stamps (a PNG each, and its tile palettes in a .json beside it);\n- maps.json holds the Map Room's layouts (which background sits where in each map);\n- panel.json says which pictures are hidden and pinned in its project panel;\n- unsaved/ holds pictures' changes kept with Save to GB Cartographer only (they open again on any computer);\n- cartographer.json says which version of this folder's format it is, and this project's own choices.\nBackups of the project files GB Cartographer changed (the last 10 versions of each; Backups... in its project menu puts one back) are kept in GB Cartographer's own data folder on each computer, not here: GB Studio reads every .gbsres-named path in the project, so they can't live inside it.\nGB Studio ignores this folder; deleting it loses only these files. Copy it with the project to keep them.\n";
 
 /** Says what the Cartographer folder is, and marks its format (written when GB Cartographer first uses it, kept up to date). */
 export function ownFolderReadme(project: string) {
@@ -42,14 +44,10 @@ export interface BackupVersion { id: string; time: number; size: number }
 /** `current`: the project file's modification time when listed (null: gone), so a restore can tell it changed since. */
 export interface BackupFile { file: string; versions: BackupVersion[]; current?: number | null }
 
-/** The folder holding one project's backups: <project>/Cartographer/backups (`backupDir`: where older ones may wait). */
+/** The folder holding one project's backups, in the app's data folder (`backupDir`). */
 export function projectBackupDir(backupDir: string, project: string): string {
-  migrateBackups(backupDir, project);
-  // The dev server keeps its own data folder, so a project's old backups from the desktop app are looked for there too
-  // (Chorbi's waited in the desktop app's folder while it was opened on the dev server, 2026-10-15).
-  const desktop = desktopBackupDir();
-  if (resolve(desktop) !== resolve(backupDir)) migrateBackups(desktop, project);
-  return join(resolve(project), OWN_FOLDER, "backups");
+  migrateOutOfProject(backupDir, project);
+  return legacyBackupDir(backupDir, project);
 }
 
 /** The desktop app's backups folder (Electron's userData for "GB Cartographer", then backups). */
@@ -61,25 +59,30 @@ export function desktopBackupDir(): string {
   return join(data, "GB Cartographer", "backups");
 }
 
-/** Where a project's backups were kept before they moved into it: the app's data folder, keyed by the project's path. */
+/** A project's backups folder in the app's data folder, keyed by the project's path (also where they were before 2026-10-12). */
 export function legacyBackupDir(backupDir: string, project: string): string {
   const full = resolve(project);
   const name = basename(full).replace(/[^A-Za-z0-9 _.-]/g, "_").slice(0, 40) || "project";
   return join(backupDir, `${name}-${createHash("sha1").update(full).digest("hex").slice(0, 8)}`);
 }
 
+/** Where the backups were kept inside a project from 2026-10-12 to 2026-10-18 (GB Studio could not save with them there). */
+export function inProjectBackupDir(project: string): string {
+  return join(resolve(project), OWN_FOLDER, "backups");
+}
+
 /**
- * Moves a project's old backups (the app's data folder) into the project, once: every version is copied (one already
- * there of the same name and size is left), the copies are checked, each file keeps its newest KEEP, and only then is
- * the old folder renamed "<name>.moved-to-project". If anything fails, the old folder stays as it was.
+ * Moves a project's backups out of <project>/Cartographer/backups into the app's data folder, once: every version is
+ * copied (one already there of the same name and size is left; a different file of that name gets "-2", "-3"…), the
+ * copies are checked, each file keeps its newest KEEP, and only then is the project's folder removed. If anything
+ * fails, the project's folder stays as it was (and is tried again next time).
  */
-export function migrateBackups(backupDir: string, project: string): void {
+export function migrateOutOfProject(backupDir: string, project: string): void {
   if (!backupDir) return;
-  const old = legacyBackupDir(backupDir, project);
-  if (!existsSync(old) || !existsSync(project)) return;
-  const target = join(resolve(project), OWN_FOLDER, "backups");
+  const old = inProjectBackupDir(project);
+  if (!existsSync(old)) return;
+  const target = legacyBackupDir(backupDir, project);
   try {
-    // Each old version and where its copy is: under its own name, or "-2", "-3"… when a different file has that name.
     const pairs: [string, string][] = [];
     const walk = (from: string) => {
       for (const entry of readdirSync(from, { withFileTypes: true })) {
@@ -94,7 +97,6 @@ export function migrateBackups(backupDir: string, project: string): void {
       }
     };
     walk(old);
-    // Checked before anything is set aside: every old version has its copy, the same size.
     const ok = pairs.every(([source, to]) => existsSync(to) && statSync(to).size === statSync(source).size);
     if (!ok) return;
     const trim = (folder: string) => {
@@ -103,12 +105,10 @@ export function migrateBackups(backupDir: string, project: string): void {
       for (const entry of readdirSync(folder, { withFileTypes: true })) if (entry.isDirectory()) trim(join(folder, entry.name));
     };
     trim(target);
+    rmSync(old, { recursive: true, force: true });
     ownFolderReadme(project);
-    let aside = `${old}.moved-to-project`;
-    for (let n = 2; existsSync(aside); n += 1) aside = `${old}.moved-to-project-${n}`;
-    renameSync(old, aside);
   } catch (error) {
-    console.error("GB Cartographer could not move a project's backups into it:", error);
+    console.error("GB Cartographer could not move a project's backups out of it:", error);
   }
 }
 
@@ -146,7 +146,6 @@ export function backupFile(backupDir: string, project: string, path: string): st
   const rel = inside(project, path);
   if (!rel || !existsSync(path)) return null;
   const folder = join(projectBackupDir(backupDir, project), ...rel.split("/"));
-  ownFolderReadme(project);
   mkdirSync(folder, { recursive: true });
   const ext = extname(path);
   let id = `${versionId(Date.now())}${ext}`;
