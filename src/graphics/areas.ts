@@ -22,6 +22,10 @@ export const catalogVersion = (id: string): Canvas | null => catalogArt(id);
 
 type Filled = (x: number, y: number) => boolean;
 
+/** The + → packed turn for the catalog's Cliff, handed in by app/cliffPlus.ts (importing it here would make a loop). */
+let plusToRectLater: (plus: Canvas) => Canvas = (plus) => plus;
+export function setPlusToRect(turn: (plus: Canvas) => Canvas) { plusToRectLater = turn; made.delete("cliff"); }
+
 /** A sheet by its temp-asset id (made once). */
 const made = new Map<string, Canvas>();
 export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" | "xp-wood-floor" | "xp-carpet" | "xp-tile-floor" | "xp-snow" | "water" | "cliff" | "pines" | "round" | "xp-brick-square" | "pat-stone-wall" | "xp-flowers" | "xp-ground" | "xp-ice" | "room-border"): Canvas {
@@ -29,7 +33,9 @@ export function sheet(id: "xp-grass" | "xp-sand" | "xp-dirt" | "xp-stone-floor" 
   if (!art) {
     // The catalog's version first (the author's hand edits from the Asset Catalog project), else the code's.
     const catalogId = ({ water: "xp-water", cliff: "xp-cliff", pines: "piece-pines", round: "piece-round-trees", "room-border": "piece-room-border" } as Record<string, string>)[id] ?? id;
-    art = catalogArt(catalogId) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : id === "xp-ground" || id === "room-border" ? xpGroundTemplate() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
+    const authored = catalogArt(catalogId);
+    // The catalog's Cliff is drawn as a + (app/cliffPlus.ts): the painters read it packed.
+    art = (authored && id === "cliff" && authored.width === 112 && authored.height === 112 ? plusToRectLater(authored) : authored) ?? (id === "water" ? xpWaterTemplate() : id === "cliff" ? xpCliffTemplate() : id === "pines" ? pieces.pines() : id === "round" ? pieces.roundTrees() : id === "xp-ground" || id === "room-border" ? xpGroundTemplate() : TEMP_ASSETS.find((asset) => asset.id === id)!.make());
     made.set(id, art);
   }
   return art;
@@ -73,21 +79,28 @@ export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH:
     return;
   }
   // A face two cells (32 px) tall (the author, 2026-10-13: cave walls): the plateau ends a cell higher, its face takes
-  // that cell and the one below, the sheet's 16 px face stretched by repeating its plain middle row (top edge and foot
-  // kept). A rock strip one cell thin keeps the 16 px face.
+  // that cell and the one below. A 48 × 80 sheet's 16 px face is stretched by repeating its plain middle row (top edge
+  // and foot kept); a 48 × 96 sheet (a tall Cliff +, read by cliffPlus.ts) has a real 32 px face in rows 4–7, its
+  // spare pieces two rows lower. A rock strip one cell thin keeps a 16 px face (rows 4 and 7 of a 96).
+  const deep = art.height >= 96;
   const top = (x: number, y: number) => is(x, y) && is(x, y + 1);
-  const faceRow = (t: number) => t < 4 ? 32 + t : t >= 22 ? 38 + t - 22 : 37;
+  const faceRow = (t: number) => deep ? 32 + t : t < 4 ? 32 + t : t >= 22 ? 38 + t - 22 : 37;
   const faceColumns = (x: number, y: number) => { const pieces = xpCliffCell(top, x, y, corners); return [pieces[0]![0], pieces[1]![0]]; };
   const stretched = (columns: number[], x: number, y: number, from: number) => columns.forEach((column, half) => {
     for (let t = 0; t < 16; t += 1) put(out, art, column, 0, x0 + x * 16 + half * 8, y0 + y * 16 + t, 8, faceRow(from + t), 1);
   });
+  // A 96 sheet's rows: spare pieces two lower; a thin strip's 16 px face foot in row 7.
+  const lower = (piece: [number, number]): [number, number] => deep && piece[1] >= 6 ? [piece[0], piece[1] + 2] : piece;
+  const thin = (piece: [number, number]): [number, number] => deep && piece[1] === 5 ? [piece[0], 7] : lower(piece);
+  const draw = (pieces: ([number, number] | null)[], x: number, y: number, row: (piece: [number, number]) => [number, number]) =>
+    pieces.forEach((piece, quarter) => { if (piece) { const [column, r] = row(piece); put(out, art, column, r, x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); } });
   for (let y = 0; y < cellsH; y += 1) for (let x = 0; x < cellsW; x += 1) {
     if (top(x, y)) {
       if (!top(x, y + 1)) stretched(faceColumns(x, y), x, y, 0);
-      else xpCliffCell(top, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
+      else draw(xpCliffCell(top, x, y, corners), x, y, lower);
     } else if (is(x, y)) {
       if (top(x, y - 1)) stretched(faceColumns(x, y - 1), x, y, 16);
-      else xpCliffCell(is, x, y, corners).forEach((piece, quarter) => { if (piece) put(out, art, piece[0], piece[1], x0 + x * 16 + (quarter % 2) * 8, y0 + y * 16 + (quarter >> 1) * 8); });
+      else draw(xpCliffCell(is, x, y, corners), x, y, thin);
     }
   }
 }

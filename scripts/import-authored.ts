@@ -9,19 +9,24 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { GRAPHICS, codeDrawn } from "../src/graphics/library";
 import { AUTHORED } from "../src/graphics/authored";
 import { decodePng } from "../src/gb/png";
+import { desktopBackupDir, inProjectBackupDir, legacyBackupDir } from "../server/backups";
 
 const folder = process.argv[2], drop = process.argv.includes("--drop");
+// A file edited in GB Cartographer has backups: in the app's data folder since 2026-10-18 (the dev server's or the
+// desktop app's), inside the project before that.
+const backupRoots = [legacyBackupDir(resolve("backups"), folder), legacyBackupDir(desktopBackupDir(), folder), inProjectBackupDir(folder)];
+const hasBackups = (rel: string) => backupRoots.some((root) => existsSync(join(root, rel)));
 if (!folder) throw new Error("Give the Asset Catalog project folder.");
 const GREENS = [[224, 248, 207], [134, 192, 108], [48, 104, 80], [7, 24, 33]];
 const out: string[] = [], found = new Set<string>();
 for (const asset of GRAPHICS) {
   const rel = asset.kind === "stamps" ? join("Cartographer", "stamps", `${asset.name}.png`) : join("assets", asset.kind, `${asset.name}.png`);
   const file = join(folder, rel);
-  if (!existsSync(file) || !existsSync(join(folder, "Cartographer", "backups", rel))) continue;
+  if (!existsSync(file) || !hasBackups(rel)) continue;
   const png = decodePng(new Uint8Array(readFileSync(file)), (d) => new Uint8Array(inflateSync(d)));
   const rows: string[] = [];
   for (let y = 0; y < png.height; y += 1) {

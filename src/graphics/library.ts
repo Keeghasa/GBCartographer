@@ -13,6 +13,7 @@ import { INDOOR, OUTDOOR, SIDE } from "./tiles";
 import { pieces } from "./pieces";
 import { APPROVED, TEMP_ASSETS } from "./temp";
 import { AUTHORED } from "./authored";
+import { plusToRect, rectToPlus } from "../app/cliffPlus";
 import { CAVE_DEFAULTS, drawCave } from "../app/generators";
 import { OPENGAMEART } from "./opengameart";
 import { setCatalogArt } from "./areas";
@@ -87,7 +88,7 @@ const ALL: WireAsset[] = [
   { id: "autotile-wallface", name: "Wall face (F)", group: "Auto-tiles", kind: "stamps", autotile: "wallface", about: "4 × 2 tiles: floor and nothing, then the wall's face (middle, left end, right end, both ends), no top. Paint floor and the face grows above it.", make: wallFaceTemplate },
   { id: "xp-ground", name: "Ground", group: "Outdoor pieces", kind: "stamps", autotile: "xp", about: "48 × 64, RPG Maker's 3 × 4 autotile layout: a lone patch, the inner corners and a 3 × 3 block. Paint 16 px cells: edges, corners and inner corners fit. Repaint as sand, dirt, snow or carpet.", make: xpGroundTemplate },
   { id: "xp-water", name: "Sea", group: "Outdoor pieces", kind: "stamps", autotile: "xpAnim", about: "144 × 64: the area block in three animation frames, a dark shore with foam inside. Paint 16 px cells; the picture plays the frames while it is in hand. Save writes frame 1.", make: xpWaterTemplate },
-  { id: "xp-cliff", name: "Cliff", group: "Outdoor pieces", kind: "stamps", autotile: "xpCliff", about: "48 × 80: a grassy plateau whose bottom cells become the rock face, sides running down beside a face, inside corners and a lone mound. Paint 16 px cells.", make: xpCliffTemplate },
+  { id: "xp-cliff", name: "Cliff", group: "Outdoor pieces", kind: "stamps", autotile: "xpCliff", about: "112 × 112, drawn as a + (the author, 2026-10-18): a grassy plateau the shape of a plus, every edge, outer and inside corner and rock face where it sits on a map, a lone mound in the top-left corner. Paint 16 px cells.", make: () => rectToPlus(xpCliffTemplate(), false) },
   // The author's own (2026-10-14), drawn in the Asset Catalog project: the dungeon wizard's walls.
   { id: "piece-room-border", name: "Room Border", group: "Outdoor pieces", kind: "stamps", autotile: "xp", about: "48 × 64 in the area layout: dark walls outlined where they meet the floor. Paint 16 px cells; the Cave or dungeon wizard builds dungeons with it.", make: xpGroundTemplate },
   { id: "piece-pines", name: "Pine forest", group: "Outdoor pieces", kind: "stamps", autotile: "forest", about: "64 × 32: a clump of three pines and one pine on its own. Paint in 32 px tree units: the clump inside the forest, single pines along its edge.", make: pieces.pines },
@@ -123,7 +124,14 @@ const ALL: WireAsset[] = [
 /** The catalog: the author's hand-edited versions (from the Asset Catalog project) in place of the code-drawn art. */
 /** A graphic as the code draws it, before any hand edit (scripts/import-authored.ts skips files that match it). */
 export const codeDrawn = (id: string): Canvas | null => ALL.find((asset) => asset.id === id)?.make() ?? null;
-const CATALOG: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => fromAuthored(AUTHORED[asset.id]) } : asset);
+// The Cliff is a + (app/cliffPlus.ts): a hand edit still in the older packed 48 × 80 layout is shown as a + too.
+const asPlus = (art: Canvas) => art.width === 48 && art.height === 80 ? rectToPlus(art, false) : art;
+const CATALOG: WireAsset[] = ALL.filter((asset) => !DROPPED.has(asset.id)).map((asset) => AUTHORED[asset.id] ? { ...asset, make: () => asset.id === "xp-cliff" ? asPlus(fromAuthored(AUTHORED[asset.id])) : fromAuthored(AUTHORED[asset.id]) } : asset);
+/** The Cliff (32 px walls), its own + (the author, 2026-10-18), made from the catalog's Cliff until it's drawn by hand. */
+const cliffNow = () => CATALOG.find((asset) => asset.id === "xp-cliff")?.make() ?? rectToPlus(xpCliffTemplate(), false);
+const CLIFF_TALL: WireAsset[] = DROPPED.has("xp-cliff-tall") ? [] : [{ id: "xp-cliff-tall", name: "Cliff (32 px walls)", group: "Outdoor pieces", kind: "stamps", autotile: "xpCliffTall",
+  about: "112 × 112, a + like the Cliff with its rock faces two cells (32 px) tall, as the cave wizard's walls. Paint 16 px cells.",
+  make: () => AUTHORED["xp-cliff-tall"] ? fromAuthored(AUTHORED["xp-cliff-tall"]) : rectToPlus(plusToRect(cliffNow(), false), true) }];
 /**
  * The window frames as 9-slice auto-tiles too (the author, 2026-10-13): GB Studio's frame is the Box (9) layout, 24 × 24
  * in 8 × 8 corners, edges and middle, so each frame (the author's edits included) doubles as a box stamp.
@@ -132,7 +140,7 @@ const FRAME_BOXES: WireAsset[] = CATALOG.filter((asset) => asset.id.startsWith("
   id: `box-${frame.id.slice(3)}`, name: `${frame.name} 9-slice`, group: "Auto-tiles", kind: "stamps", autotile: "box",
   about: `${frame.name} as a 9-slice box: drag it to any size, the corners stay, the edges and middle repeat.`, make: frame.make,
 }));
-export const GRAPHICS: WireAsset[] = [...CATALOG, ...FRAME_BOXES];
+export const GRAPHICS: WireAsset[] = [...CATALOG, ...CLIFF_TALL, ...FRAME_BOXES];
 
 // The wizards, the village and the tile sheets draw with the catalog's versions (the author's edits) of the sheets.
 setCatalogArt((id) => GRAPHICS.find((asset) => asset.id === id)?.make() ?? null);

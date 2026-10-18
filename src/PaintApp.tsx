@@ -67,6 +67,7 @@ import { ATLAS_W, autotileOf as autotileKind, type AutotileKind } from "./app/au
 import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TYPE_COLLISIONS, type CollisionTileDef } from "./gb/collisions";
 import { CollisionStrip } from "./app/CollisionStrip";
 import { TabPoster } from "./app/TabPoster";
+import { cliffStampToRect, isPlusSheet, plusToRect } from "./app/cliffPlus";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
 import { applyUnsaved, fingerprint, unsavedOf, type UnsavedPicture } from "./app/unsaved";
 
@@ -1264,6 +1265,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       const kind = kinds.find((item) => item === asset.autotile) ?? null;
       // An area stamp (forest, cliff, area) keeps its see-through pixels: its pieces are put over what's under them.
       const areaKind = kind === "forest" || kind === "xpCliff" || kind === "xpCliffTall" || kind === "xp";
+      // A Cliff drawn as a + reaches the wizard packed, as the painters read it (cliffPlus.ts).
+      if ((kind === "xpCliff" || kind === "xpCliffTall") && isPlusSheet(bitmap.width, bitmap.height)) {
+        const rect = plusToRect({ width: bitmap.width, height: bitmap.height, pixels: Uint8Array.from(picture.pixels) }, kind === "xpCliffTall");
+        return { kind, pixels: rect.pixels, width: rect.width };
+      }
       return kind ? { kind, pixels: areaKind ? Uint8Array.from(picture.pixels) : Uint8Array.from(picture.pixels, (shade) => shade === CLEAR ? 0 : shade), width: bitmap.width } : null;
     } catch {
       say(`The stamp ${asset.name} could not be read.`);
@@ -1423,7 +1429,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
   /** An animated stamp stamps its first frame (square, from the left). */
   const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
-    if (auto === "xpCliffTall") return tallCliffSheet(stamp);
+    // A Cliff as a + (cliffPlus.ts), or a 32 px-wall Cliff: the packed sheet the brush reads.
+    if (auto === "xpCliff" || auto === "xpCliffTall") return cliffStampToRect(stamp, auto === "xpCliffTall");
     if (auto !== "anim") return stamp;
     const size = stamp.h, pixels = new Uint8Array(size * size);
     for (let y = 0; y < size; y += 1) pixels.set(stamp.pixels.subarray(y * stamp.w, y * stamp.w + size), y * size);
@@ -1432,19 +1439,6 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     // The whole strip goes along, so its frames can play over the picture while the stamp is held.
     return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}), animSheet: { pixels: stamp.pixels, w: stamp.w, h: stamp.h, ...(stamp.cells ? { cells: stamp.cells } : {}) } };
   };
-
-  /**
-   * A Cliff sheet (48 × 80) as the 32 px-wall brush reads it (48 × 96, the author 2026-10-14): the plateau rows as
-   * they are, the 16 px face stretched to 32 (its top 4 rows, its plain middle row repeated, its last 10 rows), then
-   * the sheet's spare pieces two tile rows lower. Tile palettes follow their rows.
-   */
-  function tallCliffSheet<T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T): T {
-    const from = (y: number) => y < 32 ? y : y < 64 ? (y - 32 < 4 ? y : y - 32 >= 22 ? 38 + (y - 32 - 22) : 37) : y - 16;
-    const pixels = new Uint8Array(stamp.w * 96);
-    for (let y = 0; y < 96; y += 1) pixels.set(stamp.pixels.subarray(from(y) * stamp.w, from(y) * stamp.w + stamp.w), y * stamp.w);
-    const cw = stamp.w / 8, cells = stamp.cells ? Uint8Array.from({ length: cw * 12 }, (_, at) => stamp.cells![(from(Math.floor(at / cw) * 8 + 4) >> 3) * cw + (at % cw)]) : undefined;
-    return { ...stamp, pixels, h: 96, ...(cells ? { cells } : {}) };
-  }
 
   /** Sets a saved stamp's auto-tile (9 box, W Wang, or none) in its own sidecar; the stamp in hand follows. */
   async function setStampAutotile(asset: Asset, autotile: AutotileKind | null) {
