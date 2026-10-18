@@ -132,8 +132,8 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           </div>
           {mode === "cave" && <div className="k-stack k-stack--tight" title="The catalog's walls (Cliff for caves, Stone wall for dungeons, or a forest) or one of the project's auto-tile stamps set to Wang (47) for the rock">
             <Select label="Walls" value={tilesFile || `cat:${wallsOf(cave)}`} onChange={(file) => { if (file.startsWith("cat:")) { setTilesFile(""); setC({ walls: file.slice(4) as CaveWalls }); } else setTilesFile(file); }}
-              options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["wallface", "wang", "edges", "forest"], "").slice(1)]} />
-            <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges", "forest").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W, E or forest stamps") : "Stamps marked F, W, E or forest (Asset Catalog → Auto-tiles) can draw it"}</span>
+              options={[...CAVE_WALLS.map(({ value, label }) => ({ value: `cat:${value}`, label })), ...stampOptions(["wallface", "wang", "edges", "forest", "xpCliff"], "").slice(1)]} />
+            <span className="k-muted k-xs">{stampsOf("wallface", "wang", "edges", "forest", "xpCliff").length ? (tilesFile ? "Your stamp's tiles; Make background keeps them" : "Or one of your F, W, E, forest or cliff stamps") : "Stamps marked F, W, E, forest or cliff (Asset Catalog → Auto-tiles) can draw it"}</span>
           </div>}
           {mode === "world" && <div className="k-stack k-stack--tight" title="Draw the overworld's water edges with a corner-Wang (C) stamp and its roads with a path (P) stamp">
             <Select label="Shores" value={shoreFile || "placeholder"} onChange={(file) => setShoreFile(file === "placeholder" ? "" : file)} options={stampOptions(["corner"], "Catalog shores")} />

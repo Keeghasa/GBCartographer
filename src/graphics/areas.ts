@@ -59,9 +59,10 @@ export function paintXp(out: Canvas, art: Canvas, filled: Filled, cellsW: number
 }
 
 /** Cliffs (Cliff) on 16 px cells: plateaus with their faces where the cell below isn't cliff. */
-export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH: number, x0 = 0, y0 = 0, tall = false, beyond = false) {
+export function paintCliffs(out: Canvas, filled: Filled, cellsW: number, cellsH: number, x0 = 0, y0 = 0, tall = false, beyond = false, own?: Canvas) {
   // With `beyond`, rock runs on past the picture's edge (the author, 2026-10-14: no bevelled cliff sides at the border).
-  const art = sheet("cliff"), is = (x: number, y: number) => x < 0 || y < 0 || x >= cellsW || y >= cellsH ? beyond : filled(x, y);
+  // `own`: a project's Cliff stamp in place of the catalog's (the Cave or dungeon wizard's walls, 2026-10-17).
+  const art = own ?? sheet("cliff"), is = (x: number, y: number) => x < 0 || y < 0 || x >= cellsW || y >= cellsH ? beyond : filled(x, y);
   // The author's pick (2026-10-14, cliff corner review): the old foot piece where a strip meets a wider plateau, not
   // the row 7 corners (kept in the sheet, unused).
   const corners = false && hasCliffCorners(art);
