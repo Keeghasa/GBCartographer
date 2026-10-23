@@ -9,8 +9,8 @@ import type { Doc } from "./model";
 
 const THUMB_W = 300, THUMB_H = 144;
 
-/** Changes whenever the picture, its size or its palettes do (each stroke adds an undo step). */
-const versionOf = (doc: Doc) => `${doc.undo.length}|${doc.redo.length}|${doc.width}x${doc.height}|${doc.palettes.map((palette) => palette.colors.join("")).join(",")}`;
+/** Changes whenever the picture does (`rev` counts every edit, undo and redo included), or its size or palettes. */
+const versionOf = (doc: Doc) => `${doc.rev ?? 0}|${doc.width}x${doc.height}|${doc.palettes.map((palette) => palette.colors.join("")).join(",")}`;
 
 function drawThumb(doc: Doc): string {
   // A sprite sheet: its first frame (a square as tall as the sheet).

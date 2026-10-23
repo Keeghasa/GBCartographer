@@ -197,7 +197,11 @@ export function listPalettes(project: string): ProjectPalette[] {
     if (typeof palette?.id !== "string" || colors.length !== 4) continue;
     palettes.push({ id: palette.id, name: typeof palette.name === "string" ? palette.name : file.replace(/\.gbsres$/, ""), colors: colors.map((color) => `#${color.replace(/^#/, "").toUpperCase()}`), mtime: statSync(join(folder, file)).mtimeMs });
   }
-  return palettes.sort((a, b) => a.name.localeCompare(b.name));
+  // Two files with one id (GB Studio, open meanwhile, wrote a renamed palette under its old file name again): the
+  // newest file is the palette; GB Studio too reads one palette per id.
+  const newest = new Map<string, ProjectPalette>();
+  for (const palette of palettes) if ((newest.get(palette.id)?.mtime ?? -1) < palette.mtime) newest.set(palette.id, palette);
+  return [...newest.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -608,6 +612,18 @@ export function writePalette(project: string, palette: { id?: string; name: stri
       expectType(meta, "palette", join(folder, file));
       const mtime = statSync(join(folder, file)).mtimeMs;
       if (!force && expectedMtime !== null && Math.abs(mtime - expectedMtime) > 1) throw new AssetWriteError(`${typeof meta.name === "string" ? meta.name : "The palette"} changed on disk since the project was read.`, 409, mtime);
+      // A renamed palette's file follows its name, as GB Studio names palette files (the author, 2026-10-23: a
+      // duplicate renamed Part3 was still …_part2_copy.gbsres), when the file was named for the old name and the new
+      // name's file is free. The old file goes to the backups first; GB Studio finds the palette by id either way.
+      const oldName = typeof meta.name === "string" ? meta.name : "";
+      const named = file === `${paletteFileName(oldName)}.gbsres` || new RegExp(`^${paletteFileName(oldName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_\\d+\\.gbsres$`).test(file);
+      const next = `${paletteFileName(name)}.gbsres`;
+      if (name !== oldName && named && next !== file && !existsSync(join(folder, next))) {
+        backupFile(backup.dir, backup.project, join(folder, file));
+        writeFileSync(join(folder, next), JSON.stringify({ ...meta, name, colors }, null, 2), { flag: "wx" });
+        unlinkSync(join(folder, file));
+        return { id: palette.id, file: next, mtime: statSync(join(folder, next)).mtimeMs };
+      }
       return { id: palette.id, file, mtime: writeSidecar(join(folder, file), { ...meta, name, colors }, backup) };
     }
     throw new AssetWriteError("No palette with that id in the project.", 404);

@@ -24,7 +24,7 @@ export function hexRgb(hex: string): [number, number, number] {
 
 export const CELL = 8;
 /** A four-color palette from the library; a cell (one 8 × 8 tile) may wear one. */
-export interface Palette { name: string; colors: string[]; /** GB Studio's palette id, for palettes read from a project. */ id?: string }
+export interface Palette { name: string; colors: string[]; /** GB Studio's palette id, for palettes read from a project. */ id?: string; /** A picture's copy the user recolored in that picture (app/paletteSync.ts): the only copies Save writes into the project. */ edited?: boolean }
 export interface Picture { pixels: Uint8Array; cells: Uint8Array; hasAlpha: boolean; snapped: number; /** Colors within NEAR_SHADE_TOLERANCE of a GB green, read as that green. */ near: number; palettes: Palette[] }
 
 export const cellsWide = (width: number) => Math.ceil(width / CELL);

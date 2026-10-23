@@ -145,18 +145,32 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   latest.current = maps;
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   async function save(next: MapLayout[]): Promise<boolean> {
+    const before = latest.current;
     latest.current = next;
-    const response = await fetch("./__cartographer/maps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maps: next }) });
-    const result = await response.json() as { ok?: boolean; error?: string; maps?: MapLayout[] };
-    if (!response.ok || !result.maps) { say(`Could not keep the map: ${result.error ?? response.statusText}`); return false; }
-    latest.current = result.maps;
-    setMaps(result.maps);
-    return true;
+    try {
+      const response = await fetch("./__cartographer/maps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maps: next }) });
+      const result = await response.json() as { ok?: boolean; error?: string; maps?: MapLayout[] };
+      if (!response.ok || !result.maps) { say(`Could not keep the map: ${result.error ?? response.statusText}`); latest.current = before; return false; }
+      latest.current = result.maps;
+      setMaps(result.maps);
+      return true;
+    } catch (error) {
+      // A refused list isn't built on again (the next edit starts from what the server last kept).
+      latest.current = before;
+      say(`Could not keep the map: ${(error as Error).message}`);
+      return false;
+    }
   }
+  /** Every write waits for the one before it and starts from the newest list (deleting and adding maps too). */
+  const queued = (next: (maps: MapLayout[]) => MapLayout[]): Promise<boolean> => {
+    const run = queue.current.then(() => latest.current ? save(next(latest.current)) : false).catch(() => false);
+    queue.current = run;
+    return run;
+  };
   const updateMap = (change: (layout: MapLayout) => MapLayout) => {
     if (!map) return;
     const id = map.id;
-    queue.current = queue.current.then(() => latest.current && save(latest.current.map((item) => item.id === id ? change(item) : item))).catch(() => null);
+    void queued((list) => list.map((item) => item.id === id ? change(item) : item));
   };
 
   /**
@@ -179,7 +193,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
     // No PNG written: stay in the wizard so the names can be changed.
     if (failed && !made) return say(failed);
     const id = `map-${Date.now().toString(36)}`;
-    const kept = await save([...maps, { id, name: plan.name, screen: { width: W, height: H }, overlap: plan.overlap, cells }]);
+    const kept = await queued((list) => [...list, { id, name: plan.name, screen: { width: W, height: H }, overlap: plan.overlap, cells }]);
     if (made) await onProjectChanged();
     setMaking(false);
     if (!kept) return;
@@ -279,6 +293,8 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
   };
   const moveDrag = (event: React.PointerEvent) => {
     if (!drag) return;
+    // The button came up where no pointerup reached us (outside the window): the piece stays put.
+    if (event.buttons === 0) { setDrag(null); return; }
     const dx = event.clientX - drag.x0, dy = event.clientY - drag.y0;
     setDrag({ ...drag, dx, dy, tiles: event.altKey, moving: drag.moving || Math.hypot(dx, dy) > 4 });
   };
@@ -332,7 +348,7 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
       {map ? <span className="k-muted k-small mr-legend"><i className="match" /> edge matches · <i className="differ" /> edge differs · click a piece to select, drag to move it (Alt: by tiles; pieces in the way move right), double-click to paint it</span>
         : <span className="k-muted k-small">Each screen stays a normal background PNG.</span>}
       <span className="k-spacer" />
-      {map && <Button variant="danger" icon={<Trash2 />} title="Only the layout goes; every PNG stays in the project" onClick={async () => { if (await confirmBox(`Delete the map ${map.name}? Only the layout goes; every PNG stays in the project.`, { yes: "Delete the map", danger: true })) { void save(maps.filter((item) => item.id !== map.id)); setMapId(""); } }}>Delete this map</Button>}
+      {map && <Button variant="danger" icon={<Trash2 />} title="Only the layout goes; every PNG stays in the project" onClick={async () => { if (await confirmBox(`Delete the map ${map.name}? Only the layout goes; every PNG stays in the project.`, { yes: "Delete the map", danger: true })) { void queued((list) => list.filter((item) => item.id !== map.id)); setMapId(""); } }}>Delete this map</Button>}
       <Button icon={<Download />} disabled={!cells.length} title="The whole map as one PNG, in its palettes" onClick={() => void exportMap()}>Export map PNG</Button>
     </>
   );
@@ -367,19 +383,20 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
                 pan.current = { x: event.clientX, y: event.clientY, left: gridArea.scrollLeft, top: gridArea.scrollTop };
                 try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* still pans while over the map */ }
               }}
-              onPointerMove={(event) => { if (pan.current && gridArea) { gridArea.scrollLeft = pan.current.left - (event.clientX - pan.current.x); gridArea.scrollTop = pan.current.top - (event.clientY - pan.current.y); } }}
-              onPointerUp={() => { pan.current = null; }}>
+              onPointerMove={(event) => { if (pan.current && event.buttons === 0) { pan.current = null; return; } if (pan.current && gridArea) { gridArea.scrollLeft = pan.current.left - (event.clientX - pan.current.x); gridArea.scrollTop = pan.current.top - (event.clientY - pan.current.y); } }}
+              onPointerUp={() => { pan.current = null; }} onPointerCancel={() => { pan.current = null; }} onLostPointerCapture={() => { pan.current = null; }}>
               {slots.map((slot) => (
                 <button key={`+${slot.x},${slot.y}`} type="button" className={`mr-add${slot.edge ? " mr-add--edge" : ""}`} style={slotStyle(slot)} aria-pressed={adding?.x === slot.x && adding?.y === slot.y} title={`Add a screen at ${slot.x}, ${slot.y}`} onClick={() => { setAdding({ x: slot.x, y: slot.y }); setSelected(null); }}><Plus size={slot.edge ? 14 : 20} /></button>
               ))}
               {cells.map((cell) => {
                 const at = pixelOf(cell), size = sizeOf(cell.file) ?? { width: W, height: H };
                 const isSelected = selected?.x === cell.x && selected?.y === cell.y;
-                const dragging = drag?.moving && drag.cell === cell;
+                // By place and file, not identity: a save answered mid-drag replaces every cell object.
+                const dragging = drag?.moving && drag.cell.x === cell.x && drag.cell.y === cell.y && drag.cell.file === cell.file;
                 return (
                   <button key={`${cell.x},${cell.y},${cell.file}`} type="button" className={`mr-cell${dragging ? " mr-cell--drag" : ""}`} aria-pressed={isSelected}
                     style={{ left: left(at.x), top: top(at.y), width: size.width * scale, height: size.height * scale, ...(dragging ? { transform: `translate(${drag!.dx}px, ${drag!.dy}px)` } : {}) }}
-                    onPointerDown={(event) => startDrag(event, cell)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => setDrag(null)}
+                    onPointerDown={(event) => startDrag(event, cell)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => setDrag(null)} onLostPointerCapture={() => { if (drag && !drag.moving) setDrag(null); }}
                     onDoubleClick={() => openCell(cell)}>
                     {pictureOf(cell.file) ? <img src={pictureOf(cell.file)!.preview.src} alt="" draggable={false} /> : assetOf(cell.file) ? <span className="k-muted k-small">…</span> : <span className="k-small mr-missing" title={`assets/backgrounds/${cell.file} isn't in the project any more (renamed or deleted outside GB Cartographer)`}>Missing<br />{cell.file}</span>}
                     <span className="mr-label">{assetOf(cell.file)?.name ?? cell.file}</span>
@@ -409,7 +426,9 @@ export function MapRoom({ project, onClose, onOpen, onProjectChanged, onExport, 
                     if (!response.ok || !result.file) { say(`Could not make the screen: ${result.error ?? response.statusText}`); return; }
                     file = result.file;
                   }
-                  updateMap((item) => ({ ...item, cells: [...item.cells.filter((cell) => !(cell.x === adding.x && cell.y === adding.y)), { x: adding.x, y: adding.y, file: file! }] }));
+                  // Placed like a drop: a background bigger than one screen takes its squares and bumps pieces in its way.
+                  const placed: MapCell = { x: adding.x, y: adding.y, file: file! };
+                  updateMap((item) => ({ ...item, cells: place(item.cells.filter((cell) => !(cell.x === adding.x && cell.y === adding.y)), placed, placed, sizeOf) }));
                   await onProjectChanged();
                   setSelected(adding);
                   setAdding(null);

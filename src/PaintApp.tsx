@@ -68,6 +68,7 @@ import { collisionBrush, collisionLook, DEFAULT_COLLISIONS, iconPixels, SCENE_TY
 import { CollisionStrip } from "./app/CollisionStrip";
 import { TabPoster } from "./app/TabPoster";
 import { cliffStampToRect, isPlusSheet, plusToRect } from "./app/cliffPlus";
+import { editedPalettes, followProject, restorePalettes } from "./app/paletteSync";
 import { inflateZlib, isAseprite, readAseprite } from "./gb/aseprite";
 import { applyUnsaved, fingerprint, unsavedOf, type UnsavedPicture } from "./app/unsaved";
 
@@ -256,7 +257,7 @@ export default function PaintApp() {
   const luts = [tintColors, ...docPalettes.map((palette) => shown(timeColors(palette, palettes, timeOfDay.view)))].map((colors) => shadeLut(colors));
   const picked = activePalette ? docPalettes[activePalette - 1] : undefined;
   const swatchColors = picked ? shown(picked.colors) : tintColors;
-  const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id }) => ({ name, colors: [...colors], ...(id ? { id } : {}) }));
+  const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id, edited }) => ({ name, colors: [...colors], ...(id ? { id } : {}), ...(edited ? { edited } : {}) }));
   const blank = (target: Doc) => target.hasAlpha ? CLEAR : 0;
   /** A picture that may take see-through pixels: a loose PNG or a stamp (GB Studio itself only keeps them on sprites and emotes, already see-through). */
   const canSeeThrough = (target: Doc) => !target.asset || target.asset.kind === "stamps";
@@ -380,7 +381,7 @@ export default function PaintApp() {
       const asset = projectRef.current?.assets.find((item) => item.kind === kind && item.file === file);
       if (!asset) continue;
       if (!target) { await openAsset(asset); target = docs.current.find(mine); }
-      if (target && applyUnsaved(target, data)) { opened += 1; if (target.asset && data.assetMtime && target.asset.mtime > data.assetMtime + 1) target.changedOnDisk = { mtime: target.asset.mtime, metaMtime: target.asset.metaMtime ?? null }; }
+      if (target && applyUnsaved(target, data)) { opened += 1; followProject([target], palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id))); if (target.asset && data.assetMtime && target.asset.mtime > data.assetMtime + 1) target.changedOnDisk = { mtime: target.asset.mtime, metaMtime: target.asset.metaMtime ?? null }; }
     }
     if (opened) { say(`${opened} picture${opened === 1 ? "" : "s"} with unsaved changes kept in this project opened again.`); bump(); }
     void syncUnsaved();
@@ -400,6 +401,7 @@ export default function PaintApp() {
 
   function touch(target: Doc) {
     editCount.current += 1;
+    target.rev = (target.rev ?? 0) + 1;
     target.dirty = true;
     scheduleSession();
     bump();
@@ -407,8 +409,13 @@ export default function PaintApp() {
 
   // ---- undo and the floating selection ---------------------------------------------------------------------------
 
-  function pushUndo(target: Doc) {
-    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), palettes: clonePalettes(target.palettes), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: target.width, height: target.height, ...(target.asset?.opened ? { opened: target.asset.opened.slice() } : {}) });
+  /**
+   * `recolor`: the step changes palette colors, so the snapshot carries the palettes (undo brings the old colors
+   * back). Other steps leave them out: an undone brush stroke must never drag the palettes back to what they were
+   * then (the author's bug, 2026-10-23: a palette edited in the Palettes window reverted on the next save).
+   */
+  function pushUndo(target: Doc, recolor = false) {
+    target.undo.push({ pixels: target.pixels.slice(), cells: target.cells.slice(), ...(recolor ? { palettes: clonePalettes(target.palettes) } : {}), ...(target.priority ? { priority: target.priority.slice() } : {}), ...(target.collision ? { collisionValues: target.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: target.width, height: target.height, ...(target.asset?.opened ? { opened: target.asset.opened.slice() } : {}) });
     while (target.undo.length > UNDO_LIMIT || (target.undo.length > 1 && target.undo.length * target.pixels.length > UNDO_BYTES)) target.undo.shift();
     target.redo = [];
   }
@@ -475,7 +482,8 @@ export default function PaintApp() {
   function stepHistory(from: "undo" | "redo") {
     if (!doc || !doc[from].length) return;
     dropFloat(doc);
-    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, palettes: clonePalettes(doc.palettes), ...(doc.priority ? { priority: doc.priority } : {}), ...(doc.collision ? { collisionValues: doc.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: doc.width, height: doc.height, ...(doc.asset?.opened ? { opened: doc.asset.opened } : {}) });
+    const step = doc[from][doc[from].length - 1];
+    doc[from === "undo" ? "redo" : "undo"].push({ pixels: doc.pixels, cells: doc.cells, ...(step.palettes ? { palettes: clonePalettes(doc.palettes) } : {}), ...(doc.priority ? { priority: doc.priority } : {}), ...(doc.collision ? { collisionValues: doc.collision.scenes.map((scene) => scene.values.slice()) } : {}), width: doc.width, height: doc.height, ...(doc.asset?.opened ? { opened: doc.asset.opened } : {}) });
     const { palettes, collisionValues, width, height, opened, ...rest } = doc[from].pop()!;
     Object.assign(doc, rest);
     // A resize undone or redone: the picture takes that size again (and its view fits it).
@@ -484,8 +492,8 @@ export default function PaintApp() {
     // A snapshot from before the priority flags existed: keep them, sized to the picture's cells again.
     if (doc.priority && doc.priority.length !== doc.cells.length) doc.priority = new Uint8Array(doc.cells.length);
     if (collisionValues && doc.collision) collisionValues.forEach((values, index) => { if (doc.collision!.scenes[index]) doc.collision!.scenes[index].values = values; });
-    // Palette colors come back too; a restored list that predates a palette added since keeps the newer ones.
-    if (palettes) palettes.forEach((palette, index) => { if (doc.palettes[index]) doc.palettes[index] = palette; });
+    // A recolor step: its palette colors come back, by id (never by position), as edits again where they differ.
+    if (palettes) restorePalettes(doc, palettes, palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id)));
     doc.sel = null;
     touch(doc);
   }
@@ -656,6 +664,8 @@ export default function PaintApp() {
     if (opened?.ok) {
       palettesRef.current = opened.palettes.filter((palette) => palette.colors?.length === 4);
       projectRef.current = { name: opened.name, path: opened.path, assets: opened.assets, palettes: opened.palettes };
+      // Open pictures' copies of the palettes the user didn't recolor here take the project's colors and names.
+      if (followProject(docs.current, palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id)))) bump();
       setProject(projectRef.current);
       setStartDone(true);
       if (ownLoadedFor.current !== opened.path) { ownLoadedFor.current = opened.path; void loadOwn(opened.path); }
@@ -766,18 +776,9 @@ export default function PaintApp() {
     return await confirmBox("GB Studio looks open. It keeps the project in memory and may overwrite palettes and tile colors written here when it saves. Close it, or reload the project there afterwards.\n\nWrite anyway?");
   }
 
-  /** Doc palettes (by GB Studio id) whose colors or name differ from the project's: the active picture's copy wins. */
+  /** The palettes Save writes into the project: copies the user recolored in a picture (app/paletteSync.ts). */
   function editedProjectPalettes(): { id: string; name: string; colors: string[] }[] {
-    const byId = new Map(palettesRef.current.filter((item) => item.id).map((item) => [item.id!, item]));
-    const edited = new Map<string, { id: string; name: string; colors: string[] }>();
-    for (const item of [...docs.current].sort((a, b) => (a === doc ? -1 : b === doc ? 1 : 0))) {
-      for (const own of item.palettes) {
-        const base = own.id ? byId.get(own.id) : undefined;
-        if (!own.id || !base || edited.has(own.id)) continue;
-        if (base.colors.join() !== own.colors.join() || base.name !== own.name) edited.set(own.id, { id: own.id, name: own.name, colors: [...own.colors] });
-      }
-    }
-    return [...edited.values()];
+    return editedPalettes(docs.current, palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id)), doc ?? undefined);
   }
 
   /**
@@ -798,16 +799,10 @@ export default function PaintApp() {
         say(`Could not write the palette: ${result.error ?? response.statusText}`);
         return null;
       }
-      const before = new Map(palettesRef.current.filter((item) => item.id).map((item) => [item.id!, item.colors.join()]));
+      // The copy this write came from is the project's now; every other copy follows (loadProject does that).
+      for (const item of docs.current) for (const own of item.palettes) if (own.id === result.id && own.edited && own.colors.join().toUpperCase() === palette.colors.join().toUpperCase() && own.name === palette.name) delete own.edited;
       await loadProject();
-      for (const item of docs.current) {
-        for (const own of item.palettes) {
-          if (own.id !== result.id || before.get(result.id) !== own.colors.join()) continue;
-          own.colors = [...palette.colors];
-          own.name = palette.name;
-        }
-        if (!palette.id) item.palettes.push({ id: result.id, name: palette.name, colors: [...palette.colors] });
-      }
+      if (!palette.id) for (const item of docs.current) item.palettes.push({ id: result.id, name: palette.name, colors: [...palette.colors] });
       scheduleSession();
       bump();
       return result.id;
@@ -2032,9 +2027,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   function recolorPalette(colors: readonly string[]) {
     if (!doc || !picked) return;
     // One undo step per burst of changes (a color well sends many while dragging).
-    if (Date.now() - lastRecolor.current > 1200) { dropFloat(doc); pushUndo(doc); }
+    if (Date.now() - lastRecolor.current > 1200) { dropFloat(doc); pushUndo(doc, true); }
     lastRecolor.current = Date.now();
     picked.colors = colors.map((color) => color.toUpperCase());
+    if (picked.id) picked.edited = true;
     touch(doc);
   }
 

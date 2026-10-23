@@ -194,13 +194,61 @@ describe("palette files", () => {
     writeFileSync(file, JSON.stringify({ _resourceType: "palette", id: made.id, name: "Cave Night", colors: ["E0F8CF", "86C06C", "306850", "071821"], extra: 1 }));
     const listedMtime = (await json<{ palettes: { id: string; mtime: number }[] }>(await fetch(`${base}/gbstudio-assets`))).palettes.find((palette) => palette.id === made.id)!.mtime;
     expect((await post({ id: made.id, name: "Cave Dusk", colors: ["#FFFFFF", "#AAAAAA", "#555555", "#000000"], mtime: listedMtime - 5000 })).status).toBe(409);
+    // Renamed, the file follows its name (as GB Studio names them); the old file is backed up, its other fields kept.
     const edited = await json<{ ok: boolean; id: string; file: string }>(await post({ id: made.id, name: "Cave Dusk", colors: ["#FFFFFF", "#AAAAAA", "#555555", "#000000"], mtime: listedMtime }));
-    expect(edited).toMatchObject({ ok: true, id: made.id, file: "cave_night.gbsres" });
-    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Dusk", colors: ["FFFFFF", "AAAAAA", "555555", "000000"], extra: 1 });
+    expect(edited).toMatchObject({ ok: true, id: made.id, file: "cave_dusk.gbsres" });
+    expect(existsSync(file)).toBe(false);
+    expect(JSON.parse(readFileSync(join(project, "project/palettes/cave_dusk.gbsres"), "utf8"))).toEqual({ _resourceType: "palette", id: made.id, name: "Cave Dusk", colors: ["FFFFFF", "AAAAAA", "555555", "000000"], extra: 1 });
     expect(latestBackup("project/palettes/cave_night.gbsres")).toContain("Cave Night");
     expect((await post({ id: "nope", name: "x", colors: ["#000000", "#111111", "#222222", "#333333"] })).status).toBe(404);
     const listed = await json<{ palettes: { name: string }[] }>(await fetch(`${base}/gbstudio-assets`));
     expect(listed.palettes.map((palette) => palette.name)).toEqual(["Cave Dusk", "Cave Night", "Town day"]);
+  });
+
+  it("a renamed palette's file follows its name when the file was named for the old name (the old file backed up)", async () => {
+    const post = (body: object) => fetch(`${base}/gbstudio-palette`, { method: "POST", body: JSON.stringify(body) });
+    const colors = ["#E0F8CF", "#86C06C", "#306850", "#071821"];
+    const made = await json<{ id: string; file: string }>(await post({ name: "Part2 copy", colors }));
+    expect(made.file).toBe("part2_copy.gbsres");
+    const renamed = await json<{ id: string; file: string }>(await post({ id: made.id, name: "Part3", colors }));
+    expect(renamed).toMatchObject({ id: made.id, file: "part3.gbsres" });
+    expect(existsSync(join(project, "project/palettes/part2_copy.gbsres"))).toBe(false);
+    expect(JSON.parse(readFileSync(join(project, "project/palettes/part3.gbsres"), "utf8"))).toMatchObject({ id: made.id, name: "Part3" });
+    expect(latestBackup("project/palettes/part2_copy.gbsres")).toContain("Part2 copy");
+    // A file not named for its palette (GB Studio's own, or hand-named) keeps its name; so does one whose new name is taken.
+    writeFileSync(join(project, "project/palettes/odd.gbsres"), JSON.stringify({ _resourceType: "palette", id: "pal-odd", name: "Odd one", colors: ["000000", "111111", "222222", "333333"] }));
+    expect((await json<{ file: string }>(await post({ id: "pal-odd", name: "Odder", colors }))).file).toBe("odd.gbsres");
+    await post({ name: "Taken", colors });
+    expect((await json<{ file: string }>(await post({ id: made.id, name: "Taken", colors }))).file).toBe("part3.gbsres");
+    await post({ id: made.id, name: "Part3", colors });
+    // The colors still land when the file moves: edit, then read the list.
+    const edited = await json<{ file: string }>(await post({ id: made.id, name: "Part4", colors: ["#000000", "#FF0001", "#FF0000", "#F4C88A"] }));
+    expect(edited.file).toBe("part4.gbsres");
+    const listed = await json<{ palettes: { id: string; colors: string[] }[] }>(await fetch(`${base}/gbstudio-assets`));
+    expect(listed.palettes.find((palette) => palette.id === made.id)!.colors).toEqual(["#000000", "#FF0001", "#FF0000", "#F4C88A"]);
+  });
+
+  it("two files with one id list once, the newest file winning", async () => {
+    const folder = join(project, "project/palettes");
+    writeFileSync(join(folder, "twin_a.gbsres"), JSON.stringify({ _resourceType: "palette", id: "pal-twin", name: "Twin old", colors: ["000000", "111111", "222222", "333333"] }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    writeFileSync(join(folder, "twin_b.gbsres"), JSON.stringify({ _resourceType: "palette", id: "pal-twin", name: "Twin new", colors: ["000000", "111111", "222222", "444444"] }));
+    const listed = await json<{ palettes: { id: string; name: string }[] }>(await fetch(`${base}/gbstudio-assets`));
+    expect(listed.palettes.filter((palette) => palette.id === "pal-twin").map((palette) => palette.name)).toEqual(["Twin new"]);
+    rmSync(join(folder, "twin_a.gbsres")); rmSync(join(folder, "twin_b.gbsres"));
+  });
+});
+
+describe("backups left inside a project", () => {
+  it("move out to the app's data folder as soon as the project is read, so GB Studio can save again", async () => {
+    // An older GB Cartographer (2026-10-12 to 10-18) kept them in <project>/Cartographer/backups, in folders named like
+    // .gbsres files, which GB Studio's save step trips on.
+    const legacy = join(project, "Cartographer", "backups", "assets", "backgrounds", "town.png.gbsres");
+    mkdirSync(legacy, { recursive: true });
+    writeFileSync(join(legacy, "2026-10-15T10-00-00-000Z.gbsres"), JSON.stringify({ _resourceType: "background", name: "Town (old)" }));
+    expect((await fetch(`${base}/gbstudio-assets`)).status).toBe(200);
+    expect(existsSync(join(project, "Cartographer", "backups"))).toBe(false);
+    expect(latestBackup("assets/backgrounds/town.png.gbsres")).toContain("Town (old)");
   });
 });
 

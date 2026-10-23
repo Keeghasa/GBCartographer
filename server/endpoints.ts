@@ -50,7 +50,7 @@ import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
-import { backupPath, listBackups, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
+import { backupPath, listBackups, migrateOutOfProject, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
 import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, renameOwn, writeOwnSettings, writePanel, writeUnsaved } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
@@ -322,6 +322,9 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
       return true;
     }
     if (url.pathname === "/__cartographer/gbstudio-assets") {
+      // Backups left inside the project by an older GB Cartographer move out as soon as the project is read, not only
+      // when a backup is first written: GB Studio can't save while they're there (server/backups.ts).
+      migrateOutOfProject(options.backupDir, project);
       reply(res, 200, { ok: true, name: projectName(project), path: project, assets: listAssets(project), palettes: listPalettes(project) });
       return true;
     }

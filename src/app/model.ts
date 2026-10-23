@@ -89,6 +89,8 @@ export interface DocCollisions {
 export interface Snapshot { /** Each scene's collisions (a background in scenes). */ collisionValues?: Uint8Array[]; pixels: Uint8Array; cells: Uint8Array; /** Per tile: draws over sprites (GB Studio's priority flag). */ priority?: Uint8Array; /** The picture's palettes (colors are editable, so undo brings them back). */ palettes?: Palette[]; /** Its size then (a resize is an undo step too) and each cell's slot when opened, laid out for that size. */ width?: number; height?: number; opened?: number[] }
 export interface Doc extends Snapshot {
   id: number;
+  /** Counts every edit (touch): what the tab's thumbnail redraws on. */
+  rev?: number;
   name: string;
   width: number;
   height: number;
