@@ -2,7 +2,7 @@
  * The painter's shared types and constants: tools, zoom steps, tints, storage keys, the project's endpoints, and
  * the shape of an open picture (Doc). No React here.
  */
-import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect } from "../paint";
+import { GB_SHADES, type Floating, type Mirror, type Palette, type Rect , type Cells } from "../paint";
 import type { AutotileKind } from "./autotile";
 import type { CollisionTileDef } from "../gb/collisions";
 
@@ -86,7 +86,7 @@ export interface DocCollisions {
   /** Collision tiles of scene types the project's plugins add. */
   types: Record<string, CollisionTileDef[]>;
 }
-export interface Snapshot { /** Each scene's collisions (a background in scenes). */ collisionValues?: Uint8Array[]; pixels: Uint8Array; cells: Uint8Array; /** Per tile: draws over sprites (GB Studio's priority flag). */ priority?: Uint8Array; /** The picture's palettes (colors are editable, so undo brings them back). */ palettes?: Palette[]; /** Its size then (a resize is an undo step too) and each cell's slot when opened, laid out for that size. */ width?: number; height?: number; opened?: number[] }
+export interface Snapshot { /** Each scene's collisions (a background in scenes). */ collisionValues?: Uint8Array[]; pixels: Uint8Array; cells: Cells; /** Per tile: draws over sprites (GB Studio's priority flag). */ priority?: Uint8Array; /** The picture's palettes (colors are editable, so undo brings them back). */ palettes?: Palette[]; /** Its size then (a resize is an undo step too) and each cell's slot when opened, laid out for that size. */ width?: number; height?: number; opened?: number[] }
 export interface Doc extends Snapshot {
   id: number;
   /** Counts every edit (touch): what the tab's thumbnail redraws on. */
@@ -138,7 +138,7 @@ export type Drag =
   | { kind: "priority"; last: Point; on: boolean }
   | { kind: "stamp"; origin: Point; last: Point }
   /** A box auto-tile stamp stretched over a dragged rectangle (redrawn over `base` as the pointer moves). */
-  | { kind: "box"; origin: Point; base: Uint8Array; baseCells: Uint8Array }
+  | { kind: "box"; origin: Point; base: Uint8Array; baseCells: Uint16Array }
   /** A tile-sheet auto-tile stamp (Wang, edges, path, wall face) painted (or, with Alt, cleared) tile by tile. */
   | { kind: "auto"; last: Point; erase: boolean }
   | { kind: "atlas"; last: Point; erase: boolean }

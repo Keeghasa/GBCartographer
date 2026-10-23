@@ -113,7 +113,7 @@ describe("GB Cartographer pixels", () => {
 
   it("moves tile palettes with a tile-aligned piece, flips and turns it, and replaces a shade", () => {
     // A 16 × 8 picture: two tiles wearing palettes 1 and 2.
-    const cells = new Uint8Array([1, 2]);
+    const cells = new Uint16Array([1, 2]);
     expect(onTiles({ x: 0, y: 0, w: 16, h: 8 })).toBe(true);
     expect(onTiles({ x: 1, y: 0, w: 8, h: 8 })).toBe(false);
     const lifted = liftCells(cells, 16, { x: 0, y: 0, w: 16, h: 8 }, 0);
@@ -157,7 +157,7 @@ describe("GB Cartographer pixels", () => {
 
   it("reads the GB greens exactly and writes them back unchanged", () => {
     const shades = new Uint8Array([0, 1, 2, 3, CLEAR, 3]);
-    const rgba = toRgba(shades, new Uint8Array(1), 3);
+    const rgba = toRgba(shades, new Uint16Array(1), 3);
     expect([...rgba.slice(4, 8)]).toEqual([...hexRgb(GB_SHADES[1]), 255]);
     expect(rgba[19]).toBe(0);
     const back = quantize(rgba, 3, 2);
@@ -191,7 +191,7 @@ describe("GB Cartographer pixels", () => {
   });
 
   it("assigns a background's tile colors to its cells through the scene's palette slots", () => {
-    const cells = new Uint8Array(4);
+    const cells = new Uint16Array(4);
     const palettes = [{ name: "Sky", id: "p-sky" }, { name: "File 1" }, { name: "Grass", id: "p-grass" }];
     // Cell 0 slot 1 with priority, cell 1 slot 0, cell 2 a slot whose palette is not in the list; cell 3 beyond the data.
     expect(assignSlots(cells, [0x81, 0x00, 0x02], ["p-grass", "p-sky", "p-missing"], palettes)).toBe(2);
@@ -232,7 +232,7 @@ describe("GB Cartographer pixels", () => {
     const palettes = [{ name: "A", colors: ["#F0F0F0", "#00B400", "#0064FF", "#101010"] }, { name: "B", colors: ["#FFFFFF", "#CCCCCC", "#505050", "#000000"] }];
     const pixels = new Uint8Array(16 * 8);
     pixels.forEach((_, i) => { pixels[i] = (i % 16) < 8 ? i % 4 : 2 + (i % 2); });
-    const cells = new Uint8Array([0, 2]);
+    const cells = new Uint16Array([0, 2]);
     const rgba = toRgba(pixels, cells, 16, palettes);
     expect([...rgba.slice(8 * 4, 8 * 4 + 3)]).toEqual([80, 80, 80]);
     const back = quantize(rgba, 16, 8, palettes);
@@ -364,5 +364,23 @@ describe("rotatedShape in 3D", () => {
     const height = (x: number) => { const ys = points.filter(([px]) => px === x).map(([, y]) => y); return Math.max(...ys) - Math.min(...ys); };
     expect(right - left).toBeLessThan(40);
     expect(height(left)).not.toBe(height(right));
+  });
+});
+
+describe("many palettes", () => {
+  it("a tile wearing the 300th palette is drawn in it, and lifted, dropped, flipped and turned with it", () => {
+    // The author's project had 258 palettes (2026-10-23); a byte per cell wrapped palette 258 onto palette 2.
+    const palettes = Array.from({ length: 300 }, (_, at) => ({ name: `P${at + 1}`, colors: ["#000000", "#111111", "#222222", at === 299 ? "#F4C88A" : "#333333"] }));
+    const pixels = new Uint8Array(16 * 8).fill(3), cells = new Uint16Array([300, 2]);
+    expect(cells[0]).toBe(300);
+    const rgba = toRgba(pixels, cells, 16, palettes);
+    expect([...rgba.slice(0, 3)]).toEqual([0xf4, 0xc8, 0x8a]);
+    expect([...rgba.slice(8 * 4, 8 * 4 + 3)]).toEqual([0x33, 0x33, 0x33]);
+    const lifted = liftCells(cells, 16, { x: 0, y: 0, w: 16, h: 8 }, 0);
+    const piece = { pixels: pixels.slice(), w: 16, h: 8, x: 0, y: 0, cells: lifted };
+    expect([...flipFloat(piece, "x").cells!]).toEqual([2, 300]);
+    expect([...rotateFloat(piece).cells!]).toEqual([300, 2]);
+    dropCells(cells, 16, 8, piece);
+    expect([...cells]).toEqual([300, 2]);
   });
 });

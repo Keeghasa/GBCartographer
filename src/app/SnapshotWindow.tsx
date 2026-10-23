@@ -30,7 +30,7 @@ interface Picture { id: number; name: string; width: number; height: number; pix
 const urlOf = (pixels: Uint8Array, width: number, height: number) => {
   const canvas = document.createElement("canvas");
   Object.assign(canvas, { width, height });
-  canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint8Array(Math.ceil(width / 8) * Math.ceil(height / 8)), width), width, height), 0, 0);
+  canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint16Array(Math.ceil(width / 8) * Math.ceil(height / 8)), width), width, height), 0, 0);
   return canvas.toDataURL();
 };
 
@@ -149,7 +149,7 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
     const pixels = live.shot(settings);
     shades.current = pixels;
     Object.assign(target, { width: settings.width, height: settings.height });
-    target.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint8Array(Math.ceil(settings.width / 8) * Math.ceil(settings.height / 8)), settings.width), settings.width, settings.height), 0, 0);
+    target.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint16Array(Math.ceil(settings.width / 8) * Math.ceil(settings.height / 8)), settings.width), settings.width, settings.height), 0, 0);
   });
 
   async function open(picked: File[]) {

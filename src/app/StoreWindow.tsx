@@ -105,7 +105,7 @@ function pictureUrl(key: string, art: Canvas, palette?: readonly string[]): stri
   let url = urls.get(key);
   if (!url) {
     const canvas = Object.assign(document.createElement("canvas"), { width: art.width, height: art.height });
-    const cells = new Uint8Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)).fill(palette ? 1 : 0);
+    const cells = new Uint16Array(Math.ceil(art.width / 8) * Math.ceil(art.height / 8)).fill(palette ? 1 : 0);
     canvas.getContext("2d")!.putImageData(new ImageData(toRgba(art.pixels, cells, art.width, palette ? [{ name: "", colors: [...palette] }] : []), art.width, art.height), 0, 0);
     url = canvas.toDataURL();
     urls.set(key, url);

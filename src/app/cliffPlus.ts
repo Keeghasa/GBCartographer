@@ -66,11 +66,11 @@ export function plusCellsToRect(cells: ArrayLike<number>, tall: boolean, none = 
 }
 
 /** A Cliff stamp in hand (pixels and each tile's palette) as the brush reads it: a + turned packed, a 32 px-wall one stretched. */
-export function cliffStampToRect<T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, tall: boolean): T {
+export function cliffStampToRect<T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint16Array }>(stamp: T, tall: boolean): T {
   const plus = isPlusSheet(stamp.w, stamp.h);
   if (!plus && !tall) return stamp;
   const art = plus ? plusToRect({ width: stamp.w, height: stamp.h, pixels: stamp.pixels }, tall) : stretchTall({ width: stamp.w, height: stamp.h, pixels: stamp.pixels });
-  const cells = !stamp.cells ? undefined : plus ? Uint8Array.from(plusCellsToRect(stamp.cells, tall, 0)) : Uint8Array.from({ length: 6 * 12 }, (_, at) => stamp.cells![(tallRow(Math.floor(at / 6) * 8 + 4) >> 3) * 6 + (at % 6)]);
+  const cells = !stamp.cells ? undefined : plus ? Uint16Array.from(plusCellsToRect(stamp.cells, tall, 0)) : Uint16Array.from({ length: 6 * 12 }, (_, at) => stamp.cells![(tallRow(Math.floor(at / 6) * 8 + 4) >> 3) * 6 + (at % 6)]);
   return { ...stamp, pixels: art.pixels, w: art.width, h: art.height, ...(cells ? { cells } : {}) };
 }
 

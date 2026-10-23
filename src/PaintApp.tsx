@@ -12,7 +12,7 @@ import { applyFont, loadFont, type FontChoice } from "./ui/theme";
 import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
-import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette } from "./paint";
+import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette, MAX_PALETTES } from "./paint";
 import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
@@ -948,7 +948,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   async function createPicture({ kind, name, width, height, pixels: start }: NewPicture): Promise<boolean> {
     const keyed = kind ? isKeyed(kind) : false;
     const pixels = start && start.length === width * height ? start.slice() : new Uint8Array(width * height).fill(keyed ? CLEAR : 0);
-    const cells = new Uint8Array(cellsWide(width) * Math.ceil(height / CELL));
+    const cells = new Uint16Array(cellsWide(width) * Math.ceil(height / CELL));
     if (!kind) {
       const id = newDocId(docs.current);
       docs.current.push({ id, name: `${name.replace(/\.png$/i, "")}.png`, width, height, pixels, cells, hasAlpha: pixels.includes(CLEAR), palettes: clonePalettes(palettesRef.current), undo: [], redo: [], dirty: true, zoom: fitZoom(width, height), sel: null, float: null });
@@ -1001,7 +1001,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       return out;
     };
     pushUndo(doc);
-    const cells = move(doc.cells, 0, (length) => new Uint8Array(length)) as Uint8Array;
+    const cells = move(doc.cells, 0, (length) => new Uint16Array(length)) as Uint16Array;
     if (doc.priority) doc.priority = move(doc.priority, 0, (length) => new Uint8Array(length)) as Uint8Array;
     if (doc.asset?.opened) doc.asset.opened = Array.from(move(doc.asset.opened, -1, (length) => new Array<number>(length)) as number[]);
     Object.assign(doc, { width, height, pixels, cells, sel: null, float: null, resized: true, zoom: fitZoom(width, height) });
@@ -1162,7 +1162,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const palettes = clonePalettes(palettesRef.current);
     const first = palettes.length;
     result.palettes.forEach((colors, index) => palettes.push({ name: result.names?.[index] ?? `${name} ${index + 1}`, colors: [...colors] }));
-    docs.current.push({ id, name: `${name.replace(/\.png$/i, "")}.png`, width: result.width, height: result.height, pixels: result.pixels.slice(), cells: Uint8Array.from(result.cells, (wear) => wear ? first + wear : 0), hasAlpha: false, palettes, undo: [], redo: [], dirty: true, zoom: fitZoom(result.width, result.height), sel: null, float: null });
+    docs.current.push({ id, name: `${name.replace(/\.png$/i, "")}.png`, width: result.width, height: result.height, pixels: result.pixels.slice(), cells: Uint16Array.from(result.cells, (wear) => wear ? first + wear : 0), hasAlpha: false, palettes, undo: [], redo: [], dirty: true, zoom: fitZoom(result.width, result.height), sel: null, float: null });
     setActiveId(id);
     setShowPictureWizard(false);
     scheduleSession();
@@ -1204,7 +1204,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     await openAsset(asset);
     const target = docs.current.find((item) => item.asset?.kind === "backgrounds" && item.asset.file === made.file);
     if (target) {
-      target.cells = Uint8Array.from(result.cells, (wear) => { const at = wear ? target.palettes.findIndex((palette) => palette.id === ids[wear - 1]) : -1; return at < 0 ? 0 : at + 1; });
+      target.cells = Uint16Array.from(result.cells, (wear) => { const at = wear ? target.palettes.findIndex((palette) => palette.id === ids[wear - 1]) : -1; return at < 0 ? 0 : at + 1; });
       if (target.asset) target.asset.slots = ids.concat(target.asset.slots?.slice(ids.length) ?? []);
       touch(target);
       await saveDoc(target, false, false);
@@ -1231,7 +1231,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const cells: { x: number; y: number; file: string }[] = [];
     for (let row = 0; row < rows; row += 1) for (let column = 0; column < columns; column += 1) {
       const x0 = column * STEP_X, y0 = row * STEP_Y;
-      const pixels = new Uint8Array(W * H), tileCells = new Uint8Array((W / CELL) * (H / CELL));
+      const pixels = new Uint8Array(W * H), tileCells = new Uint16Array((W / CELL) * (H / CELL));
       for (let y = 0; y < H; y += 1) pixels.set(whole.pixels.subarray((y0 + y) * whole.width + x0, (y0 + y) * whole.width + x0 + W), y * W);
       for (let ty = 0; ty < H / CELL; ty += 1) for (let tx = 0; tx < W / CELL; tx += 1) tileCells[ty * (W / CELL) + tx] = whole.cells[(y0 / CELL + ty) * cw + x0 / CELL + tx] ?? 0;
       const screen = `${name} ${column + 1}-${row + 1}`;
@@ -1273,7 +1273,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /** A generated map as a fitted picture: its tiles' palettes when it has them, else every tile in the greens. */
-  const generatedPicture = ({ width, height, pixels, cells, palettes }: Generated): FittedPicture => ({ width, height, pixels, cells: cells ?? new Uint8Array(cellsWide(width) * Math.ceil(height / CELL)), palettes: palettes?.map((palette) => palette.colors) ?? [], names: palettes?.map((palette) => palette.name) });
+  const generatedPicture = ({ width, height, pixels, cells, palettes }: Generated): FittedPicture => ({ width, height, pixels, cells: cells ?? new Uint16Array(cellsWide(width) * Math.ceil(height / CELL)), palettes: palettes?.map((palette) => palette.colors) ?? [], names: palettes?.map((palette) => palette.name) });
 
   // ---- the text tool (W5) ------------------------------------------------------------------------------------------
 
@@ -1402,7 +1402,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     // See-through stays see-through in the PNG (no key color): a stamp opens like any picture.
     const canvas = document.createElement("canvas");
     Object.assign(canvas, { width: area.w, height: area.h });
-    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(piece.pixels, new Uint8Array(cellsWide(area.w) * Math.ceil(area.h / CELL)), area.w, []), area.w, area.h), 0, 0);
+    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(piece.pixels, new Uint16Array(cellsWide(area.w) * Math.ceil(area.h / CELL)), area.w, []), area.w, area.h), 0, 0);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) return say("The stamp could not be made.");
     const made = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind: "stamps", name })}`, { method: "POST", body: blob }).catch(() => null);
@@ -1423,14 +1423,14 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     return { flags: { auto: kind.id }, note: ` ${kind.name}: ${kind.about}.${["wang", "edges", "path", "corner", "wallface", "atlas", "atlasAnim", "atlasWall", "mound", "forest", "xp", "xpAnim", "xpCliff", "xpCliffTall"].includes(kind.id) ? " Alt clears." : ""}` };
   }
   /** An animated stamp stamps its first frame (square, from the left). */
-  const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array }>(stamp: T, auto?: AutotileKind): T => {
+  const firstFrame = <T extends { pixels: Uint8Array; w: number; h: number; cells?: Uint16Array }>(stamp: T, auto?: AutotileKind): T => {
     // A Cliff as a + (cliffPlus.ts), or a 32 px-wall Cliff: the packed sheet the brush reads.
     if (auto === "xpCliff" || auto === "xpCliffTall") return cliffStampToRect(stamp, auto === "xpCliffTall");
     if (auto !== "anim") return stamp;
     const size = stamp.h, pixels = new Uint8Array(size * size);
     for (let y = 0; y < size; y += 1) pixels.set(stamp.pixels.subarray(y * stamp.w, y * stamp.w + size), y * size);
     const cw = stamp.w / 8, fw = size / 8;
-    const cells = stamp.cells ? Uint8Array.from({ length: fw * fw }, (_, at) => stamp.cells![Math.floor(at / fw) * cw + (at % fw)]) : undefined;
+    const cells = stamp.cells ? Uint16Array.from({ length: fw * fw }, (_, at) => stamp.cells![Math.floor(at / fw) * cw + (at % fw)]) : undefined;
     // The whole strip goes along, so its frames can play over the picture while the stamp is held.
     return { ...stamp, pixels, w: size, ...(cells ? { cells } : {}), animSheet: { pixels: stamp.pixels, w: stamp.w, h: stamp.h, ...(stamp.cells ? { cells: stamp.cells } : {}) } };
   };
@@ -2256,7 +2256,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         // stay, after the restored ones, and stay in front (2026-10-14: the whole session used to be skipped).
         const early = docs.current;
         const restored: Doc[] = [];
-        for (const saved of session.docs) restored.push({ ...saved, hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: newDocId([...restored, ...early]), undo: [], redo: [], sel: null, float: null });
+        // A session kept by an older GB Cartographer has one byte a cell; cells are 16-bit now (2026-10-23).
+        for (const saved of session.docs) restored.push({ ...saved, cells: saved.cells instanceof Uint16Array ? saved.cells : Uint16Array.from(saved.cells as ArrayLike<number>), hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: newDocId([...restored, ...early]), undo: [], redo: [], sel: null, float: null });
         docs.current = [...restored, ...early];
         if (!early.length) setActiveId(restored[Math.max(0, session.active)]?.id ?? restored[0].id);
         void rereadSlots();
@@ -2405,7 +2406,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     // The block in the picture's colors, once.
     const sheet = document.createElement("canvas");
     Object.assign(sheet, { width: source.w, height: source.h });
-    sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint8Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, atlasHeld.palettes), source.w, source.h), 0, 0);
+    sheet.getContext("2d")!.putImageData(new ImageData(toRgba(source.pixels, source.cells ?? new Uint16Array(cellsWide(source.w) * Math.ceil(source.h / CELL)), source.w, atlasHeld.palettes), source.w, source.h), 0, 0);
     const key = (pixels: Uint8Array, width: number, x: number, y: number) => { let out = ""; for (let row = 0; row < CELL; row += 1) out += pixels.subarray((y + row) * width + x, (y + row) * width + x + CELL).join(",") + ";"; return out; };
     // See-through pixels land as the picture's blank, so the sheet's tiles are matched that way (a tile that is all blank never counts).
     const blankShade = blank(doc), flat = source.pixels.map((shade) => shade === CLEAR ? blankShade : shade), empty = key(new Uint8Array(CELL * CELL).fill(blankShade), CELL, 0, 0);
@@ -2454,7 +2455,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
    * the palettes are first added to the project and then put in the picture's slots (1 onwards), so Save writes the
    * tiles' slots too.
    */
-  async function applyFit(fit: { palettes: string[][]; cells: Uint8Array; pixels: Uint8Array; report: { after: number } }, intoProject: boolean) {
+  async function applyFit(fit: { palettes: string[][]; cells: Uint16Array; pixels: Uint8Array; report: { after: number } }, intoProject: boolean) {
     const target = doc;
     if (!target) return;
     const base = target.name.replace(/\.png$/i, "");
@@ -2474,7 +2475,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       return at + 1;
     });
     target.pixels = fit.pixels.slice();
-    target.cells = Uint8Array.from(fit.cells, (wear) => wear ? slots[wear - 1] : 0);
+    target.cells = Uint16Array.from(fit.cells, (wear) => wear ? slots[wear - 1] : 0);
     if (intoProject && target.asset) {
       for (const [slot, id] of ids.entries()) {
         await fetch(`./__cartographer/gbstudio-palette-slot?${assetQuery(target.asset)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot, paletteId: id }) }).catch(() => null);
@@ -2674,7 +2675,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   const sceneSlots = doc?.asset?.slots ?? [];
   const slotPalettes = sceneSlots.map((id) => docPalettes.findIndex((palette) => palette.id === id));
   const slotWhere = doc?.asset?.slotScene ? `${doc.asset.slotScene}'s palettes` : doc?.asset?.kind === "sprites" ? "the project's default sprite palettes (every scene without its own)" : "the project's default background palettes (every scene without its own)";
-  const pickPalette = (index: number) => { setActivePalette(index); if (index && tool !== "palette" && tool !== "paletteAll") setTool("palette"); };
+  const pickPalette = (index: number) => { if (index > MAX_PALETTES) return say(`This picture has more palettes than can be told apart (${MAX_PALETTES}): take some out of the project first.`); setActivePalette(index); if (index && tool !== "palette" && tool !== "paletteAll") setTool("palette"); };
 
   // No project and nothing open: the start screen on its own, like a splash window, with no tools behind it.
   if (splash) {
@@ -3109,7 +3110,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           picture={doc ? { pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), width: doc.width, height: doc.height, sprite: Boolean(doc.keyGreen) } : null}
           onClose={() => { setShowPalettes(false); setPaletteFocus(undefined); }}
           onWriteProject={writeProjectPalette}
-          onPick={(id) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) { setActivePalette(index + 1); setTool("palette"); } }}
+          onPick={(id) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= MAX_PALETTES) { say(`This picture has more palettes than can be told apart (${MAX_PALETTES}): take some out of the project first.`); return; } if (index >= 0) { setActivePalette(index + 1); setTool("palette"); } }}
           onRemoveProject={removeProjectPalette}
           onSlotMenu={doc?.asset?.slots?.length ? (id, x, y) => { const index = docPalettes.findIndex((item) => item.id === id); if (index >= 0) { setSlotQuery(""); setSlotMenu({ x, y, palette: index + 1 }); } else say("Open a picture of this project to put its palettes in slots."); } : undefined}
         />

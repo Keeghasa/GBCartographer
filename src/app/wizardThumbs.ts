@@ -17,7 +17,7 @@ const palette = (name: string) => {
 
 /** A blank thumbnail; `wear` gives every tile one palette. */
 function blank(names: string[], wear = 1): Generated {
-  const out: Generated = { ...canvas(W, H), cells: new Uint8Array(TILES_WIDE * (H / 8)).fill(wear), palettes: names.map(palette) };
+  const out: Generated = { ...canvas(W, H), cells: new Uint16Array(TILES_WIDE * (H / 8)).fill(wear), palettes: names.map(palette) };
   return out;
 }
 /** Tiles in the box (x, y, w, h), in pixels on 8-pixel edges, wear palette `wear`. */
@@ -26,7 +26,7 @@ function wearBox(out: Generated, x: number, y: number, w: number, h: number, wea
 }
 /** The top-left 160 × 96 of a bigger picture, `step` pixels apart (2: half size), cells following. */
 function crop(source: Generated, step = 1, from = 0, fromX = 0): Generated {
-  const out: Generated = { ...canvas(W, H), cells: new Uint8Array(TILES_WIDE * (H / 8)), palettes: source.palettes };
+  const out: Generated = { ...canvas(W, H), cells: new Uint16Array(TILES_WIDE * (H / 8)), palettes: source.palettes };
   for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) out.pixels[y * W + x] = source.pixels[(from + y * step) * source.width + fromX + x * step] ?? 0;
   if (source.cells) for (let ty = 0; ty < H / 8; ty += 1) for (let tx = 0; tx < TILES_WIDE; tx += 1) out.cells![ty * TILES_WIDE + tx] = source.cells[Math.floor((from + ty * 8 * step) / 8) * Math.ceil(source.width / 8) + Math.floor((fromX + tx * 8 * step) / 8)] ?? 0;
   return out;
@@ -84,7 +84,7 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     // The scene: the cave wizard's forest (the author's pick, 2026-10-14), in four vertical slices (the author: dawn,
     // day, sunset, night side by side), each starting at its own part of the day and going round from there.
     const out = crop(drawCave({ style: "cave", columns: 1, rows: 1, cell: 16, seed: 11, fill: 45, smooth: 4, rooms: 6, roomSize: 4, connected: true, stairs: true, walls: "pines" }), 1, 24);
-    out.cells = new Uint8Array((W / 8) * (H / 8)).map((_, cell) => 1 + Math.floor((cell % TILES_WIDE) / (TILES_WIDE / 4)));
+    out.cells = new Uint16Array((W / 8) * (H / 8)).map((_, cell) => 1 + Math.floor((cell % TILES_WIDE) / (TILES_WIDE / 4)));
     out.palettes = [0, 1, 2, 3].map((slice) => ({ name: `Time of day ${slice + 1}`, colors: blendAt(frame / per + slice) }));
     return out;
   }

@@ -23,7 +23,7 @@ export interface DnsWizardProps {
   /** Names of every palette already in the project (to show which versions exist and avoid duplicates). */
   existing: string[];
   /** The open picture, to preview the scene under each time of day (null when no picture with slots is open). */
-  picture: { pixels: Uint8Array; cells: Uint8Array; width: number; height: number; palettes: { name: string; colors: string[]; id?: string }[] } | null;
+  picture: { pixels: Uint8Array; cells: Uint16Array; width: number; height: number; palettes: { name: string; colors: string[]; id?: string }[] } | null;
   onClose: () => void;
   /** Adds these palettes to the project; resolves to how many were written (the parent writes them, with backups). */
   onCreate: (palettes: { name: string; colors: string[] }[]) => Promise<number>;

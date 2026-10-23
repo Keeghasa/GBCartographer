@@ -55,7 +55,7 @@ function cover(image: ImageBitmap, width: number, height: number, panX: number, 
 function cut(result: FitResult, sx: number, sy: number, budget: boolean): Screen {
   let pixels = new Uint8Array(W * H);
   for (let y = 0; y < H; y += 1) pixels.set(result.pixels.subarray((sy + y) * result.width + sx, (sy + y) * result.width + sx + W), y * W);
-  const wide = Math.ceil(result.width / 8), cells = new Uint8Array((W / 8) * (H / 8));
+  const wide = Math.ceil(result.width / 8), cells = new Uint16Array((W / 8) * (H / 8));
   for (let cy = 0; cy < H / 8; cy += 1) for (let cx = 0; cx < W / 8; cx += 1) cells[cy * (W / 8) + cx] = result.cells[(sy / 8 + cy) * wide + sx / 8 + cx];
   let tiles = countUniqueTiles(pixels, W, H, false);
   if (budget && tiles > SCREEN_TILES) { const under = fitTileBudget(pixels, W, H, false, SCREEN_TILES); pixels = under.pixels; tiles = under.tiles; }

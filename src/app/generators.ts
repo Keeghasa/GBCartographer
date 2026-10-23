@@ -26,7 +26,7 @@ export function seeded(seed: number): () => number {
 }
 
 /** A picture in GB shades, one byte per pixel; with colors, each 8 × 8 tile's palette (1-based, 0 the greens) and those palettes. */
-export interface Generated { width: number; height: number; pixels: Uint8Array; cells?: Uint8Array; palettes?: { name: string; colors: string[] }[] }
+export interface Generated { width: number; height: number; pixels: Uint8Array; cells?: Uint16Array; palettes?: { name: string; colors: string[] }[] }
 
 const SCREEN_W = 160, SCREEN_H = 144;
 const SIDES: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -282,7 +282,7 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floor
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
   const theme = themeOf(CAVE_THEMES, settings.theme ?? "");
-  if (theme) { out.cells = new Uint8Array(Math.ceil(out.width / 8) * Math.ceil(out.height / 8)).fill(1); out.palettes = theme.palettes.map(({ name, colors }) => ({ name, colors: [...colors] })); }
+  if (theme) { out.cells = new Uint16Array(Math.ceil(out.width / 8) * Math.ceil(out.height / 8)).fill(1); out.palettes = theme.palettes.map(({ name, colors }) => ({ name, colors: [...colors] })); }
   // Tiles: floor where the grid is open; wall in the two tiles above a floor that aren't floor.
   const tw = w * per, th = h * per;
   const floor = (x: number, y: number) => x >= 0 && y >= 0 && x < tw && y < th && grid[Math.floor(y / per) * w + Math.floor(x / per)] !== 1;
@@ -372,7 +372,7 @@ function cropTo(picture: Generated, width: number, height: number): Generated {
   const out: Generated = { ...picture, width, height, pixels };
   if (picture.cells) {
     const from = Math.ceil(picture.width / 8), to = Math.ceil(width / 8);
-    out.cells = new Uint8Array(to * Math.ceil(height / 8));
+    out.cells = new Uint16Array(to * Math.ceil(height / 8));
     for (let y = 0; y < Math.ceil(height / 8); y += 1) out.cells.set(picture.cells.subarray(y * from, y * from + to), y * to);
   }
   return out;
@@ -638,7 +638,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
   if (theme) {
     // Each 16-pixel cell is 2 × 2 tiles, all in its terrain's palette (or the theme's one palette).
     const tilesWide = w * 2;
-    out.cells = new Uint8Array(tilesWide * h * 2);
+    out.cells = new Uint16Array(tilesWide * h * 2);
     for (let at = 0; at < out.cells.length; at += 1) out.cells[at] = theme.palettes.length === 7 ? TERRAIN_PALETTE[grid[Math.floor(Math.floor(at / tilesWide) / 2) * w + Math.floor((at % tilesWide) / 2)]] : 1;
     out.palettes = theme.palettes.map(({ name, colors }) => ({ name, colors: [...colors] }));
   }

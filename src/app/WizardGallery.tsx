@@ -47,7 +47,7 @@ function Thumb({ id, playing }: { id: WizardThumb; playing: boolean }) {
   }, [id, count]);
   const drawn = useMemo(() => Array.from({ length: count }, (_, frame) => {
     const picture = wizardThumb(id, frame, WIZARD_LOOK[id]);
-    const cells = picture.cells ?? new Uint8Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
+    const cells = picture.cells ?? new Uint16Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
     const palettes = (picture.palettes ?? []).map(({ name, colors }) => ({ name, colors }));
     return new ImageData(toRgba(picture.pixels, cells, picture.width, palettes), picture.width, picture.height);
   }), [id, count]);

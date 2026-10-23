@@ -14,7 +14,7 @@ import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
   /** The open picture (a copy is worked on; nothing changes until Apply). */
-  picture: { name: string; pixels: Uint8Array; cells: Uint8Array; width: number; height: number; palettes: { name: string; colors: string[] }[] };
+  picture: { name: string; pixels: Uint8Array; cells: Uint16Array; width: number; height: number; palettes: { name: string; colors: string[] }[] };
   /** The budget: the tile limit and whether flipped tiles merge (Color Only). */
   limit: number; flips: boolean;
   onClose: () => void;
@@ -100,7 +100,7 @@ export function BudgetFixer({ picture, limit, flips, onClose, onApply }: BudgetF
 
   const image = useMemo(() => new ImageData(new Uint8ClampedArray(toRgba(working, cells, width, palettes)), width, height), [working, cells, width, height, palettes]);
   // A tile as it looks in `place`'s palette (the merged tile keeps its cell's palette).
-  const tileRgba = (tile: number, place: number) => toRgba(tilePixels(working, width, height, tile), Uint8Array.of(cells[place] ?? 0), 8, palettes);
+  const tileRgba = (tile: number, place: number) => toRgba(tilePixels(working, width, height, tile), Uint16Array.of(cells[place] ?? 0), 8, palettes);
   // Thumbnails once per list (a list is only ever built from the current pixels).
   const shown = useMemo(() => steps.slice(0, SHOWN), [steps]);
   const thumbs = useMemo(() => new Map(shown.map((step) => [step.from, { from: tileRgba(step.from, step.from), into: tileRgba(step.into, step.from) }])), [shown]);

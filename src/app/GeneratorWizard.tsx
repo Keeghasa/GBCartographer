@@ -97,7 +97,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
   useEffect(() => {
     if (!target) return;
     Object.assign(target, { width: picture.width, height: picture.height });
-    const cells = picture.cells ?? new Uint8Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
+    const cells = picture.cells ?? new Uint16Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8));
     target.getContext("2d")!.putImageData(new ImageData(toRgba(picture.pixels, cells, picture.width, picture.palettes ?? []), picture.width, picture.height), 0, 0);
   }, [picture, target]);
 

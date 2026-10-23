@@ -203,7 +203,7 @@ export default function PaletteManager({ projectName, projectPalettes, focus, sc
     canvas.width = picture.width;
     canvas.height = picture.height;
     const image = new ImageData(picture.width, picture.height);
-    colorize(picture.pixels, new Uint8Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8)), picture.width, [lut], new Uint32Array(image.data.buffer));
+    colorize(picture.pixels, new Uint16Array(Math.ceil(picture.width / 8) * Math.ceil(picture.height / 8)), picture.width, [lut], new Uint32Array(image.data.buffer));
     // See-through pixels get a checkerboard drawn in (4 px squares), so the preview can scale to fit its box.
     for (let y = 0; y < picture.height; y += 1) {
       for (let x = 0; x < picture.width; x += 1) {

@@ -21,7 +21,7 @@ export interface FitResult {
   /** Each pixel's shade in its tile's palette. */
   pixels: Uint8Array;
   /** Each tile's palette, 1-based (0 none). */
-  cells: Uint8Array;
+  cells: Uint16Array;
   palettes: string[][];
   /** Unique tiles (flipped copies merged, as in a Color Only scene) before and after the budget step. */
   tilesBefore: number; tiles: number; merged: number;

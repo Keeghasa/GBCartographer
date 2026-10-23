@@ -11,6 +11,8 @@ export interface UnsavedPicture {
   format: 1;
   name: string; width: number; height: number; resized?: boolean;
   pixels: string; cells: string; priority?: string;
+  /** Bytes per cell in `cells`: 2 since 2026-10-23 (a project with more than 255 palettes needs them); missing: 1. */
+  cellBytes?: 2;
   palettes: Palette[];
   /** Each scene's collisions, by scene file (a background in scenes). */
   collisions?: { file: string; values: string }[];
@@ -18,6 +20,9 @@ export interface UnsavedPicture {
   assetMtime: number;
   savedAt: number;
 }
+
+/** A 16-bit array's bytes, as stored. */
+export const bytesOf = (cells: Uint16Array) => new Uint8Array(cells.buffer, cells.byteOffset, cells.byteLength);
 
 export function toBase64(bytes: Uint8Array): string {
   let text = "";
@@ -36,7 +41,7 @@ export function fromBase64(text: string): Uint8Array {
 export function unsavedOf(doc: Doc): UnsavedPicture {
   return {
     format: 1, name: doc.name, width: doc.width, height: doc.height, ...(doc.resized ? { resized: true } : {}),
-    pixels: toBase64(doc.pixels), cells: toBase64(doc.cells), ...(doc.priority ? { priority: toBase64(doc.priority) } : {}),
+    pixels: toBase64(doc.pixels), cells: toBase64(bytesOf(doc.cells)), cellBytes: 2, ...(doc.priority ? { priority: toBase64(doc.priority) } : {}),
     palettes: doc.palettes.map((palette) => ({ ...palette, colors: [...palette.colors] })),
     ...(doc.collision ? { collisions: doc.collision.scenes.map((scene) => ({ file: scene.file, values: toBase64(scene.values) })) } : {}),
     assetMtime: doc.asset?.mtime ?? 0, savedAt: Date.now(),
@@ -46,7 +51,8 @@ export function unsavedOf(doc: Doc): UnsavedPicture {
 /** Puts kept changes on a picture just opened from its file; false when they don't fit it (another size, damaged). */
 export function applyUnsaved(doc: Doc, kept: UnsavedPicture): boolean {
   try {
-    const pixels = fromBase64(kept.pixels), cells = fromBase64(kept.cells);
+    const pixels = fromBase64(kept.pixels), cellBytes = fromBase64(kept.cells);
+    const cells = kept.cellBytes === 2 ? new Uint16Array(cellBytes.buffer, 0, cellBytes.length >> 1) : Uint16Array.from(cellBytes);
     if (pixels.length !== kept.width * kept.height) return false;
     Object.assign(doc, { width: kept.width, height: kept.height, pixels, cells, palettes: kept.palettes.map((palette) => ({ ...palette, colors: [...palette.colors] })), dirty: true, sel: null, float: null, undo: [], redo: [], ...(kept.resized ? { resized: true } : {}) });
     if (kept.priority) doc.priority = fromBase64(kept.priority);
@@ -64,7 +70,7 @@ export function applyUnsaved(doc: Doc, kept: UnsavedPicture): boolean {
 export function fingerprint(doc: Doc): string {
   let hash = 2166136261;
   const mix = (bytes: Uint8Array) => { for (let at = 0; at < bytes.length; at += 1) hash = Math.imul(hash ^ bytes[at], 16777619); };
-  mix(doc.pixels); mix(doc.cells);
+  mix(doc.pixels); mix(bytesOf(doc.cells));
   if (doc.priority) mix(doc.priority);
   for (const scene of doc.collision?.scenes ?? []) mix(scene.values);
   return `${doc.width}x${doc.height}:${hash >>> 0}:${JSON.stringify(doc.palettes.map((palette) => palette.colors))}`;

@@ -58,7 +58,7 @@ interface Painting {
  * The stamp in hand: a picture to stamp, how it paints as an auto-tile, and for an animated tile its whole sheet of
  * frames (the stamp itself is frame 1; the frames play over the picture while it's held).
  */
-export type HeldStamp = Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind; /** A repeat tile (a stamp tagged pattern): paints one 8 × 8 tile at a time, from the pattern's own place there. */ repeat?: boolean; animSheet?: { pixels: Uint8Array; w: number; h: number; cells?: Uint8Array } };
+export type HeldStamp = Floating & { palettes: Palette[]; /** An auto-tile (autotile.ts): how the stamp paints. */ auto?: AutotileKind; /** A repeat tile (a stamp tagged pattern): paints one 8 × 8 tile at a time, from the pattern's own place there. */ repeat?: boolean; animSheet?: { pixels: Uint8Array; w: number; h: number; cells?: Uint16Array } };
 
 export function usePainting(app: Painting) {
   const { doc, tool, shade, brush, cellBrush, mirror, pattern, linked, snap, activePalette } = app;
@@ -193,7 +193,7 @@ export function usePainting(app: Painting) {
     const pixels = new Uint8Array(CELL * CELL);
     for (let y = 0; y < CELL; y += 1) for (let x = 0; x < CELL; x += 1) pixels[y * CELL + x] = source.pixels[((ty * CELL + y) % source.h) * source.w + (tx * CELL + x) % source.w];
     const cw = Math.max(1, Math.floor(source.w / CELL)), ch = Math.max(1, Math.floor(source.h / CELL));
-    const cells = source.cells ? Uint8Array.of(source.cells[(ty % ch) * cw + (tx % cw)]) : undefined;
+    const cells = source.cells ? Uint16Array.of(source.cells[(ty % ch) * cw + (tx % cw)]) : undefined;
     putStamp(target, { x: tx * CELL, y: ty * CELL }, { pixels, w: CELL, h: CELL, x: 0, y: 0, palettes: source.palettes, ...(cells ? { cells } : {}) });
   }
 
@@ -210,7 +210,7 @@ export function usePainting(app: Painting) {
     const x0 = (stretchX ? Math.min(a.x, b.x) : a.x) & ~7, y0 = (stretchY ? Math.min(a.y, b.y) : a.y) & ~7;
     const w = stretchX ? Math.max(2, ((Math.max(a.x, b.x) & ~7) - x0) / CELL + 1) : sw, h = stretchY ? Math.max(2, ((Math.max(a.y, b.y) & ~7) - y0) / CELL + 1) : sh;
     const pick = (at: number, size: number, of: number, stretch: boolean) => !stretch ? at : at === 0 ? 0 : at === size - 1 ? of - 1 : 1 + ((at - 1) % (of - 2));
-    const pixels = new Uint8Array(w * CELL * h * CELL), cells = source.cells ? new Uint8Array(w * h) : undefined;
+    const pixels = new Uint8Array(w * CELL * h * CELL), cells = source.cells ? new Uint16Array(w * h) : undefined;
     for (let ty = 0; ty < h; ty += 1) for (let tx = 0; tx < w; tx += 1) {
       const sx = pick(tx, w, sw, stretchX), sy = pick(ty, h, sh, stretchY);
       for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((sy * CELL + y) * source.w + sx * CELL, (sy * CELL + y) * source.w + sx * CELL + CELL), (ty * CELL + y) * w * CELL + tx * CELL);
@@ -249,7 +249,7 @@ export function usePainting(app: Painting) {
     if (replace) fillRect(target.pixels, target.width, target.height, { x: tx * CELL, y: ty * CELL, w: CELL, h: CELL }, app.blank(target));
     const pixels = new Uint8Array(CELL * CELL);
     for (let y = 0; y < CELL; y += 1) pixels.set(source.pixels.subarray((row * CELL + y) * source.w + column * CELL, (row * CELL + y) * source.w + column * CELL + CELL), y * CELL);
-    const cells = source.cells ? new Uint8Array([source.cells[row * cellsWide(source.w) + column]]) : undefined;
+    const cells = source.cells ? Uint16Array.of(source.cells[row * cellsWide(source.w) + column]) : undefined;
     putStamp(target, { x: tx * CELL, y: ty * CELL }, { pixels, w: CELL, h: CELL, x: tx * CELL, y: ty * CELL, ...(cells ? { cells } : {}), palettes: source.palettes });
   }
 

@@ -13,7 +13,7 @@ export interface Rect { x: number; y: number; w: number; h: number }
 export interface Floating {
   pixels: Uint8Array; w: number; h: number; x: number; y: number;
   /** Lifted on tile edges: each 8 × 8 tile's palette (a picture's `cells` value) moves with the pixels. */
-  cells?: Uint8Array;
+  cells?: Cells;
 }
 export type Mirror = "off" | "x" | "y" | "xy";
 
@@ -24,8 +24,15 @@ export function hexRgb(hex: string): [number, number, number] {
 
 export const CELL = 8;
 /** A four-color palette from the library; a cell (one 8 × 8 tile) may wear one. */
+/**
+ * Each 8 × 8 tile's palette: an index into the picture's palette list plus one, 0 for none. Sixteen bits (the author's
+ * project, 2026-10-23: 258 palettes, and a byte wrapped the ones past 255 onto the wrong palettes).
+ */
+export type Cells = Uint16Array;
+export const MAX_PALETTES = 0xffff;
+
 export interface Palette { name: string; colors: string[]; /** GB Studio's palette id, for palettes read from a project. */ id?: string; /** A picture's copy the user recolored in that picture (app/paletteSync.ts): the only copies Save writes into the project. */ edited?: boolean }
-export interface Picture { pixels: Uint8Array; cells: Uint8Array; hasAlpha: boolean; snapped: number; /** Colors within NEAR_SHADE_TOLERANCE of a GB green, read as that green. */ near: number; palettes: Palette[] }
+export interface Picture { pixels: Uint8Array; cells: Cells; hasAlpha: boolean; snapped: number; /** Colors within NEAR_SHADE_TOLERANCE of a GB green, read as that green. */ near: number; palettes: Palette[] }
 
 export const cellsWide = (width: number) => Math.ceil(width / CELL);
 /** Per channel: a color this close to a GB green is that green (the same tolerance as the main app's shadeIndex). */
@@ -85,7 +92,7 @@ export function quantize(rgba: Uint8ClampedArray, width: number, height: number,
   const palettes: Palette[] = library.map(({ name, colors, id }) => ({ name, colors: [...colors], ...(id ? { id } : {}) }));
   const paletteKeys = palettes.map((palette) => palette.colors.map((color) => rgbKey(hexRgb(color))));
   const cw = cellsWide(width), ch = Math.ceil(height / CELL);
-  const cells = new Uint8Array(cw * ch);
+  const cells = new Uint16Array(cw * ch);
   const bounds = (cell: number) => {
     const x0 = (cell % cw) * CELL, y0 = Math.floor(cell / cw) * CELL;
     return { x0, y0, x1: Math.min(width, x0 + CELL), y1: Math.min(height, y0 + CELL) };
@@ -175,7 +182,7 @@ export function shadeLut(colors: readonly string[], clear?: string): Uint32Array
  * Draws the picture as 32-bit pixels: `luts[0]` colors the cells without a palette (the GB greens, or a tint while
  * painting), `luts[n]` the cells wearing palette n.
  */
-export function colorize(pixels: Uint8Array, cells: Uint8Array, width: number, luts: readonly Uint32Array[], out: Uint32Array = new Uint32Array(pixels.length)): Uint32Array {
+export function colorize(pixels: Uint8Array, cells: Cells, width: number, luts: readonly Uint32Array[], out: Uint32Array = new Uint32Array(pixels.length)): Uint32Array {
   const cw = cellsWide(width);
   for (let i = 0; i < pixels.length; i += 1) {
     const x = i % width, y = (i - x) / width;
@@ -188,7 +195,7 @@ export function colorize(pixels: Uint8Array, cells: Uint8Array, width: number, l
  * The flat RGBA picture a file gets: GB greens, and each palette's own colors on the cells that wear one.
  * See-through pixels are written as alpha 0, or as `clear` (a sprite sheet's key green) when given.
  */
-export function toRgba(pixels: Uint8Array, cells: Uint8Array, width: number, palettes: readonly Palette[] = [], clear?: string): Uint8ClampedArray {
+export function toRgba(pixels: Uint8Array, cells: Cells, width: number, palettes: readonly Palette[] = [], clear?: string): Uint8ClampedArray {
   return new Uint8ClampedArray(colorize(pixels, cells, width, [GB_SHADES, ...palettes.map((palette) => palette.colors)].map((colors) => shadeLut(colors, clear))).buffer);
 }
 
@@ -234,7 +241,7 @@ export function paletteSlots(palettes: readonly { id?: string; name: string }[],
  * palette is not in the list). Cells beyond the tile colors, and cells whose value is negative (a sprite sheet's
  * cells no slice uses), are left as they are.
  */
-export function assignSlots(cells: Uint8Array, tileColors: readonly number[], slots: readonly string[], palettes: readonly { id?: string }[]): number {
+export function assignSlots(cells: Cells, tileColors: readonly number[], slots: readonly string[], palettes: readonly { id?: string }[]): number {
   const byId = new Map<string, number>();
   palettes.forEach((palette, index) => { if (palette.id && !byId.has(palette.id)) byId.set(palette.id, index + 1); });
   let assigned = 0;
@@ -460,9 +467,9 @@ export function lift(pixels: Uint8Array, width: number, rect: Rect, blank?: numb
 export const onTiles = (rect: Rect) => rect.x % CELL === 0 && rect.y % CELL === 0 && rect.w % CELL === 0 && rect.h % CELL === 0;
 
 /** The tile palettes under a tile-aligned rectangle (row by row), and with `blank` clears them in the picture. */
-export function liftCells(cells: Uint8Array, width: number, rect: Rect, blank?: number): Uint8Array {
+export function liftCells(cells: Cells, width: number, rect: Rect, blank?: number): Cells {
   const cw = cellsWide(width), w = rect.w / CELL, h = rect.h / CELL;
-  const out = new Uint8Array(w * h);
+  const out = new Uint16Array(w * h);
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
       const at = (rect.y / CELL + y) * cw + rect.x / CELL + x;
@@ -474,7 +481,7 @@ export function liftCells(cells: Uint8Array, width: number, rect: Rect, blank?: 
 }
 
 /** Puts a floating piece's tile palettes into the picture, when it sits on tile edges (tiles outside are skipped). */
-export function dropCells(cells: Uint8Array, width: number, height: number, floating: Floating) {
+export function dropCells(cells: Cells, width: number, height: number, floating: Floating) {
   if (!floating.cells || floating.x % CELL || floating.y % CELL) return;
   const cw = cellsWide(width), ch = Math.ceil(height / CELL), w = floating.w / CELL, h = floating.h / CELL;
   for (let y = 0; y < h; y += 1) {
@@ -487,8 +494,8 @@ export function dropCells(cells: Uint8Array, width: number, height: number, floa
 
 /** Mirrors a floating piece left-right ("x") or top-bottom ("y"), with its tile palettes. */
 export function flipFloat(floating: Floating, axis: "x" | "y"): Floating {
-  const flip = (data: Uint8Array, w: number, h: number) => {
-    const out = new Uint8Array(data.length);
+  const flip = <T extends Uint8Array | Uint16Array>(data: T, w: number, h: number): T => {
+    const out = data.slice() as T;
     for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) out[y * w + x] = data[axis === "x" ? y * w + (w - 1 - x) : (h - 1 - y) * w + x];
     return out;
   };
@@ -497,8 +504,8 @@ export function flipFloat(floating: Floating, axis: "x" | "y"): Floating {
 
 /** Turns a floating piece a quarter turn clockwise about its top-left corner (width and height swap). */
 export function rotateFloat(floating: Floating): Floating {
-  const turn = (data: Uint8Array, w: number, h: number) => {
-    const out = new Uint8Array(data.length);
+  const turn = <T extends Uint8Array | Uint16Array>(data: T, w: number, h: number): T => {
+    const out = data.slice() as T;
     for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) out[x * h + (h - 1 - y)] = data[y * w + x];
     return out;
   };
@@ -786,7 +793,7 @@ export interface FitReport {
  * the fewest pixels (by color distance) merges. Returns the palettes (each lightest first, four colors), each tile's
  * palette, each pixel's shade (its color's place in the palette), and a report. See-through pixels stay CLEAR.
  */
-export function fitPalettes(rgba: Uint8ClampedArray, width: number, height: number, max = 8): { palettes: string[][]; cells: Uint8Array; pixels: Uint8Array; report: FitReport } {
+export function fitPalettes(rgba: Uint8ClampedArray, width: number, height: number, max = 8): { palettes: string[][]; cells: Cells; pixels: Uint8Array; report: FitReport } {
   const cw = cellsWide(width), ch = Math.ceil(height / CELL), count = cw * ch;
   const hexOf = (p: number) => `#${((rgba[p] << 16) | (rgba[p + 1] << 8) | rgba[p + 2]).toString(16).padStart(6, "0").toUpperCase()}`;
   const near = (a: string, b: string) => colorDistance(a, b);
@@ -887,7 +894,7 @@ export function fitPalettes(rgba: Uint8ClampedArray, width: number, height: numb
     while (colors.length < 4) colors.push(colors[colors.length - 1]);
     return colors;
   });
-  const cells = new Uint8Array(count);
+  const cells = new Uint16Array(count);
   groups.forEach((group, index) => { for (const cell of group.cells) cells[cell] = index + 1; });
   const pixels = new Uint8Array(width * height);
   let changed = 0;
