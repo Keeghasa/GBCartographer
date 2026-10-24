@@ -37,3 +37,36 @@ describe("what travels with a project", () => {
     expect(removeUnsaved(folder, "backgrounds", "town.png", join(root, "app"))).toBe(false);
   });
 });
+
+describe("the wizards' own sources", () => {
+  it("keeps pictures and models in the project, never over another, and takes them out to the backups", async () => {
+    const { listSources, addSource, sourcePath, removeSource } = await import("./own");
+    const { root, folder } = project();
+    expect(listSources(folder, "pictures")).toEqual([]);
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    expect(addSource(folder, "pictures", "my photo.png", png).file).toBe("my photo.png");
+    expect(addSource(folder, "pictures", "my photo.png", png).file).toBe("my photo-2.png");
+    expect(() => addSource(folder, "pictures", "notes.txt", png)).toThrow(/not a picture/);
+    // Nothing in Cartographer/ may be named .gbsres (GB Studio reads every such path): the tail is dropped.
+    expect(addSource(folder, "pictures", "evil.png.gbsres", png).file).toBe("evil.png");
+    expect(listSources(folder, "pictures").map((entry) => entry.name)).toEqual(["evil.png", "my photo-2.png", "my photo.png"]);
+    expect(sourcePath(folder, "pictures", "my photo.png")).toBe(join(folder, "Cartographer/pictures/my photo.png"));
+    expect(sourcePath(folder, "pictures", "../cartographer.json")).toBeNull();
+    // A model: its main file names the folder; its parts go in after it.
+    const model = addSource(folder, "models", "castle.gltf", Buffer.from("{}"));
+    expect(model).toMatchObject({ name: "castle", file: "castle", files: ["castle.gltf"] });
+    addSource(folder, "models", "castle.bin", Buffer.from([1, 2, 3]), "castle");
+    addSource(folder, "models", "wall.png", png, "castle");
+    expect(listSources(folder, "models")[0].files).toEqual(["castle.gltf", "castle.bin", "wall.png"]);
+    expect(() => addSource(folder, "models", "castle.bin", png)).toThrow(/main file/);
+    expect(() => addSource(folder, "models", "castle.bin", png, "castle")).toThrow(/already/);
+    expect(addSource(folder, "models", "castle.glb", png).file).toBe("castle-2");
+    expect(sourcePath(folder, "models", "castle", "castle.bin")).toBe(join(folder, "Cartographer/models/castle/castle.bin"));
+    expect(sourcePath(folder, "models", "castle")).toBeNull();
+    // Out: every file to the backups, the folder gone.
+    expect(removeSource(folder, "models", "castle", join(root, "backups"))).toBe(true);
+    expect(existsSync(join(folder, "Cartographer/models/castle"))).toBe(false);
+    expect(listBackups(join(root, "backups"), folder).map((entry) => entry.file).sort()).toEqual(["Cartographer/models/castle/castle.bin", "Cartographer/models/castle/castle.gltf", "Cartographer/models/castle/wall.png"]);
+    expect(removeSource(folder, "pictures", "nope.png", join(root, "backups"))).toBe(false);
+  });
+});

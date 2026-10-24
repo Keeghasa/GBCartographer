@@ -6,10 +6,11 @@
  * console's own.
  */
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Box, Camera as CameraIcon, Download, FolderInput, ImagePlus, Trash2, Upload } from "lucide-react";
+import { Box, Camera as CameraIcon, Download, FolderInput, ImagePlus, Trash2 } from "lucide-react";
 import { toRgba } from "../paint";
 import { Button, Dialog, IconButton, Segmented, Slider, Switch } from "../ui/kit";
 import type { ShotSettings, Stage } from "./snapshot3d";
+import { SourceShelf, storeSources, type SourceEntry } from "./SourceShelf";
 import "./SnapshotWindow.css";
 
 type Size = "screen" | "small" | "sprite";
@@ -107,12 +108,14 @@ function forProject(shot: Shot): { kind: "backgrounds" | "sprites"; shot: Shot }
   return { kind: "backgrounds", shot: { ...shot, width: 160, height: 144, pixels } };
 }
 
-export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose: () => void; onTake: (picture: Shot) => void;
+export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName, say }: { onClose: () => void; onTake: (picture: Shot) => void;
+  /** The open project (null: none): your models are kept in its Cartographer/models. */
+  projectName: string | null; say: (text: string) => void;
   /** Writes the shot into the open project as a new background or sprite (null: no project open). */
   onSend: ((kind: "backgrounds" | "sprites", picture: Shot) => Promise<boolean>) | null;
   /** Saves a PNG wherever the user picks (the desktop app's save dialog, or a download in a browser). */
   onExport: (blob: Blob, name: string) => Promise<unknown> }) {
-  const print = useRef<HTMLCanvasElement>(null), file = useRef<HTMLInputElement>(null);
+  const print = useRef<HTMLCanvasElement>(null);
   const stage = useRef<Stage | null>(null), engine = useRef<typeof import("./snapshot3d") | null>(null);
   const [size, setSize] = useState<Size>("screen");
   const [key, setKey] = useState(70), [fill, setFill] = useState(30), [rim, setRim] = useState(50);
@@ -122,7 +125,9 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
   const [model, setModel] = useState("Sample house"), [triangles, setTriangles] = useState(0), [problem, setProblem] = useState<string | null>(null);
   const [pictures, setPictures] = useState<Picture[]>([]);
   const [background, setBackground] = useState<ShotSettings["background"]>("clear");
-  const [builtIn, setBuiltIn] = useState<BuiltIn | null>("house");
+  // Which shelf tile is picked ("sample:house", "project:<folder>"), and a tick that makes the shelf reread the project.
+  const [source, setSource] = useState<string | null>("sample:house");
+  const [shelfTick, setShelfTick] = useState(0);
   const [, setTick] = useState(0);
   const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite", background };
   const shades = useRef<Uint8Array | null>(null);
@@ -152,15 +157,26 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
     target.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, new Uint16Array(Math.ceil(settings.width / 8) * Math.ceil(settings.height / 8)), settings.width), settings.width, settings.height), 0, 0);
   });
 
-  async function open(picked: File[]) {
+  /** Shows a model from files (one of the project's, or just dropped); `key`: the shelf tile it is. */
+  async function show(picked: File[], key: string | null) {
     if (!picked.length || !engine.current || !stage.current) return;
     try {
       const loaded = await engine.current.loadModel(picked);
       stage.current.show(loaded.model);
-      setBuiltIn(null); setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
+      setSource(key); setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
     } catch (error) {
       setProblem(`${picked.map((file) => file.name).join(", ")} didn't open: ${error instanceof Error ? error.message : String(error)}. A .glb works best (from Blender: File → Export → glTF 2.0, binary).`);
     }
+  }
+  /** Files dropped anywhere: kept in the project when one is open (the shelf shows them), then shown. */
+  async function open(picked: File[]) {
+    if (!picked.length) return;
+    let entry: SourceEntry | null = null;
+    if (projectName) {
+      try { entry = await storeSources("models", picked); setShelfTick((tick) => tick + 1); if (entry) say(`${entry.name} is in ${projectName} now (Cartographer/models).`); }
+      catch (error) { say(`Could not keep it in the project: ${(error as Error).message}`); }
+    }
+    await show(picked, entry ? `project:${entry.file}` : null);
   }
 
   async function pick(which: BuiltIn) {
@@ -168,7 +184,7 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
     const item = BUILT_IN[which];
     try {
       stage.current.show(item.url ? await engine.current.loadBuiltIn(item.url) : engine.current.sampleModel());
-      setBuiltIn(which); setModel(item.name); setTriangles(stage.current.triangles()); setProblem(null);
+      setSource(`sample:${which}`); setModel(item.name); setTriangles(stage.current.triangles()); setProblem(null);
     } catch (error) {
       setProblem(`${item.name} didn't open: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -188,12 +204,11 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport }: { onClose:
       <div className="sw" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void open([...event.dataTransfer.files]); }}>
         <aside className="k-card sw-controls">
           <div className="sw-group">
-            <div className="sw-head"><h2 className="k-heading">Model</h2><Button size="sm" icon={<Upload />} onClick={() => file.current?.click()}>Load…</Button></div>
-            <Segmented label="Built-in models" fill size="sm" value={builtIn ?? ("" as BuiltIn)} onChange={(value) => void pick(value)} options={(Object.keys(BUILT_IN) as BuiltIn[]).map((value) => ({ value, label: BUILT_IN[value].label }))} />
+            <SourceShelf kind="models" projectName={projectName} accept=".glb,.gltf,.bin,.fbx,.obj,.mtl,.dae,.usdz,.usda,.3mf,.stl,.ply,.png,.jpg,.jpeg,.tga" multiple
+              samples={[{ id: "duck", label: BUILT_IN.duck.label, credit: BUILT_IN.duck.credit }, { id: "house", label: BUILT_IN.house.label }]}
+              selected={source} onSample={(sample) => void pick(sample.id as BuiltIn)} onProject={(entry, files) => void show(files, `project:${entry.file}`)} onLoose={(files) => void show(files, null)} say={say} refresh={shelfTick} />
             <div className="sw-drop">{model} · {triangles.toLocaleString()} triangles</div>
-            {builtIn && BUILT_IN[builtIn].credit && <a className="k-xs sw-credit" href={BUILT_IN[builtIn].credit!.href} target="_blank" rel="noreferrer">{BUILT_IN[builtIn].credit!.text}</a>}
-            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Drop a model anywhere here (.glb, .gltf, .fbx, .obj, .dae, .usdz, .3mf, .stl, .ply), with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
-            <input ref={file} type="file" accept=".glb,.gltf,.bin,.fbx,.obj,.mtl,.dae,.usdz,.usda,.3mf,.stl,.ply,.png,.jpg,.jpeg,.tga" multiple hidden onChange={(event) => { void open([...(event.target.files ?? [])]); event.target.value = ""; }} />
+            {problem ? <p className="k-xs sw-problem">{problem}</p> : <p className="k-muted k-xs">Or drop a model anywhere here (.glb, .gltf, .fbx, .obj, .dae, .usdz, .3mf, .stl, .ply), with the files that come with it (.bin, textures, .mtl). From Blender: File → Export → glTF 2.0.</p>}
           </div>
           <div className="sw-group">
             <div className="sw-head"><h2 className="k-heading">Light rig</h2><span className="k-muted k-xs">drag the lights</span></div>

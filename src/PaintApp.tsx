@@ -3065,7 +3065,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onClose={() => setWizard(null)} onAddToProject={addPaletteSet} onAddToMine={(list) => { addToMine(list); say(`Added ${list.length} palettes to Mine (the palette manager).`); }} />
       )}
       {showSettings && <SettingsWindow font={font} onFont={(next) => { setFont(next); applyFont(next); }} onClose={() => setShowSettings(false)} />}
-      {showSnapshot && <SnapshotWindow onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })}
+      {showSnapshot && <SnapshotWindow projectName={project?.name ?? null} say={say} onClose={() => setShowSnapshot(false)} onTake={(shot) => void createPicture({ kind: null, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels })}
         onExport={(blob, name) => saveBlob(blob, name, PNG_TYPES)}
         onSend={project ? (kind, shot) => createPicture({ kind, name: shot.name, width: shot.width, height: shot.height, pixels: shot.pixels }) : null} />}
       {showWizards && <WizardGallery cards={wizardCards} onClose={() => setShowWizards(false)} />}
@@ -3102,7 +3102,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onOpen={(kind, file) => void openByFile(kind, file)}
           onFixTiles={(kind, file, colorOnly) => void openByFile(kind, file).then((opened) => { if (opened) { setBudgetId(colorOnly ? "colorOnly" : "monochrome"); setWizard("budget"); } })} />
       )}
-      {showPictureWizard && <PictureWizard projectName={project?.name ?? null} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} />}
+      {showPictureWizard && <PictureWizard say={say} projectName={project?.name ?? null} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} />}
       {showHealth && project && <HealthWindow projectName={project.name} onClose={() => setShowHealth(false)} onOpen={(kind, file) => { if ((kind as string) === "palettes") { setPaletteFocus(file); setShowPalettes(true); return; } const asset = project.assets.find((item) => item.kind === kind && item.file === file); if (asset) { setProjectKind(kind); void openAsset(asset); } }} />}
       {showNew && <NewPictureWindow projectName={project?.name ?? null} takenNames={(kind: AssetKind) => (project?.assets ?? []).filter((asset) => asset.kind === kind).map((asset) => asset.name)} initialKind={projectKind} onClose={() => setShowNew(false)} onCreate={createPicture} />}
       {showResize && doc && <ResizeWindow name={doc.asset?.name ?? doc.name} width={doc.width} height={doc.height} sprite={doc.asset?.kind === "sprites"} inProject={Boolean(doc.asset)} onClose={() => setShowResize(false)} onResize={resizePicture} />}

@@ -14,6 +14,7 @@ import { WizardPage } from "./WizardPage";
 import { SCREEN_SIZES, fitPicture, type FitOptions, type FitResult } from "./pictureFit";
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
+import { SourceShelf, storeSources } from "./SourceShelf";
 import "./PictureWizard.css";
 
 interface Props {
@@ -25,9 +26,11 @@ interface Props {
   onSave: (result: FitResult, name: string) => Promise<boolean>;
   /** The project's background names (the suggested name is never one of them). */
   takenNames?: string[];
+  /** A line for the message bar (kept pictures, problems). */
+  say?: (text: string) => void;
 }
 
-type Source = { image: ImageBitmap; name: string };
+type Source = { image: ImageBitmap; name: string; /** The shelf tile it came from ("sample:sammie", "project:<file>"). */ key?: string };
 type Framing = "cover" | "contain";
 
 /** Draws the source into a width × height frame: cover (crop, panned) or contain (letterboxed on its average color). */
@@ -84,7 +87,9 @@ function SourceView({ source, width, height, framing, pan }: { source: Source; w
   );
 }
 
-export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [] }: Props) {
+export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [], say }: Props) {
+  // The shelf rereads the project's pictures when a drop or paste adds one.
+  const [shelfTick, setShelfTick] = useState(0);
   const [source, setSource] = useState<Source | null>(null);
   const [size, setSize] = useState<[number, number]>([160, 144]);
   const [framing, setFraming] = useState<Framing>("cover");
@@ -103,7 +108,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
 
   // The newest pick wins (a slow decode never replaces a later one), and the picture it replaces is freed.
   const picks = useRef(0), chosen = useRef(false);
-  const take = async (picked: File | Blob | null | undefined, label?: string, sample = false) => {
+  const take = async (picked: File | Blob | null | undefined, label?: string, sample = false, key?: string) => {
     if (!picked) return;
     if (sample && chosen.current) return;
     if (!sample) chosen.current = true;
@@ -111,20 +116,32 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
     try {
       const image = await createImageBitmap(picked, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
       if (ticket !== picks.current || (sample && chosen.current)) { image.close(); return; }
-      setSource((was) => { was?.image.close(); return { image, name: label ?? (picked instanceof File ? picked.name : "picture") }; });
+      setSource((was) => { was?.image.close(); return { image, name: label ?? (picked instanceof File ? picked.name : "picture"), key }; });
     } catch { /* not a picture */ }
+  };
+  /** A file chosen, dropped or pasted: kept in the project when one is open (the shelf shows it), then taken. */
+  const keepFile = async (picked: File | Blob | null | undefined, label?: string) => {
+    if (!picked) return;
+    if (!projectName) return take(picked, label);
+    const file = picked instanceof File ? picked : new File([picked], `pasted-${Date.now()}.png`, { type: picked.type || "image/png" });
+    try {
+      const entry = await storeSources("pictures", [file]);
+      setShelfTick((tick) => tick + 1);
+      if (entry) { say?.(`${entry.name} is in ${projectName} now (Cartographer/pictures).`); return take(file, entry.name, false, `project:${entry.file}`); }
+    } catch (error) { say?.(`Could not keep it in the project: ${(error as Error).message}`); }
+    return take(file, label);
   };
 
   // It starts on the author's photo of Sammie (2026-10-14), so the wizard shows what it does straight away.
   useEffect(() => {
     let gone = false;
-    void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => { if (!gone) void take(blob, "Sammie", true); }).catch(() => {});
+    void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => { if (!gone) void take(blob, "Sammie", true, "sample:sammie"); }).catch(() => {});
     return () => { gone = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Paste a picture from the clipboard while the window is open.
   useEffect(() => {
-    const onPaste = (event: ClipboardEvent) => { const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith("image/")); if (item) { event.preventDefault(); void take(item.getAsFile(), "Pasted picture"); } };
+    const onPaste = (event: ClipboardEvent) => { const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith("image/")); if (item) { event.preventDefault(); void keepFile(item.getAsFile(), "Pasted picture"); } };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
   });
@@ -149,7 +166,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
     <WizardPage title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
       line={["Change anything, the result follows", result ? `${source?.name ?? "picture"} · ${width} × ${height} · ${result.tiles} / ${result.limit} tiles · ${result.palettes.length} palettes` : source ? `${source.name} · fitting…` : "drop, paste or choose a picture"]}
       footer={<>
-        <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void take(event.target.files?.[0]); event.target.value = ""; }} />
+        <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void keepFile(event.target.files?.[0]); event.target.value = ""; }} />
         <Button icon={<Upload />} onClick={() => file.current?.click()}>{source ? "Another picture…" : "Choose a picture…"}</Button>
         <span className="k-spacer" />
         <span className="pw-name"><NameInput kind="Background" value={name} onChange={setName} taken={takenNames} /></span>
@@ -159,7 +176,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
       <div className="pw-body">
         <div className="pw-stage">
           {!source ? (
-            <div className={`pw-drop${over ? " is-over" : ""}`} onDragOver={(event) => { event.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(event) => { event.preventDefault(); event.stopPropagation(); setOver(false); void take(event.dataTransfer.files?.[0]); }}>
+            <div className={`pw-drop${over ? " is-over" : ""}`} onDragOver={(event) => { event.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(event) => { event.preventDefault(); event.stopPropagation(); setOver(false); void keepFile(event.dataTransfer.files?.[0]); }}>
               <ImagePlus size={28} />
               <div><b>Drop a picture or photo here</b><br /><span className="k-small">or paste one, or <button type="button" className="k-link" onClick={() => file.current?.click()}>choose a file</button></span></div>
               <span className="k-muted k-xs">It is framed to whole screens, fitted to 8 palettes of 4 colors a tile, and kept under the tile budget.</span>
@@ -170,6 +187,9 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           </>)}
         </div>
         <div className="pw-controls">
+          <SourceShelf kind="pictures" projectName={projectName} accept="image/*" samples={[{ id: "sammie", label: "Sammie", thumb: `${import.meta.env.BASE_URL}sammie.jpg` }]} selected={source?.key ?? null}
+            onSample={() => void fetch(`${import.meta.env.BASE_URL}sammie.jpg`).then((response) => response.blob()).then((blob) => take(blob, "Sammie", false, "sample:sammie"))}
+            onProject={(entry, files) => void take(files[0], entry.name, false, `project:${entry.file}`)} onLoose={(files) => void take(files[0])} say={say ?? (() => {})} refresh={shelfTick} />
           <div className="pw-section"><span className="k-label">Size</span><Segmented fill size="sm" label="Size" value={`${width}x${height}`} onChange={(value) => { const [w, h] = value.split("x").map(Number); setSize([w, h]); }} options={SCREEN_SIZES.map(([w, h, label]) => ({ value: `${w}x${h}`, label }))} /></div>
           <div className="pw-section"><span className="k-label"><Crop size={12} /> Frame</span><Segmented fill size="sm" label="Frame" value={framing} onChange={setFraming} options={[{ value: "cover", label: "Fill (crop)" }, { value: "contain", label: "Fit inside" }]} />
             {framing === "cover" && <>

@@ -32,6 +32,8 @@
  *                                             Cartographer/maps.json; older ones move there from the data folder)
  *   GET  /__cartographer/own-settings          the project's own choices in Cartographer/cartographer.json; POST sets some
  *   GET  /__cartographer/panel                 hidden and pinned pictures (Cartographer/panel.json); POST { hidden, pinned }
+ *   GET  /__cartographer/sources?kind=         the wizards' own 3D models or pictures kept in Cartographer/models|pictures;
+ *        /__cartographer/source?kind=&file=    GET one file (&inner= a model's), POST ?name=[&into=] adds, DELETE removes (to the backups)
  *   GET  /__cartographer/unsaved               pictures' unsaved changes kept in Cartographer/unsaved/; POST ?kind=&file=
  *                                             keeps one, DELETE ?kind=&file= takes it away (into the backups)
  *   GET  /__cartographer/dialogue-settings    { colorMode, uiPalette, defaultFont, fonts } for the dialogue preview (read only)
@@ -51,7 +53,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, migrateOutOfProject, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
-import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, renameOwn, writeOwnSettings, writePanel, writeUnsaved } from "./own";
+import { addSource, listSources, listUnsaved, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, SOURCE_KINDS, sourcePath, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
@@ -304,6 +306,28 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         if (req.method === "POST") { writeUnsaved(project, kind, file, JSON.parse((await readBody(req)).toString("utf8"))); reply(res, 200, { ok: true }); }
         else if (req.method === "DELETE") reply(res, 200, { ok: true, removed: removeUnsaved(project, kind, file, options.backupDir) });
         else reply(res, 200, { ok: true, pictures: listUnsaved(project) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
+      return true;
+    }
+    // The wizards' own sources (server/own.ts): 3D models and pictures kept in the project.
+    if (url.pathname === "/__cartographer/sources" || url.pathname === "/__cartographer/source") {
+      const kind = url.searchParams.get("kind") as SourceKind, file = url.searchParams.get("file") ?? "";
+      if (!SOURCE_KINDS.includes(kind)) { reply(res, 400, { error: "kind must be models or pictures" }); return true; }
+      try {
+        if (url.pathname === "/__cartographer/sources") reply(res, 200, { ok: true, sources: listSources(project, kind) });
+        else if (req.method === "POST") reply(res, 200, { ok: true, source: addSource(project, kind, url.searchParams.get("name") ?? "", await readBody(req), url.searchParams.get("into") ?? undefined) });
+        else if (req.method === "DELETE") reply(res, 200, { ok: true, removed: removeSource(project, kind, file, options.backupDir) });
+        else {
+          const path = sourcePath(project, kind, file, url.searchParams.get("inner") ?? undefined);
+          if (!path) { reply(res, 404, { error: "No such file" }); return true; }
+          const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+          res.statusCode = 200;
+          res.setHeader("Content-Type", ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", bmp: "image/bmp", glb: "model/gltf-binary", gltf: "model/gltf+json" } as Record<string, string>)[ext] ?? "application/octet-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.end(readFileSync(path));
+        }
       } catch (error) {
         reply(res, 400, { error: (error as Error).message });
       }

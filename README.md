@@ -165,8 +165,10 @@ GB Cartographer is careful with your game files. It only ever writes:
   background (**Copy** beside the scene slots), that scene's whole `paletteIds` list (the same palettes, no copies);
 - its own folder, `Cartographer/`, beside `assets/` and `project/`: saved stamps in `Cartographer/stamps/` (a PNG
   each, its tile palettes, tags and auto-tile in a `.png.json` beside it), the Map Room's layouts in `Cartographer/maps.json`,
-  a `README.txt` saying what the folder is and a `cartographer.json` saying its format. GB Studio doesn't use this
-  folder; it travels with your project. Nothing in it is named `.gbsres` (GB Studio's save reads every such path).
+  the 3D models and pictures you add to GB Snapshot and Picture to background in `Cartographer/models/` and
+  `Cartographer/pictures/` (copied in, never over another file; taking one out moves it to the backups), a `README.txt`
+  saying what the folder is and a `cartographer.json` saying its format. GB Studio doesn't use this folder; it travels
+  with your project. Nothing in it is named `.gbsres` (GB Studio's save reads every such path).
 
 And when you **Delete** a picture (it asks every time), its PNG and sidecar move into GB Cartographer's backups.
 **Rename** changes a picture's file name only while GB Studio hasn't taken it in yet (no `.gbsres` beside it, so

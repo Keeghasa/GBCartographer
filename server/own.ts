@@ -9,7 +9,7 @@
  * Writes go through a temporary file; settings and panel are small and frequent, so only unsaved pictures are
  * backed up when they go.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { OWN_FOLDER, OWN_FORMAT, backupFile, ownFolderReadme } from "./backups";
 
@@ -123,5 +123,97 @@ export function removeUnsaved(project: string, kind: string, file: string, backu
   if (!path || !existsSync(path)) return false;
   backupFile(backupDir, project, path);
   unlinkSync(path);
+  return true;
+}
+
+// ---- the wizards' own sources (the author, 2026-10-24: "the duck and house feel too confusing") -----------------------
+/**
+ * Files the wizards start from, kept in the project so they're there next time on any computer: 3D models for GB
+ * Snapshot in Cartographer/models/<model>/ (a .glb on its own, or a .gltf / .obj / .fbx with the .bin, .mtl and
+ * textures that come with it) and pictures for Picture to background in Cartographer/pictures/. Added files are
+ * copied in, never over another (a taken name gets -2, -3…); a removed one goes to the backups first.
+ */
+export type SourceKind = "models" | "pictures";
+export const SOURCE_KINDS: readonly SourceKind[] = ["models", "pictures"];
+/** A model file that can be opened on its own (the folder is named for it); the rest come along with it. */
+const MODEL_MAIN = /\.(glb|gltf|fbx|obj|dae|usdz|usda|3mf|stl|ply)$/i;
+const MODEL_PART = /\.(glb|gltf|bin|fbx|obj|mtl|dae|usdz|usda|3mf|stl|ply|png|jpe?g|tga)$/i;
+const PICTURE_FILE = /\.(png|jpe?g|gif|webp|bmp)$/i;
+export const SOURCE_LIMIT = 64 * 1024 * 1024;
+export interface SourceEntry { kind: SourceKind; /** What it's called (a model's folder, a picture's file name). */ name: string; /** The folder (models) or file (pictures) under its kind's folder. */ file: string; /** A model's files, the one to open first. */ files: string[]; mtime: number; size: number }
+
+const sourceRoot = (project: string, kind: SourceKind) => join(project, OWN_FOLDER, kind);
+/** A file name that can't leave its folder or be a .gbsres (GB Studio reads every such path in a project). */
+const safeFileName = (name: string) => name.replace(/[/\\:*?"<>|\u0000-\u001f]/g, "-").replace(/^\.+/, "").trim().slice(0, 120).replace(/\.gbsres$/i, "");
+const mainFirst = (files: string[]) => [...files].sort((a, b) => Number(MODEL_MAIN.test(b)) - Number(MODEL_MAIN.test(a)) || a.localeCompare(b));
+
+function sourceEntry(project: string, kind: SourceKind, file: string): SourceEntry | null {
+  const path = join(sourceRoot(project, kind), file);
+  if (!existsSync(path)) return null;
+  const stat = statSync(path);
+  if (kind === "pictures") return stat.isFile() && PICTURE_FILE.test(file) ? { kind, name: file, file, files: [file], mtime: stat.mtimeMs, size: stat.size } : null;
+  if (!stat.isDirectory()) return null;
+  const files = mainFirst(readdirSync(path).filter((entry) => MODEL_PART.test(entry) && statSync(join(path, entry)).isFile()));
+  if (!files.length || !MODEL_MAIN.test(files[0])) return null;
+  return { kind, name: file, file, files, mtime: Math.max(...files.map((entry) => statSync(join(path, entry)).mtimeMs)), size: files.reduce((sum, entry) => sum + statSync(join(path, entry)).size, 0) };
+}
+
+export function listSources(project: string, kind: SourceKind): SourceEntry[] {
+  const root = sourceRoot(project, kind);
+  if (!existsSync(root)) return [];
+  return readdirSync(root).map((entry) => sourceEntry(project, kind, entry)).filter((entry): entry is SourceEntry => Boolean(entry)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The full path of a source's file (a model's `inner` file), only inside its folder and only when it exists. */
+export function sourcePath(project: string, kind: SourceKind, file: string, inner?: string): string | null {
+  const root = sourceRoot(project, kind), name = safeFileName(file);
+  if (!name || name !== file) return null;
+  const path = kind === "models" ? (inner && safeFileName(inner) === inner ? join(root, name, inner) : null) : join(root, name);
+  return path && existsSync(path) && statSync(path).isFile() ? path : null;
+}
+
+/**
+ * Copies a file in: a picture under its own name, a model into a folder named for its main file (`into`: one of the
+ * model's other files, added to the folder just made). Never over another file. Returns the entry.
+ */
+export function addSource(project: string, kind: SourceKind, name: string, bytes: Buffer, into?: string): SourceEntry {
+  if (!SOURCE_KINDS.includes(kind)) throw new Error("kind must be models or pictures");
+  const file = safeFileName(name);
+  if (!file || !(kind === "models" ? MODEL_PART : PICTURE_FILE).test(file)) throw new Error(kind === "models" ? `${name}: not a model file (.glb, .gltf with its .bin and textures, .fbx, .obj, .dae, .usdz, .3mf, .stl, .ply)` : `${name}: not a picture (.png, .jpg, .gif, .webp, .bmp)`);
+  if (bytes.length > SOURCE_LIMIT) throw new Error(`${name} is bigger than ${SOURCE_LIMIT / 1024 / 1024} MB`);
+  ownFolderReadme(project);
+  const root = sourceRoot(project, kind);
+  const free = (folder: string, base: string, ext: string) => { let candidate = `${base}${ext}`; for (let n = 2; existsSync(join(folder, candidate)); n += 1) candidate = `${base}-${n}${ext}`; return candidate; };
+  if (kind === "pictures") {
+    mkdirSync(root, { recursive: true });
+    const dot = file.lastIndexOf("."), target = free(root, file.slice(0, dot), file.slice(dot));
+    writeFileSync(join(root, target), bytes, { flag: "wx" });
+    return sourceEntry(project, kind, target)!;
+  }
+  let folder: string;
+  if (into) {
+    folder = safeFileName(into);
+    if (folder !== into || !existsSync(join(root, folder))) throw new Error(`No model folder ${into} to add to.`);
+    if (existsSync(join(root, folder, file))) throw new Error(`${file} is already in ${folder}.`);
+  } else {
+    if (!MODEL_MAIN.test(file)) throw new Error(`${name}: a model starts with its main file (.glb, .gltf, .fbx, .obj…); its .bin and textures come after.`);
+    folder = free(root, file.replace(/\.[^.]+$/, ""), "");
+    mkdirSync(join(root, folder), { recursive: true });
+  }
+  writeFileSync(join(root, folder, file), bytes, { flag: "wx" });
+  return sourceEntry(project, kind, folder) ?? { kind, name: folder, file: folder, files: [file], mtime: Date.now(), size: bytes.length };
+}
+
+/** Takes a source out: each of its files goes to the backups, then away (a model's folder too). */
+export function removeSource(project: string, kind: SourceKind, file: string, backupDir: string): boolean {
+  const entry = sourceEntry(project, kind, safeFileName(file) === file ? file : "");
+  if (!entry) return false;
+  const root = sourceRoot(project, kind);
+  for (const inner of kind === "models" ? entry.files : [entry.file]) {
+    const path = kind === "models" ? join(root, entry.file, inner) : join(root, inner);
+    backupFile(backupDir, project, path);
+    unlinkSync(path);
+  }
+  if (kind === "models") { try { rmdirSync(join(root, entry.file)); } catch { /* something else is in it: it stays */ } }
   return true;
 }

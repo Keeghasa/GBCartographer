@@ -1,0 +1,19 @@
+/* The source shelf (SourceShelf.tsx): a grid of square tiles, Add your own first, then yours, then the samples. */
+.ss { display: flex; flex-direction: column; gap: var(--k-2); }
+.ss-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--k-2); flex-wrap: wrap; }
+.ss-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ss-tile { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--k-sunk, #0b0d0c); }
+.ss-pick { display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 2px solid transparent; border-radius: 6px; background: none; color: var(--k-ink); font: inherit; cursor: pointer; }
+.ss-pick:disabled { cursor: default; opacity: .6; }
+.ss-tile:hover .ss-pick { border-color: var(--k-hover-edge); }
+.ss-tile.is-picked .ss-pick { border-color: var(--k-acc); }
+.ss-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.ss-icon { color: var(--k-ink-3); }
+.ss-label { position: absolute; left: 5px; right: 5px; bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font: 500 10px "JetBrains Mono", ui-monospace, monospace; color: #e7ece8; text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
+.ss-tag { position: absolute; right: 4px; top: 4px; padding: 1px 4px; border-radius: 3px; background: rgba(10, 12, 11, .8); font: 500 9px "JetBrains Mono", ui-monospace, monospace; color: var(--k-ink-3); }
+.ss-add { display: grid; place-items: center; gap: 2px; border: 2px dashed var(--k-edge-2); background: none; color: var(--k-acc-text); font: 800 11px/1.25 var(--k-font); text-align: center; cursor: pointer; }
+.ss-add:hover { border-color: var(--k-acc); }
+.ss-remove { position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; opacity: 0; background: rgba(10, 12, 11, .8); }
+.ss-tile:hover .ss-remove, .ss-remove:focus-visible { opacity: 1; }
+.ss-credit { color: var(--k-ink-3); font-family: "JetBrains Mono", ui-monospace, monospace; }
+.ss-credit:hover { color: var(--k-acc); }
