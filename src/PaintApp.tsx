@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Box, Settings as SettingsIcon, Check, Layers, Eraser, FlipHorizontal, FlipVertical, RotateCw, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Highlighter, Box, Settings as SettingsIcon, Check, Layers, Eraser, FlipHorizontal, FlipVertical, RotateCw, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -12,7 +12,7 @@ import { applyFont, loadFont, type FontChoice } from "./ui/theme";
 import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
-import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette, MAX_PALETTES } from "./paint";
+import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette, MAX_PALETTES, spriteBase, spriteFilePixels, MERGED_MARK } from "./paint";
 import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
@@ -251,12 +251,16 @@ export default function PaintApp() {
   const tintColors = tint === "Custom" ? customTint : [...BUILT_IN_TINTS, ...palettes].find((item) => item.name === tint)?.colors ?? GB_SHADES;
   const docPalettes = doc?.palettes ?? palettes;
   // On a sprite sheet a palette's color 0 is see-through, so its colors 1-3 dress the shades.
-  const shown = (colors: readonly string[]) => doc?.keyGreen ? spriteShades(colors) : colors;
+  // Merged pixels view (sprites): shade 2, Dark in the game like shade 3, marked so it can be found and cleaned up.
+  const [markMerged, setMarkMerged] = useState(false);
+  const merged = doc?.keyGreen && markMerged ? MERGED_MARK : undefined;
+  const shown = (colors: readonly string[]) => doc?.keyGreen ? spriteShades(colors, merged) : colors;
+  const baseColors = doc?.keyGreen ? spriteBase(tintColors, merged) : tintColors;
   // The Picture tab's time of day: each palette drawn as its dawn / sunset / night version (view only).
   const timeOfDay = useTimeOfDay();
-  const luts = [tintColors, ...docPalettes.map((palette) => shown(timeColors(palette, palettes, timeOfDay.view)))].map((colors) => shadeLut(colors));
+  const luts = [baseColors, ...docPalettes.map((palette) => shown(timeColors(palette, palettes, timeOfDay.view)))].map((colors) => shadeLut(colors));
   const picked = activePalette ? docPalettes[activePalette - 1] : undefined;
-  const swatchColors = picked ? shown(picked.colors) : tintColors;
+  const swatchColors = picked ? shown(picked.colors) : baseColors;
   const clonePalettes = (list: readonly Palette[]): Palette[] => list.map(({ name, colors, id, edited }) => ({ name, colors: [...colors], ...(id ? { id } : {}), ...(edited ? { edited } : {}) }));
   const blank = (target: Doc) => target.hasAlpha ? CLEAR : 0;
   /** A picture that may take see-through pixels: a loose PNG or a stamp (GB Studio itself only keeps them on sprites and emotes, already see-through). */
@@ -1611,7 +1615,9 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     // pixels: they're written as the lightest shade (GB Studio would read alpha-0 black as an off-palette color).
     const keyed = target.keyGreen || target.keyMagenta, kind = target.asset?.kind;
     const pixels = !keyed && kind && kind !== "stamps" && target.pixels.includes(CLEAR) ? target.pixels.map((value) => value === CLEAR ? 0 : value) : target.pixels;
-    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(pixels, target.cells, target.width, [], target.keyGreen ? KEY_GREEN : target.keyMagenta ? KEY_MAGENTA : undefined), target.width, target.height), 0, 0);
+    // A sprite's file has three greens and the key: shade 2 is written as the darkest (GB Studio reads both as Dark).
+    const filePixels = target.keyGreen ? spriteFilePixels(pixels) : pixels;
+    canvas.getContext("2d")!.putImageData(new ImageData(toRgba(filePixels, target.cells, target.width, [], target.keyGreen ? KEY_GREEN : target.keyMagenta ? KEY_MAGENTA : undefined), target.width, target.height), 0, 0);
     return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("No PNG")), "image/png"));
   }
 
@@ -1669,7 +1675,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     Object.assign(small, { width: target.width, height: target.height });
     const image = new ImageData(target.width, target.height);
     if (colored) colorize(flat, cells, target.width, luts, new Uint32Array(image.data.buffer));
-    else image.data.set(toRgba(flat, cells, target.width, []));
+    else image.data.set(toRgba(target.keyGreen ? spriteFilePixels(flat) : flat, cells, target.width, []));
     small.getContext("2d")!.putImageData(image, 0, 0);
     const big = document.createElement("canvas");
     Object.assign(big, { width: target.width * scale, height: target.height * scale });
@@ -2126,7 +2132,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
         if (key === "k") { setLinked(!linked); return say(linked ? "Linked tiles off" : "Linked tiles on: painting a tile paints its identical copies too"); }
     if (key === "f") return transformSelection(event.shiftKey ? "y" : "x");
-    if (key >= "1" && key <= "4") return setShade(Number(key) - 1);
+    // A sprite has three shades to paint with (Light, Mid, Dark: keys 1–3); its Dark is shade 3.
+    if (key >= "1" && key <= "4") { const at = Number(key) - 1; if (doc?.keyGreen) { if (at === 3) return; return setShade(at === 2 ? 3 : at); } return setShade(at); }
     if (key === "0" && doc && (doc.hasAlpha || canSeeThrough(doc))) { if (!doc.hasAlpha) { doc.hasAlpha = true; touch(doc); } return setShade(CLEAR); }
     if (key === "[") return tool === "palette" || tool === "priority" ? setCellBrush(Math.max(1, cellBrush - 1)) : setBrush(Math.max(1, brush - 1));
     if (key === "]") return tool === "palette" || tool === "priority" ? setCellBrush(Math.min(3, cellBrush + 1)) : setBrush(Math.min(16, brush + 1));
@@ -2155,7 +2162,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   function thumbOf(item: Doc): string | undefined {
     try {
       const canvas = Object.assign(document.createElement("canvas"), { width: item.width, height: item.height });
-      canvas.getContext("2d")!.putImageData(new ImageData(toRgba(item.pixels, item.cells, item.width, item.palettes), item.width, item.height), 0, 0);
+      canvas.getContext("2d")!.putImageData(new ImageData(toRgba(item.pixels, item.cells, item.width, item.keyGreen ? item.palettes.map((palette) => ({ ...palette, colors: spriteShades(palette.colors) })) : item.palettes, undefined, item.keyGreen ? spriteBase() : undefined), item.width, item.height), 0, 0);
       return canvas.toDataURL("image/png");
     } catch { return undefined; }
   }
@@ -2843,6 +2850,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           <IconButton label="Game Boy screens: outline each 160 × 144 screen" pressed={screens} onClick={() => { setScreens(!screens); store(SCREENS_KEY, !screens); }} aria-label="Game Boy screens"><PxGamepad size={16} /></IconButton>
           <IconButton label="GB Studio collisions over the picture (a background in a scene; the Collision brush paints them)" pressed={showCollisions} onClick={() => { setShowCollisions(!showCollisions); store("gbc-collisions", !showCollisions); }} aria-label="Collisions"><BrickWall /></IconButton>
           <IconButton label="Snap selections and moves to 8 px tiles" pressed={snap} onClick={() => setSnap(!snap)} aria-label="Snap selections to tiles"><Magnet /></IconButton>
+          {doc?.keyGreen && <IconButton label="Merged pixels: mark the pixels of the third green (#306850 and the like), which GB Studio draws as Dark along with the darkest; Save writes them as the darkest" pressed={markMerged} onClick={() => setMarkMerged(!markMerged)} aria-label="Merged sprite pixels"><Highlighter /></IconButton>}
         </span>
         <IconButton label="Help: tools, keys and what Save writes" keys="?" pressed={showHelp} onClick={() => setShowHelp(!showHelp)} aria-label="Help"><PxLightbulb size={16} /></IconButton>
       </header>
@@ -2971,12 +2979,12 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             <span className="k-muted k-xs app-nav-zoom"><Slider label="Zoom" value={Math.max(0, ZOOMS.indexOf(doc.zoom as typeof ZOOMS[number]))} min={0} max={ZOOMS.length - 1} onChange={(at) => { doc.zoom = ZOOMS[at]; bump(); }} /> {Math.round(doc.zoom * 100)}%</span>
           </div>}
           <div className="app-swatches">
-            {swatchColors.slice(0, 4).map((color, index) => (
-              <button key={index} className={doc?.keyGreen && index === 0 ? "app-swatch app-ignored" : "app-swatch"} aria-pressed={shade === index} style={{ background: color }} aria-label={`Shade ${index + 1}`} title={doc?.keyGreen && index === 0 ? "Shade 1 · GB Studio draws a sprite's or emote's lightest shade as see-through, so it never shows in the game: paint with 2, 3 and 4" : `Shade ${index + 1} · ${index + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => { if (shade === index) shadeInputs.current[index]?.click(); else { setShade(index); if (tool === "eyedropper") setToolState(paintTool.current); } }}>
-                <Kbd>{index + 1}</Kbd>
-                <input type="color" tabIndex={-1} aria-label={`Change color ${index + 1}`} ref={(element) => { shadeInputs.current[index] = element; }} value={normalizeHex(color)} onClick={(event) => event.stopPropagation()} onChange={(event) => changeShadeColor(index, event.target.value.toUpperCase())} />
+            {(doc?.keyGreen ? [0, 1, 3] : [0, 1, 2, 3]).map((at, position) => { const color = swatchColors[at], name = doc?.keyGreen ? ["Light", "Mid", "", "Dark"][at] : `Shade ${at + 1}`; return (
+              <button key={at} className="app-swatch" aria-pressed={shade === at} style={{ background: color }} aria-label={name} title={doc?.keyGreen ? `${name} · ${position + 1} · one of GB Studio's three sprite shades (the key green is see-through)${picked ? " · click again to change this color" : ""}` : `${name} · ${position + 1} · click again to change this color${picked ? ` of ${picked.name}` : " of the tint"}`} onClick={() => setShade(at)}>
+                <Kbd>{position + 1}</Kbd>
+                <input type="color" tabIndex={-1} aria-label={`Change color ${position + 1}`} ref={(element) => { shadeInputs.current[at] = element; }} value={normalizeHex(color)} onClick={(event) => event.stopPropagation()} onChange={(event) => changeShadeColor(doc?.keyGreen ? (at === 3 ? 3 : at + 1) : at, event.target.value)} />
               </button>
-            ))}
+            ); })}
           </div>
           {doc && (doc.hasAlpha || canSeeThrough(doc)
             ? <Button size="sm" className="app-clear" pressed={doc.hasAlpha && shade === CLEAR} title={doc.hasAlpha ? "See-through · 0; the eraser paints it too" : "Lets this picture have see-through pixels (saved as PNG transparency); then the eraser and 0 paint them"}

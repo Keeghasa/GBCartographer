@@ -12,7 +12,7 @@ import { deflateSync, inflateSync } from "node:zlib";
 import { OWN_FOLDER, backupFile, ownFolderReadme } from "./backups";
 import { decodeTileColors, encodeTileColors, resolveScenePaletteIds } from "../src/gb/gbstudio";
 import { decodePng, encodePng } from "../src/gb/png";
-import { GB_SHADES, KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, spriteShades, timeVariant, toRgba } from "../src/paint";
+import { GB_SHADES, KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, spriteBase, spriteShades, timeVariant, toRgba } from "../src/paint";
 
 /** The picture folders under assets/. Emotes are read like sprites (key green see-through); avatars and the UI
  * frame and cursor (assets/ui, no sidecars) like background tiles. Only backgrounds, sprites and tilesets carry palettes. */
@@ -728,7 +728,7 @@ function drawPreview(project: string, kind: AssetKind, path: string): { rgba: Ui
   if (info.tileColors.length) assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes);
   const shown = picture.palettes.map((palette) => ({ ...palette, colors: sprite ? spriteShades(palette.colors) : palette.colors }));
   // A font's unused columns (magenta, read as see-through) show as paper in its thumbnail, not as dark bars.
-  const rgba = toRgba(picture.pixels, picture.cells, image.width, shown, sprite && !picture.hasAlpha ? KEY_GREEN : kind === "fonts" ? GB_SHADES[0] : undefined);
+  const rgba = toRgba(picture.pixels, picture.cells, image.width, shown, sprite && !picture.hasAlpha ? KEY_GREEN : kind === "fonts" ? GB_SHADES[0] : undefined, sprite ? spriteBase() : undefined);
   if (sprite) {
     // A sprite sheet's thumbnail is its first frame, put together from its slices (or the sheet's first square).
     const frame = info.animations[0]?.frames[0];

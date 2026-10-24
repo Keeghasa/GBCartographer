@@ -159,9 +159,28 @@ export function quantize(rgba: Uint8ClampedArray, width: number, height: number,
  * How a sprite palette colors the shades: color 0 of a GB sprite palette is never drawn (it is the see-through
  * color), so the lightest shade takes color 1, the mid shade color 2, and both dark shades color 3.
  */
-export function spriteShades(colors: readonly string[]): string[] {
-  return [colors[1] ?? colors[0], colors[2] ?? colors[0], colors[3] ?? colors[0], colors[3] ?? colors[0]];
+export function spriteShades(colors: readonly string[], merged?: string): string[] {
+  return [colors[1] ?? colors[0], colors[2] ?? colors[0], merged ?? colors[3] ?? colors[0], colors[3] ?? colors[0]];
 }
+
+/**
+ * GB Studio reads a sprite sheet's pixels in three shades and see-through (`spriteDataIndexFn`, checked in 4.3.2):
+ * Light (green 205 and up, drawn with a sprite palette's color 1), Mid (130 and up, color 2) and Dark (the rest, color
+ * 3); color 0 is the see-through key. So shade 2 here (#306850, and any green under 130) is Dark in the game, the same
+ * as shade 3: a sprite shows it as Dark, and its file is written with the darkest green only.
+ */
+/** The plain look of a sprite with no palette on it (the greens, or a screen look): Light, Mid, Dark, Dark. `merged` marks shade 2 instead. */
+export function spriteBase(colors: readonly string[] = GB_SHADES, merged?: string): string[] {
+  return [colors[0], colors[1], merged ?? colors[3], colors[3]];
+}
+/** A sprite's pixels as its file is written: never #306850 (shade 2 becomes 3; GB Studio reads both as Dark). */
+export const spriteFilePixels = (pixels: Uint8Array): Uint8Array => pixels.includes(2) ? pixels.map((value) => value === 2 ? 3 : value) : pixels;
+/** GB Studio's own class for a sprite pixel (`spriteDataIndexFn`): 0 see-through, 1 Light, 2 Mid, 3 Dark. */
+export function gbStudioSpriteClass(r: number, g: number, b: number, a: number): 0 | 1 | 2 | 3 {
+  return gbStudioSpriteClear(r, g, b, a) ? 0 : g >= 205 ? 1 : g >= 130 ? 2 : 3;
+}
+/** The color that marks a sprite's shade-2 pixels when asked (Merged pixels view). */
+export const MERGED_MARK = "#FF3EA5";
 
 /** GB Studio's key green: the see-through color of sprite sheets. */
 export const KEY_GREEN = "#65FF00";
@@ -195,8 +214,8 @@ export function colorize(pixels: Uint8Array, cells: Cells, width: number, luts: 
  * The flat RGBA picture a file gets: GB greens, and each palette's own colors on the cells that wear one.
  * See-through pixels are written as alpha 0, or as `clear` (a sprite sheet's key green) when given.
  */
-export function toRgba(pixels: Uint8Array, cells: Cells, width: number, palettes: readonly Palette[] = [], clear?: string): Uint8ClampedArray {
-  return new Uint8ClampedArray(colorize(pixels, cells, width, [GB_SHADES, ...palettes.map((palette) => palette.colors)].map((colors) => shadeLut(colors, clear))).buffer);
+export function toRgba(pixels: Uint8Array, cells: Cells, width: number, palettes: readonly Palette[] = [], clear?: string, base: readonly string[] = GB_SHADES): Uint8ClampedArray {
+  return new Uint8ClampedArray(colorize(pixels, cells, width, [base, ...palettes.map((palette) => palette.colors)].map((colors) => shadeLut(colors, clear))).buffer);
 }
 
 /**

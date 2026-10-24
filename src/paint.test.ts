@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, paletteSlots, quantize, snapRect, toRgba , timeVariant, snapLine, rotatedShape } from "./paint";
+import { CLEAR, GB_SHADES, KEY_GREEN, assignSlots, spriteShades, clipRect, countUniqueTiles, dot, drop, ellipsePoints, fillRect, floodFill, hexRgb, closeShades, colorDistance, fitPalettes, paletteVariant, inPattern, linkGroups, syncLinked, mergeNearTiles, tileUsage, gbStudioShade, gbcCorrect, dropCells, flipFloat, lift, liftCells, linePoints, onTiles, replaceShade, rotateFloat, mirrorPoints, namedSlot, paletteSlots, quantize, snapRect, toRgba , timeVariant, snapLine, rotatedShape, gbStudioSpriteClass, spriteBase, spriteFilePixels, MERGED_MARK } from "./paint";
 
 describe("GB Cartographer pixels", () => {
   it("fits colored art to four colors a tile and at most eight palettes, reporting what changed", () => {
@@ -382,5 +382,46 @@ describe("many palettes", () => {
     expect([...rotateFloat(piece).cells!]).toEqual([300, 2]);
     dropCells(cells, 16, 8, piece);
     expect([...cells]).toEqual([300, 2]);
+  });
+});
+
+describe("sprites as GB Studio reads them (spriteDataIndexFn, 4.3.2)", () => {
+  // GB Studio's own rule, ported: see-through, else Light (green 205+), Mid (130+), Dark.
+  const studio = (r: number, g: number, b: number, a: number) => (g > 249 && r < 180 && b < 20) || (b >= 200 && g < 20) || a < 200 ? 0 : g >= 205 ? 1 : g >= 130 ? 2 : 3;
+  const samples: [number, number, number, number, string][] = [
+    [101, 255, 0, 255, "the key green"], [10, 250, 10, 255, "a near-key green"], [255, 0, 255, 255, "magenta"], [0, 0, 220, 255, "a strong blue"], [224, 248, 207, 100, "low alpha"],
+    [224, 248, 207, 255, "#E0F8CF"], [134, 192, 108, 255, "#86C06C"], [48, 104, 80, 255, "#306850"], [7, 24, 33, 255, "#071821"],
+    [200, 140, 30, 255, "an orange (mid)"], [255, 255, 255, 255, "white"], [0, 0, 0, 255, "black"], [190, 250, 20, 255, "a bright green that isn't the key (red too high)"],
+  ];
+  it("classes every kind of pixel as GB Studio does, and reads a sprite PNG into the same classes", () => {
+    const rgba = new Uint8ClampedArray(samples.length * 4);
+    samples.forEach(([r, g, b, a], at) => rgba.set([r, g, b, a], at * 4));
+    const picture = quantize(rgba, samples.length, 1, [], true);
+    samples.forEach(([r, g, b, a, what], at) => {
+      expect(gbStudioSpriteClass(r, g, b, a), what).toBe(studio(r, g, b, a));
+      const shade = picture.pixels[at], ours = shade === CLEAR ? 0 : shade === 0 ? 1 : shade === 1 ? 2 : 3;
+      expect(ours, `${what} as opened`).toBe(studio(r, g, b, a));
+    });
+  });
+
+  it("a sprite file never gets #306850: shade 2 is written as the darkest green, the key for see-through", () => {
+    const pixels = new Uint8Array([0, 1, 2, 3, CLEAR]), out = toRgba(spriteFilePixels(pixels), new Uint16Array(1), 5, [], KEY_GREEN);
+    const triples = Array.from({ length: 5 }, (_, at) => [...out.slice(at * 4, at * 4 + 3)].map((v) => v.toString(16).padStart(2, "0")).join(""));
+    expect(triples).toEqual(["e0f8cf", "86c06c", "071821", "071821", "65ff00"]);
+    expect(triples).not.toContain("306850");
+    // The picture itself keeps shade 2 (so the Merged pixels view can find it); the file doesn't.
+    expect([...pixels]).toEqual([0, 1, 2, 3, CLEAR]);
+  });
+
+  it("shows a sprite in three shades: shade 2 as Dark, or marked when asked; a background keeps all four", () => {
+    expect(spriteBase()).toEqual(["#E0F8CF", "#86C06C", "#071821", "#071821"]);
+    expect(spriteBase(GB_SHADES, MERGED_MARK)[2]).toBe(MERGED_MARK);
+    expect(spriteShades(["#000000", "#111111", "#222222", "#333333"])).toEqual(["#111111", "#222222", "#333333", "#333333"]);
+    const pixels = new Uint8Array([2, 3]);
+    const sprite = toRgba(pixels, new Uint16Array(1), 2, [], undefined, spriteBase());
+    expect([...sprite.slice(0, 3)]).toEqual([...sprite.slice(4, 7)]);
+    const background = toRgba(pixels, new Uint16Array(1), 2);
+    expect([...background.slice(0, 3)]).toEqual([0x30, 0x68, 0x50]);
+    expect([...background.slice(4, 7)]).toEqual([0x07, 0x18, 0x21]);
   });
 });

@@ -4,7 +4,7 @@
  * tiles wear. The thumbnail is redrawn a moment after the picture changes, so painting never waits on it.
  */
 import { useEffect, useState } from "react";
-import { GB_SHADES, toRgba } from "../paint";
+import { GB_SHADES, spriteBase, spriteShades, toRgba } from "../paint";
 import type { Doc } from "./model";
 
 const THUMB_W = 300, THUMB_H = 144;
@@ -17,7 +17,9 @@ function drawThumb(doc: Doc): string {
   const sprite = doc.asset?.kind === "sprites" || doc.asset?.kind === "emotes";
   const sw = sprite ? Math.min(doc.width, doc.height) : doc.width, sh = doc.height;
   const full = Object.assign(document.createElement("canvas"), { width: doc.width, height: doc.height });
-  full.getContext("2d")!.putImageData(new ImageData(toRgba(doc.pixels, doc.cells, doc.width, doc.palettes), doc.width, doc.height), 0, 0);
+  // A sprite as GB Studio shows it: a palette's colors 1–3 on its three shades, shade 2 as Dark.
+  const palettes = doc.keyGreen ? doc.palettes.map((palette) => ({ ...palette, colors: spriteShades(palette.colors) })) : doc.palettes;
+  full.getContext("2d")!.putImageData(new ImageData(toRgba(doc.pixels, doc.cells, doc.width, palettes, undefined, doc.keyGreen ? spriteBase() : undefined), doc.width, doc.height), 0, 0);
   // A picture fills the tab (cropped like CSS cover); a sprite's frame fits whole, in whole pixels, on the tab's dark.
   // The frame sits above the name band (its top 62 %), so the band never covers it.
   const room = sprite ? THUMB_H * 0.62 : THUMB_H;
