@@ -13,7 +13,8 @@ import { ASSET_KINDS, ASSET_URL, PREVIEW_VERSION, type Asset, type AssetKind, ty
 import type { AutotileKind } from "./autotile";
 import { SheetThumb, type SheetCell } from "./SheetThumb";
 import { KIND_ICONS } from "./tools";
-import { Archive, Blocks, FolderClosed, MessageSquareText, Pencil, Pin, TreePine, Waves } from "lucide-react";
+import { Archive, Blocks, FolderClosed, Globe, MessageSquareText, Pencil, Pin, TreePine, Waves } from "lucide-react";
+import { ReferencePanel, REFERENCE_HOME } from "./ReferencePanel";
 import { PhCheckerboard } from "../ui/setIcons";
 import { STAMP_GROUPS, stampGroup, type StampGroup } from "./stampGroups";
 import { HiddenWindow } from "./HiddenWindow";
@@ -51,6 +52,9 @@ interface ProjectPanelProps {
 const assetQuery = (asset: { kind: AssetKind; file: string }) => new URLSearchParams({ kind: asset.kind, file: asset.file });
 
 export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages, unreadMessages, slotsVersion, stateOf, onOpen, onUseStamp, onUseFont, onAutotile, onMenu }: ProjectPanelProps) {
+  // The reference browser shows in place of the cards; it stays alive (page and history) while the cards show.
+  const [reference, setReference] = useState(false);
+  const desktop = typeof window !== "undefined" && Boolean((window as Window & { gbc?: unknown }).gbc);
   const [filter, setFilter] = useState("");
   /** The stamps' tag filter (moved here from the old saved-stamps strip, the author, 2026-10-16). */
   const [tag, setTag] = useState<string | null>(null);
@@ -144,8 +148,8 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
   return (
     <>
       <nav className="k-panel app-rail" aria-label="Asset folders">
-        {ASSET_KINDS.filter(([id]) => id !== "stamps").map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = kind === id && open; return (
-          <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} · ${count}${on ? " · click to hide" : ""}`} onClick={() => onKind(id)}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>
+        {ASSET_KINDS.filter(([id]) => id !== "stamps").map(([id, name]) => { const Icon = KIND_ICONS[id]; const count = project.assets.filter((asset) => asset.kind === id).length; const on = !reference && kind === id && open; return (
+          <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} · ${count}${on ? " · click to hide" : ""}`} onClick={() => { if (reference) { setReference(false); if (kind === id && open) return; } onKind(id); }}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>
         ); })}
         {/* The stamps, on four shelves of their own (GB Cartographer's, in Cartographer/stamps), in the middle of the
             rail's free space: the hide bar is split, above and below them (the author, 2026-10-13). */}
@@ -153,14 +157,21 @@ export function ProjectPanel({ project, kind, open, onKind, onToggle, onMessages
         <hr className="app-rail-rule" />
         {STAMP_GROUPS.map(([id, name]) => {
           const Icon = { objects: TreePine, repeat: PhCheckerboard, autotiles: Blocks, animated: Waves }[id];
-          const count = project.assets.filter((asset) => asset.kind === "stamps" && stampGroup(asset) === id).length, on = kind === "stamps" && group === id && open;
-          return <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} (stamps) · ${count}${on ? " · click to hide" : ""}`} onClick={() => { if (kind === "stamps" && group !== id) { setGroup(id); store("gbc-stamp-group", id); if (!open) onKind("stamps"); return; } setGroup(id); store("gbc-stamp-group", id); onKind("stamps"); }}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>;
+          const count = project.assets.filter((asset) => asset.kind === "stamps" && stampGroup(asset) === id).length, on = !reference && kind === "stamps" && group === id && open;
+          return <IconButton key={id} variant="ghost" pressed={on} aria-label={`${name} (${count})`} label={`${name} (stamps) · ${count}${on ? " · click to hide" : ""}`} onClick={() => { setReference(false); if (kind === "stamps" && group !== id) { setGroup(id); store("gbc-stamp-group", id); if (!open) onKind("stamps"); return; } setGroup(id); store("gbc-stamp-group", id); onKind("stamps"); }}><Icon size={18} /><span className="app-badge">{count}</span></IconButton>;
         })}
         <hr className="app-rail-rule" />
         <button type="button" className="app-rail-fill" aria-label={open ? "Hide the pictures" : "Show the pictures"} title={open ? "Hide the pictures" : "Show the pictures"} onClick={onToggle} />
+        {/* The reference browser (desktop app; the page in a browser opens DuckDuckGo in a new tab instead). */}
+        <IconButton variant="ghost" pressed={reference && open} aria-label="Reference browser" label={desktop ? `Reference browser: DuckDuckGo and the web, beside your picture${reference && open ? " · click to hide" : ""}` : "Reference: opens DuckDuckGo in a new tab (the desktop app shows it here)"} onClick={() => {
+          if (!desktop) { window.open(REFERENCE_HOME, "_blank", "noopener"); return; }
+          if (reference && open) { onToggle(); return; }
+          setReference(true); if (!open) onToggle();
+        }}><Globe size={18} /></IconButton>
         <IconButton variant="ghost" aria-label={`Messages${unreadMessages ? ` (${unreadMessages} new)` : ""}`} label={`Messages: everything GB Cartographer said${unreadMessages ? ` · ${unreadMessages} new` : ""}`} onClick={onMessages}><MessageSquareText size={18} />{unreadMessages > 0 && <span className="app-badge">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}</IconButton>
       </nav>
-      {open && <aside className="k-panel app-project" aria-label="GB Studio project">
+      {desktop && reference && <aside className="k-panel app-project app-reference" aria-label="Reference browser" hidden={!open}><ReferencePanel /></aside>}
+      {open && !reference && <aside className="k-panel app-project" aria-label="GB Studio project">
         <div className="app-project-head"><span className="k-eyebrow" title={project.path}>{project.name}</span></div>
         <h2 className="k-heading">{label}</h2>
         <input type="search" className="k-input" placeholder={`Filter ${label.toLowerCase()}`} aria-label={`Filter ${label.toLowerCase()} by name`} value={filter} onChange={(event) => setFilter(event.target.value)} />

@@ -73,7 +73,8 @@ async function createWindow() {
     title: APP_NAME,
     ...(existsSync(ICON) ? { icon: ICON } : {}),
     backgroundColor: "#000000",
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, "preload.cjs") },
+    // webviewTag: the reference browser in the project panel (src/app/ReferencePanel.tsx), locked down below.
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, "preload.cjs"), webviewTag: true },
   });
   // Links open in the browser, web links only (a file:, smb: or custom-scheme link could run programs on Windows).
   const web = (url: string) => { try { return ["https:", "http:", "mailto:"].includes(new URL(url).protocol); } catch { return false; } };
@@ -87,6 +88,28 @@ async function createWindow() {
     if (new URL(url).origin === new URL(target).origin) return;
     event.preventDefault();
     if (web(url)) void shell.openExternal(url);
+  });
+  // The reference browser's page (a <webview>): web pages only, no preload, no Node, sandboxed, its own cookies; a
+  // pop-up or a link to anything else opens in the browser. The app's own page can't be loaded into it.
+  window.webContents.on("will-attach-webview", (event, preferences, params) => {
+    delete (preferences as { preload?: string }).preload;
+    Object.assign(preferences, { nodeIntegration: false, nodeIntegrationInSubFrames: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false });
+    params.partition = "persist:reference";
+    let src: URL | null = null;
+    try { src = new URL(params.src); } catch { /* not an address */ }
+    if (!src || !["https:", "http:"].includes(src.protocol) || src.origin === new URL(target).origin) event.preventDefault();
+  });
+  window.webContents.on("did-attach-webview", (_event, guest) => {
+    guest.setWindowOpenHandler(({ url }) => { if (web(url)) void shell.openExternal(url); return { action: "deny" }; });
+    guest.on("will-navigate", (event, url) => {
+      let next: URL | null = null;
+      try { next = new URL(url); } catch { /* not an address */ }
+      if (next && ["https:", "http:"].includes(next.protocol) && next.origin !== new URL(target).origin) return;
+      event.preventDefault();
+      if (web(url)) void shell.openExternal(url);
+    });
+    // No camera, microphone, location or notifications for reference pages.
+    guest.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   });
   // Closing: the page writes its session and says whether anything is unsaved. If so it shows Unsaved changes
   // (save to the project, keep in GB Cartographer, discard, or cancel) and closes the window itself through the

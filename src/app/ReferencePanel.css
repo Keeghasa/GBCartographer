@@ -1,0 +1,9 @@
+/* The reference browser (ReferencePanel.tsx): a bar with back, forward, reload and the address, the page below. */
+.rb { display: flex; flex-direction: column; gap: var(--k-2); flex: 1; min-height: 0; }
+.rb-bar { display: flex; align-items: center; gap: 2px; flex: none; }
+.rb-address { flex: 1; min-width: 0; height: 30px; font-size: var(--k-text-sm); }
+.rb-view { flex: 1; min-height: 0; width: 100%; border-radius: 8px; overflow: hidden; background: #fff; }
+.rb-spin { animation: rb-spin 1s linear infinite; }
+@keyframes rb-spin { to { transform: rotate(360deg); } }
+/* The panel is a little wider while it browses (phone layouts want ~360 px). */
+.app-project.app-reference { width: 360px; }
