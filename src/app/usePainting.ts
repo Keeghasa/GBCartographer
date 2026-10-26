@@ -591,6 +591,8 @@ export function usePainting(app: Painting) {
 
   function pointerDown(event: PointerEvent) {
     if (!doc || event.button === 1) return;
+    // Sprites have no palettes (the author, 2026-10-25): the palette tools do nothing on a sprite sheet.
+    if ((tool === "palette" || tool === "paletteAll") && doc.asset?.kind === "sprites") return;
     const scroller = app.scrollerRef.current!;
     event.currentTarget.setPointerCapture(event.pointerId);
     if (tool === "hand" || app.spaceDown.current) {

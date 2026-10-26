@@ -41,8 +41,12 @@ export const FILE_MANAGER_LABEL = /Mac/i.test(navigator.userAgent) ? "Show in Fi
 export const PREVIEW_VERSION = 2;
 export const ASSET_KINDS = [["backgrounds", "Backgrounds"], ["sprites", "Sprites"], ["tilesets", "Tilesets"], ["fonts", "Fonts"], ["emotes", "Emotes"], ["avatars", "Avatars"], ["ui", "UI (frame, cursor)"], ["stamps", "Stamps (GB Cartographer)"]] as const;
 export type AssetKind = typeof ASSET_KINDS[number][0];
-/** Backgrounds and sprite sheets carry palette slots GB Studio reads; tilesets and fonts are plain pictures. */
-export const hasSlots = (kind: AssetKind) => kind === "backgrounds" || kind === "sprites" || kind === "tilesets";
+/**
+ * Backgrounds and tilesets carry palette slots GB Studio reads; sprites, fonts and the rest are plain pictures.
+ * Sprites have no palettes here (the author, 2026-10-25): their colours are set in GB Studio's own sprite editor, per
+ * frame piece, so a sprite sheet shows, paints and saves in plain greens and its .gbsres palettes are never written.
+ */
+export const hasSlots = (kind: AssetKind) => kind === "backgrounds" || kind === "tilesets";
 /** Kinds GB Studio draws as sprites: key green is see-through in the file. */
 export const isKeyed = (kind: AssetKind) => kind === "sprites" || kind === "emotes";
 /** How long an animated tile shows each frame, everywhere it plays (2026-10-14: much slower than the old half second). */
@@ -155,3 +159,15 @@ export type Drag =
   | { kind: "marquee"; start: Point }
   | { kind: "move"; start: Point; ox: number; oy: number }
   | { kind: "pan"; x: number; y: number; left: number; top: number };
+
+/**
+ * A sprite sheet in plain greens: drops tile palettes it was opened, restored or kept with (an older GB Cartographer
+ * painted sprite palettes; the author dropped that, 2026-10-25), and its palette slots. Other pictures are untouched.
+ */
+export function plainSprite<T extends Pick<Doc, "cells" | "palettes" | "asset">>(doc: T): T {
+  if (doc.asset?.kind !== "sprites") return doc;
+  doc.cells = new Uint16Array(doc.cells.length);
+  doc.palettes = [];
+  delete doc.asset.slots; delete doc.asset.slotScene; delete doc.asset.metaMtime; delete doc.asset.opened;
+  return doc;
+}

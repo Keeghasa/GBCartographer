@@ -51,7 +51,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeSpritePalettes, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
+import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, migrateOutOfProject, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
 import { addSource, listSources, listUnsaved, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, SOURCE_KINDS, sourcePath, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
 import { readMaps, writeMaps } from "./maps";
@@ -431,10 +431,15 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         reply(res, 400, { error: "priority must be an array of true, false or null" });
         return true;
       }
+      // Sprites have no palettes here (the author, 2026-10-25): their colours belong to GB Studio's sprite editor.
+      if (kind === "sprites") {
+        reply(res, 400, { error: "Sprites have no palettes in GB Cartographer: set a sprite's colours in GB Studio's sprite editor" });
+        return true;
+      }
       const expected = url.searchParams.get("metaMtime");
       try {
         const slots = body.slots as (number | null)[], expectedMtime = expected === null ? null : Number(expected), force = url.searchParams.get("force") === "1";
-        const written = kind === "sprites" ? writeSpritePalettes(path, slots, backup, expectedMtime, force) : writeTileColors(path, slots, backup, expectedMtime, force, kind as "backgrounds" | "tilesets", (body.priority as (boolean | null)[] | undefined) ?? []);
+        const written = writeTileColors(path, slots, backup, expectedMtime, force, kind as "backgrounds" | "tilesets", (body.priority as (boolean | null)[] | undefined) ?? []);
         reply(res, 200, { ok: true, ...written });
       } catch (error) {
         if (error instanceof AssetWriteError) reply(res, error.status, { error: error.message, mtime: error.mtime });

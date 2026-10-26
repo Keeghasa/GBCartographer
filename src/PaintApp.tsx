@@ -13,7 +13,7 @@ import PaletteManager, { addToMine } from "./PaletteManager";
 import BackupsWindow from "./BackupsWindow";
 import { attachMiddlePan, attachWheelZoom, nextStep } from "./ui/wheelZoom";
 import { CELL, CLEAR, GB_SHADES, KEY_GREEN, KEY_MAGENTA, assignSlots, spriteShades, cellsWide, clipRect, colorize, countUniqueTiles, drop, fillRect, PATTERNS, type Pattern, mergeNearTiles, tileUsage, type TileUsage, dropCells, flipFloat, gbcCorrect, LOOK_SHADES, type Look, lift, liftCells, onTiles, replaceShade, rotateFloat, paletteSlots, timeVariant, quantize, shadeLut, toRgba, type Floating, type Mirror, type Palette, MAX_PALETTES, spriteBase, spriteFilePixels, MERGED_MARK } from "./paint";
-import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
+import { ANIM_FRAME_MS, ASSET_URL, BUDGETS, BUDGET_KEY, BUILT_IN_TINTS, CUSTOM_TINT_KEY, FILE_MANAGER_LABEL, GRID_KEY, MIRRORS, NAMED_SLOTS_KEY, SCREENS_KEY, LOOK_KEY, PATTERN_KEY, PNG_TYPES, OPEN_TYPES, PROJECT_KIND_KEY, PROJECT_PANEL_KEY, PROJECT_URL, TINT_KEY, UI_SLOT, UNDO_BYTES, UNDO_LIMIT, ZOOMS, hasSlots, isKeyed, plainSprite, versionTime, type Asset, type AssetInfo, type AssetKind, type Doc, type FileHandle, type Opening, type PickerWindow, type Point, type Project, type ToolId } from "./app/model";
 import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
 import { TOOLS } from "./app/tools";
@@ -295,6 +295,7 @@ export default function PaintApp() {
   }
 
   function setTool(next: ToolId) {
+    if ((next === "palette" || next === "paletteAll") && doc?.asset?.kind === "sprites") { say("Sprites have no palettes here: set a sprite's colours in GB Studio's sprite editor."); return; }
     // Picking the stamp with a selection makes the selection the stamp.
     if (next === "stamp" && doc?.sel) { takeStamp(doc, doc.sel); heldStamp.current = null; }
     if (doc && next !== "select" && next !== "move" && next !== "hand") dropFloat(doc);
@@ -385,7 +386,8 @@ export default function PaintApp() {
       const asset = projectRef.current?.assets.find((item) => item.kind === kind && item.file === file);
       if (!asset) continue;
       if (!target) { await openAsset(asset); target = docs.current.find(mine); }
-      if (target && applyUnsaved(target, data)) { opened += 1; followProject([target], palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id))); if (target.asset && data.assetMtime && target.asset.mtime > data.assetMtime + 1) target.changedOnDisk = { mtime: target.asset.mtime, metaMtime: target.asset.metaMtime ?? null }; }
+      if (target && applyUnsaved(target, data)) {
+        plainSprite(target); opened += 1; followProject([target], palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id))); if (target.asset && data.assetMtime && target.asset.mtime > data.assetMtime + 1) target.changedOnDisk = { mtime: target.asset.mtime, metaMtime: target.asset.metaMtime ?? null }; }
     }
     if (opened) { say(`${opened} picture${opened === 1 ? "" : "s"} with unsaved changes kept in this project opened again.`); bump(); }
     void syncUnsaved();
@@ -595,7 +597,7 @@ export default function PaintApp() {
         const keyMagenta = asset?.kind === "fonts";
         const picture = quantize(context.getImageData(0, 0, bitmap.width, bitmap.height).data, bitmap.width, bitmap.height, palettesRef.current, keyGreen, keyMagenta);
         // A background's tile colors (GB Studio's per-tile palettes) dress the cells when the scene's palettes are known.
-        const dressed = info?.tileColors.length ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
+        const dressed = info?.tileColors.length && asset?.kind !== "sprites" ? assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes) : 0;
         const old = replace !== undefined ? docs.current.findIndex((item) => item.id === replace) : -1;
         // The tab this was reloading for was closed while the file was read: nothing to replace, and no new tab.
         if (replace !== undefined && old < 0) continue;
@@ -605,6 +607,7 @@ export default function PaintApp() {
         const flags = asset && info && (asset.kind === "backgrounds" || asset.kind === "tilesets") ? Array.from({ length: picture.cells.length }, (_, cell) => (info.tileColors[cell] ?? 0) >= 0 && (info.tileColors[cell] ?? 0) & 0x80 ? 1 : 0) : null;
         const own = ase ? undefined : handle;
         const opened: Doc = { id, ...(own && !asset ? { fileTime: file.lastModified } : {}), name: asset?.name ?? (ase ? file.name.replace(/\.(aseprite|ase)$/i, ".png") : file.name), width: bitmap.width, height: bitmap.height, pixels: picture.pixels, cells: picture.cells, ...(flags ? { priority: Uint8Array.from(flags) } : {}), hasAlpha: picture.hasAlpha || keyGreen || asset?.kind === "stamps", palettes: picture.palettes, undo: [], redo: [], dirty: Boolean(ase), handle: own, asset: asset && info ? { kind: asset.kind, file: asset.file, name: asset.name, mtime: info.mtime, ...(hasSlots(asset.kind) ? { slots: info.slots, slotScene: info.slotScene ?? null, metaMtime: info.metaMtime, opened: info.tileColors.map((value) => value < 0 ? -1 : value & 7), ...(flags ? { openedPriority: flags } : {}) } : {}), ...(asset.kind === "sprites" && info.animations?.length ? { animations: info.animations, animSpeed: info.animSpeed ?? null } : {}), ...(asset.kind === "backgrounds" && info.parallax?.length ? { parallax: info.parallax } : {}), project: projectRef.current?.path, ...(info.autoColor ? { autoColor: true } : {}) } : undefined, keyGreen: keyGreen || undefined, ...(keyMagenta ? { keyMagenta: true } : {}), zoom: old >= 0 ? docs.current[old].zoom : fitZoom(bitmap.width, bitmap.height), sel: null, float: null };
+        plainSprite(opened);
         if (old >= 0) {
           // Reloaded from disk (2026-10-14): what was on screen stays one undo away, with the history before it.
           const before = docs.current[old];
@@ -2265,6 +2268,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         const restored: Doc[] = [];
         // A session kept by an older GB Cartographer has one byte a cell; cells are 16-bit now (2026-10-23).
         for (const saved of session.docs) restored.push({ ...saved, cells: saved.cells instanceof Uint16Array ? saved.cells : Uint16Array.from(saved.cells as ArrayLike<number>), hasAlpha: saved.hasAlpha || saved.asset?.kind === "stamps", palettes: saved.palettes ?? clonePalettes(palettesRef.current), id: newDocId([...restored, ...early]), undo: [], redo: [], sel: null, float: null });
+        for (const item of restored) plainSprite(item);
         docs.current = [...restored, ...early];
         if (!early.length) setActiveId(restored[Math.max(0, session.active)]?.id ?? restored[0].id);
         void rereadSlots();
@@ -2294,6 +2298,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     };
   }, []);
 
+  // A sprite sheet in front with a palette tool in hand: back to the pencil (sprites have no palettes, 2026-10-25).
+  useEffect(() => { if (doc?.asset?.kind === "sprites" && (tool === "palette" || tool === "paletteAll")) setToolState("pencil"); }, [doc?.id, tool]);
   const sceneOpen = Boolean(doc?.asset?.slots?.length);
   useEffect(() => { if (wizardAfterOpen && sceneOpen) { setWizard(wizardAfterOpen); setWizardAfterOpen(null); } }, [wizardAfterOpen, sceneOpen]);
 
@@ -2756,7 +2762,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
         { label: "Rename…", icon: <Pencil />, title: "A new name in the project's palette file (GB Studio finds palettes by id, so scenes and events keep it)", onSelect: () => void renameProjectPalette(slotTarget) },
         { label: "Duplicate", icon: <CopyPlus />, title: "A new project palette with the same colors", onSelect: () => void duplicateProjectPalette(slotTarget) },
       ] as MenuEntry[] : []),
-      { note: !slotTarget.id ? "Add this palette to the project first (palette manager)." : sceneSlots.length ? `Put in slot writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Open a project background or sprite sheet to put it in a slot." },
+      { note: !slotTarget.id ? "Add this palette to the project first (palette manager)." : sceneSlots.length ? `Put in slot writes ${slotWhere} in GB Studio right away. Tiles that used the palette it replaces show the new one.` : "Open a project background to put it in a slot." },
     ];
   const copyFrom = doc?.asset?.kind === "backgrounds" ? doc.asset : undefined;
   const copyTargets = copyMenu && copyFrom ? (project?.assets ?? []).filter((asset) => asset.kind === "backgrounds" && asset.file !== copyFrom.file && (!slotFilter || asset.name.toLowerCase().includes(slotFilter))) : [];
@@ -2804,7 +2810,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
     { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
-      blocked: sceneOpen || project ? null : "Open a project background or sprite sheet first",
+      blocked: sceneOpen || project ? null : "Open a project background first",
       needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
       onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
     { thumb: "paletteSet", name: "Palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
@@ -2891,7 +2897,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
             onMenu={(asset, x, y) => setAssetMenu({ x, y, asset })}
           />
         )}
-        <ToolColumn tool={tool} onTool={setTool} draft={Boolean(doc && draftOf(doc))} onDraft={toggleDraft} draftChanged={Boolean(doc && draftChanges(doc))} onCommit={() => doc && commitDraft(doc)} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={patternInUse} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
+        <ToolColumn tool={tool} onTool={setTool} noPalettes={doc?.asset?.kind === "sprites"} draft={Boolean(doc && draftOf(doc))} onDraft={toggleDraft} draftChanged={Boolean(doc && draftChanges(doc))} onCommit={() => doc && commitDraft(doc)} seamless={seamless} onSeamless={setSeamless} linked={linked} onLinked={setLinked} mirror={mirror} onMirror={setMirror} onInvert={invertSelection} pattern={patternInUse} onPattern={cyclePattern} cellBrush={cellBrush} onCellBrush={setCellBrush} brush={brush} onBrush={setBrush} shade={shade} shades={swatchColors} />
         <div className="k-panel app-stage gbp-scroller" ref={scrollerRef}>
           {doc && draftOf(doc) && (() => { const changed = draftChanges(doc); return (
             <div className="k-card app-strip" role="group" aria-label="Draft layer">

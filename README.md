@@ -31,9 +31,10 @@ The code is free: [build it yourself](#running-it) (see [Install](#install)).
 - **One flat picture per file.** No layers, no tileset management: what you see is the PNG, kept in the four
   Game Boy shades, read exactly the way GB Studio reads colors. Sprite sheets and emotes keep their key green
   (`#65FF00`) for see-through pixels.
-- **Paint directly with palettes.** The palette brush gives each 8 × 8 background or tileset tile (or 8 × 16
-  sprite tile) one of its eight palettes, in 1, 2 × 2 or 3 × 3 tile steps, with Shift-click for straight lines and
-  I to pick a tile's palette. Save writes them as GB Studio does: `tileColors`, or a sprite slice's `paletteIndex`.
+- **Paint directly with palettes.** The palette brush gives each 8 × 8 background or tileset tile one of its eight
+  palettes, in 1, 2 × 2 or 3 × 3 tile steps, with Shift-click for straight lines and I to pick a tile's palette.
+  Save writes them as GB Studio does, in `tileColors`. Sprite sheets show and save in plain Game Boy greens: a
+  sprite's colours are set in GB Studio's own sprite editor.
 - **Put a palette in a slot.** Right-click a palette (in the sidebar or the palette manager) to place it in one of
   the eight slots: the scene's palette list, or the project's default palettes. Right-click a slot to fill it with
   any project palette, rename or duplicate a palette from the same menu, or copy one background's eight palettes
@@ -154,7 +155,6 @@ GB Cartographer is careful with your game files. It only ever writes:
 - the PNG you saved, under `assets/backgrounds`, `sprites`, `tilesets`, `fonts`, `emotes`, `avatars` or `ui`, with the same size as before (or the new size, after **Resize…**);
 - a new PNG when you make one with **New**, a wizard, the Map Room or the Asset Catalog, or save a picture from another project into this one (it never replaces a file; GB Studio adds its own settings for it);
 - the `tileColors` field of a background's or tileset's `.png.gbsres` sidecar;
-- the `paletteIndex` of the slices in a sprite sheet's `.png.gbsres` sidecar;
 - palette files in `project/palettes/`: a new one when you add or duplicate a palette, the name and
   colors of one you edit or rename, or taking out one that nothing in the project uses (it goes to the backups);
 - a scene's `collisions` field in its `scene.gbsres`, when you paint collisions with the collision brush (only that

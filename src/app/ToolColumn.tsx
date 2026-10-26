@@ -26,6 +26,8 @@ interface Props {
   brush: number; onBrush: (size: number) => void;
   /** The shade in hand (0–3) and the four colors it is shown in (the picked palette, or the look). */
   shade: number; shades: readonly string[];
+  /** A sprite sheet is open: no palette brush or palette fill (sprites have no palettes here, 2026-10-25). */
+  noPalettes?: boolean;
 }
 
 /**
@@ -50,14 +52,14 @@ function PatternSwatch({ pattern, label, shade, shades, onPattern }: { pattern: 
   );
 }
 
-export function ToolColumn({ tool, onTool, draft, onDraft, draftChanged, onCommit, seamless, onSeamless, linked, onLinked, mirror, onMirror, onInvert, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades }: Props) {
+export function ToolColumn({ tool, onTool, draft, onDraft, draftChanged, onCommit, seamless, onSeamless, linked, onLinked, mirror, onMirror, onInvert, pattern, onPattern, cellBrush, onCellBrush, brush, onBrush, shade, shades, noPalettes }: Props) {
   const patternLabel = PATTERNS.find((item) => item.id === pattern)?.label;
   return (
     <aside className="k-panel app-tools gbp-tools" role="toolbar" aria-label="Paint tools">
       {TOOLS.filter(([id]) => !TILE_TOOLS.includes(id)).map(([id, label, Icon, keys]) => <IconButton key={id} label={label} keys={keys} pressed={tool === id} onClick={() => onTool(id)}><Icon size={17} /></IconButton>)}
       <hr />
       {/* The tile tools on their own (the author, 2026-10-14): palette brush and fill, priority, collision. */}
-      {TOOLS.filter(([id]) => TILE_TOOLS.includes(id)).map(([id, label, Icon, keys]) => <IconButton key={id} label={label} keys={keys} pressed={tool === id} onClick={() => onTool(id)}><Icon size={17} /></IconButton>)}
+      {TOOLS.filter(([id]) => TILE_TOOLS.includes(id) && !(noPalettes && (id === "palette" || id === "paletteAll"))).map(([id, label, Icon, keys]) => <IconButton key={id} label={label} keys={keys} pressed={tool === id} onClick={() => onTool(id)}><Icon size={17} /></IconButton>)}
       <hr />
       <IconButton label="Seamless view: the tile under the pointer (or the selection) repeated 3 × 3" aria-label="Seamless view" pressed={seamless} onClick={() => onSeamless(!seamless)}><Grid2x2 size={17} /></IconButton>
       <IconButton label="Linked tiles: painting a tile paints every identical copy" keys="K" aria-label="Linked tiles" pressed={linked} onClick={() => onLinked(!linked)}><Dna size={17} /></IconButton>

@@ -370,28 +370,6 @@ function writeSidecar(sidecar: string, meta: Record<string, unknown>, backup: Ba
 }
 
 /**
- * Writes a sprite sheet's per-cell palette slots into its sidecar: every 8 × 16 slice whose top cell (or, failing
- * that, bottom cell) has a slot gets that `paletteIndex`; other tiles and every other field are kept. Returns
- * whether anything changed and how many tiles did.
- */
-export function writeSpritePalettes(path: string, slots: readonly (number | null)[], backup: Backup, expectedMtime: number | null, force: boolean): { mtime: number; changed: boolean; cells: number } {
-  const { sidecar, meta, mtime } = openSidecar(path, "sprite sheet", expectedMtime, force);
-  const size = pngSizeOfFile(path) ?? { width: 0, height: 0 };
-  const cw = Math.ceil(size.width / 8), ch = Math.ceil(size.height / 8);
-  let cells = 0;
-  for (const tile of spriteTiles(meta)) {
-    const covered = sliceCells(tile, cw, ch);
-    if (!covered) continue;
-    const slot = slots[covered[0]] ?? (covered[1] >= 0 ? slots[covered[1]] : null) ?? null;
-    if (slot === null || slot === (tile.paletteIndex ?? 0)) continue;
-    tile.paletteIndex = slot;
-    cells += 1;
-  }
-  if (!cells) return { mtime, changed: false, cells: 0 };
-  return { mtime: writeSidecar(sidecar, meta, backup), changed: true, cells };
-}
-
-/**
  * Every project file (under project/, other than the palette's own) that mentions a palette id: scene slots, the
  * defaults, and events that switch palettes. Paths inside the project.
  */
@@ -725,7 +703,8 @@ function drawPreview(project: string, kind: AssetKind, path: string): { rgba: Ui
   const palettes = listPalettes(project).map(({ id, name, colors }) => ({ id, name, colors }));
   const sprite = kind === "sprites", keyed = KEYED_KINDS.includes(kind);
   const picture = quantize(image.pixels, image.width, image.height, palettes, keyed, kind === "fonts");
-  if (info.tileColors.length) assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes);
+  // Sprites show in plain greens (the author, 2026-10-25): GB Studio's sprite editor sets their colours.
+  if (info.tileColors.length && !sprite) assignSlots(picture.cells, info.tileColors, info.slots, picture.palettes);
   const shown = picture.palettes.map((palette) => ({ ...palette, colors: sprite ? spriteShades(palette.colors) : palette.colors }));
   // A font's unused columns (magenta, read as see-through) show as paper in its thumbnail, not as dark bars.
   const rgba = toRgba(picture.pixels, picture.cells, image.width, shown, sprite && !picture.hasAlpha ? KEY_GREEN : kind === "fonts" ? GB_SHADES[0] : undefined, sprite ? spriteBase() : undefined);

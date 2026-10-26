@@ -283,22 +283,12 @@ describe("tile palettes", () => {
     expect(latestBackup("assets/tilesets/props.png.gbsres")).toContain("02!");
   });
 
-  it("writes a sprite sheet's slots as paletteIndex on every slice covering a painted cell", async () => {
+  it("refuses sprite palettes and leaves the sprite's sidecar alone (sprites have no palettes, 2026-10-25)", async () => {
     const sidecar = join(project, "assets/sprites/hero.png.gbsres");
     const before = readFileSync(sidecar, "utf8");
-    const { metaMtime } = await json<{ metaMtime: number }>(await fetch(`${base}/gbstudio-asset-info?kind=sprites&file=hero.png`));
-    const post = (body: object, query = "") => fetch(`${base}/gbstudio-tile-colors?kind=sprites&file=hero.png${query}`, { method: "POST", body: JSON.stringify(body) });
-    expect(await json(await post({ slots: [2, 0, null, null] }, `&metaMtime=${metaMtime}`))).toMatchObject({ ok: true, changed: false, cells: 0 });
+    const response = await fetch(`${base}/gbstudio-tile-colors?kind=sprites&file=hero.png`, { method: "POST", body: JSON.stringify({ slots: [null, null, null, 5] }) });
+    expect(response.status).toBe(400);
     expect(readFileSync(sidecar, "utf8")).toBe(before);
-    const written = await json<{ changed: boolean; cells: number }>(await post({ slots: [null, null, null, 5] }, `&metaMtime=${metaMtime}`));
-    expect(written).toMatchObject({ changed: true, cells: 2 });
-    const text = readFileSync(sidecar, "utf8");
-    const meta = JSON.parse(text) as { name: string; states: { animations: { frames: { tiles: { paletteIndex: number; palette: number }[] }[] }[] }[] };
-    expect(meta.states[0].animations[0].frames.map((frame) => frame.tiles.map((tile) => tile.paletteIndex))).toEqual([[2, 5], [5]]);
-    expect(meta.states[0].animations[0].frames[0].tiles.map((tile) => tile.palette)).toEqual([0, 0]);
-    expect([meta.name, text]).toEqual(["Hero", JSON.stringify(meta, null, 2)]);
-    expect(latestBackup("assets/sprites/hero.png.gbsres")).toBe(before);
-    expect((await post({ slots: [1] }, `&metaMtime=${metaMtime}`)).status).toBe(409);
   });
 
   it("puts a palette in a slot: the scene's list for a background, the project defaults for tilesets and unclaimed sprites", async () => {
