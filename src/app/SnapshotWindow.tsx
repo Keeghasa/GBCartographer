@@ -11,6 +11,7 @@ import { toRgba } from "../paint";
 import { Button, Dialog, IconButton, Segmented, Slider, Switch } from "../ui/kit";
 import type { ShotSettings, Stage } from "./snapshot3d";
 import { SourceShelf, storeSources, type SourceEntry } from "./SourceShelf";
+import { shotName } from "./shotName";
 import "./SnapshotWindow.css";
 
 type Size = "screen" | "small" | "sprite";
@@ -163,7 +164,9 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
     try {
       const loaded = await engine.current.loadModel(picked);
       stage.current.show(loaded.model);
-      setSource(key); setModel(loaded.name); setTriangles(stage.current.triangles()); setProblem(null);
+      setSource(key); setModel(loaded.name); setTriangles(stage.current.triangles());
+      // Keegan (digest 2026-10-27): say when a model points at files that didn't come with it, instead of a bare grey model.
+      setProblem(loaded.missing.length ? `${loaded.name} asks for ${loaded.missing.join(", ")}, which ${loaded.missing.length === 1 ? "wasn't" : "weren't"} included. Add the model again with ${loaded.missing.length === 1 ? "that file" : "those files"} alongside it (pick them all at once) to see it ${loaded.missing.some((f) => /\.mtl$/i.test(f)) ? "with its materials" : "whole"}.` : null);
     } catch (error) {
       setProblem(`${picked.map((file) => file.name).join(", ")} didn't open: ${error instanceof Error ? error.message : String(error)}. A .glb works best (from Blender: File → Export → glTF 2.0, binary).`);
     }
@@ -193,7 +196,7 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
   function take() {
     if (!shades.current) return;
     const pixels = shades.current.slice(), { width, height } = settings;
-    setPictures((list) => [{ id: Date.now(), name: `${model.replace(/\.[^.]+$/, "")} ${list.length + 1}`, width, height, pixels, url: urlOf(pixels, width, height) }, ...list]);
+    setPictures((list) => [{ id: Date.now(), name: shotName(model), width, height, pixels, url: urlOf(pixels, width, height) }, ...list]);
   }
 
   return (
