@@ -31,6 +31,7 @@ import { PictureWizard } from "./app/PictureWizard";
 import { DnsWizard } from "./app/DnsWizard";
 import { BudgetFixer } from "./app/BudgetFixer";
 import { CheckupWizard } from "./app/CheckupWizard";
+import { useCheckupCount } from "./app/useCheckupCount";
 import { PaletteSetWizard } from "./app/PaletteSetWizard";
 import { GeneratorWizard, type GeneratorMode } from "./app/GeneratorWizard";
 import { StoreWindow } from "./app/StoreWindow";
@@ -2815,6 +2816,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   // The wizards (W1…W8, the author's picks 2026-10-10); the text tool (W5) is in the tool column.
   const noProject = !project;
   const needProject = noProject ? "Open a GB Studio project first" : null;
+  const checkupCount = useCheckupCount(project?.path ?? null, wizard === "checkup");
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
     { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
@@ -2828,7 +2830,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { thumb: "world", name: "Overworld", icon: <Mountain />, about: "An RPG-style overworld: water, forest, mountains, towns and roads, in the palettes you pick.", blocked: null, onStart: () => setWizard("world") },
     { thumb: "room", name: "Interior", icon: <Sofa />, about: "A room in the catalog's indoor tiles: walls, floor, a door where you want it, windows, a rug and furniture; sliders redraw it live.", blocked: null, onStart: () => setWizard("room") },
     { thumb: "frame", name: "UI frame", icon: <PanelsTopLeft />, about: "A window frame for the ui folder in your style (the catalog's frames, corners, shades), shown as a dialogue box in your project's font.", blocked: null, onStart: () => setWizard("frame") },
-    { thumb: "checkup", name: "Project check-up", icon: <PxHeart size={15} />, about: "The health report one issue at a time, each with its fix (old → new shown first).", blocked: needProject, onStart: () => setWizard("checkup") },
+    { thumb: "checkup", name: "Project check-up", icon: <PxHeart size={15} />, about: "The health report one issue at a time, each with its fix (old → new shown first).", blocked: needProject, onStart: () => setWizard("checkup"), badge: checkupCount },
   ];
   const lookName = look === "dmg" ? "Game Boy screen" : look === "pocket" ? "Pocket screen" : "GBC screen";
 
@@ -2849,7 +2851,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           {project && <Button icon={<MapIcon />} title="Map Room: adventure-style grids of screens, each a background" onClick={() => setShowMapRoom(true)}>Maps</Button>}
           <Button icon={<SwatchBook />} title="Palette manager: the project's palettes, a library, and your own" onClick={() => setShowPalettes(true)}>Palettes</Button>
           <Button icon={<StoreIcon />} title="Asset Catalog: credited palettes and art to take into your project, a piece at a time" onClick={() => setShowStore(true)}>Catalog</Button>
-          <Button icon={<PxWizard size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards</Button>
+          <Button icon={<PxWizard size={15} />} title="Wizards: step-by-step helpers" onClick={() => setShowWizards(true)}>Wizards{checkupCount ? <Chip tone="warn" title={`Project check-up: ${checkupCount} issue${checkupCount === 1 ? "" : "s"}`}>{checkupCount}</Chip> : null}</Button>
           <IconButton label="Settings: font and theme" onClick={() => setShowSettings(true)}><SettingsIcon /></IconButton>
         </span>
         <IconButton label="Undo" keys="Ctrl+Z" disabled={!doc?.undo.length} onClick={() => stepHistory("undo")}><Undo2 /></IconButton>

@@ -1,7 +1,7 @@
 // The project check-up's pure parts: separating close colors, and which fix goes with which issue.
 import { describe, expect, it } from "vitest";
 import { closeShades, colorDistance } from "../paint";
-import { checkupOrder, checkupSummary, contrastPairs, fixKind, lightness, separateColors, separatePairs, tileCount, twinNames, type CheckupIssue } from "./checkupFixes";
+import { checkupBadge, checkupOrder, checkupSummary, contrastPairs, fixKind, lightness, separateColors, separatePairs, tileCount, twinNames, whatToDo, type CheckupIssue } from "./checkupFixes";
 
 const lightestFirst = (colors: string[]) => colors.every((color, at) => at === 0 || lightness(colors[at - 1]) >= lightness(color));
 
@@ -65,5 +65,21 @@ describe("Project check-up fixes", () => {
     expect(tileCount(issues[3])).toEqual({ tiles: 412, limit: 384 });
     expect(twinNames("The same four colors as Fire, Ice.", ["Fire", "Ice", "Water"])).toEqual(["Fire", "Ice"]);
     expect(checkupSummary(3, 2, 0)).toBe("Fixed 3, skipped 2");
+  });
+});
+
+describe("The newer checks (2026-11-02)", () => {
+  const at = (title: string, kind = "project", file?: string): CheckupIssue => ({ level: "problem", kind, file, title, detail: "" });
+  it("explains each one and offers no one-click fix", () => {
+    for (const issue of [at("Unused picture", "backgrounds", "a.png"), at("120 sprite tiles, over 96", "sprites", "b.png"), at("A frame of 44 tiles, over 40", "sprites", "b.png"), at("c.png is missing", "project", "assets/backgrounds/c.png.gbsres"), at("Town: background missing"), at("Town: sprite sheet missing")]) {
+      expect(fixKind(issue)).toBe("explain");
+      expect(whatToDo(issue)).not.toBe("Nothing to fix from here.");
+      expect(whatToDo(issue)).not.toBe("Open it to have a look.");
+    }
+  });
+  it("counts for the badge what the check-up shows without notes", () => {
+    const note = (title: string, kind = "palettes", file?: string): CheckupIssue => ({ level: "note", kind, file, title, detail: "" });
+    expect(checkupBadge([at("Town: background missing"), note("Unused palette", "palettes", "Spare"), note("Unused picture", "backgrounds", "a.png")])).toBe(2);
+    expect(checkupBadge([])).toBe(0);
   });
 });

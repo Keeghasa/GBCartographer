@@ -523,6 +523,25 @@ describe("project health", () => {
     expect(report.issues[0].level).toBe("problem");
     rmSync(join(project, "assets/sprites/odd.png"));
   });
+
+  it("finds unused pictures, .gbsres files without their PNG and scenes pointing at missing pictures (2026-11-02)", async () => {
+    writeFileSync(join(project, "assets/backgrounds/gone.png.gbsres"), JSON.stringify({ _resourceType: "background", id: "bg-gone", name: "Gone" }));
+    mkdirSync(join(project, "project/scenes/cave/actors"), { recursive: true });
+    writeFileSync(join(project, "project/scenes/cave/scene.gbsres"), JSON.stringify({ name: "Cave", backgroundId: "bg-nowhere" }));
+    writeFileSync(join(project, "project/scenes/cave/actors/bat.gbsres"), JSON.stringify({ _resourceType: "actor", name: "Bat", spriteSheetId: "spr-nowhere" }));
+    const report = await json<{ issues: { kind: string; file?: string; title: string }[] }>(await fetch(`${base}/project-health`));
+    const titles = report.issues.map((issue) => `${issue.kind}:${issue.file ?? ""}:${issue.title}`);
+    // props is named by no project file; town and hero are.
+    expect(titles).toContain("tilesets:props.png:Unused picture");
+    expect(titles).not.toContain("backgrounds:town.png:Unused picture");
+    expect(titles).not.toContain("sprites:hero.png:Unused picture");
+    expect(titles).toContain("project:assets/backgrounds/gone.png.gbsres:gone.png is missing");
+    expect(titles).toContain("project::Cave: background missing");
+    expect(titles).toContain("project::Cave: sprite sheet missing");
+    expect(titles).not.toContain("project::Town: background missing");
+    rmSync(join(project, "assets/backgrounds/gone.png.gbsres"));
+    rmSync(join(project, "project/scenes/cave"), { recursive: true });
+  });
 });
 
 describe("removing a palette", () => {

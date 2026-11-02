@@ -38,6 +38,9 @@ export function fixKind(issue: CheckupIssue): FixKind {
 /** Notes are only shown when they come with something to do (or when asked for). */
 export const worthShowing = (issue: CheckupIssue, notes: boolean) => notes || issue.level !== "note" || fixKind(issue) !== "explain";
 
+/** The badge on the check-up's card and the Wizards button (the author, 2026-11-02): issues the check-up shows by default. */
+export const checkupBadge = (issues: readonly CheckupIssue[]) => issues.filter((issue) => worthShowing(issue, false)).length;
+
 /** Worst first (problems, warnings, notes), the report's own order kept within a level. */
 export function checkupOrder(issues: readonly CheckupIssue[], notes: boolean): CheckupIssue[] {
   const rank = { problem: 0, warning: 1, note: 2 } as const;
@@ -142,6 +145,12 @@ export function whatToDo(issue: CheckupIssue): string {
   if (size) return `Open it and resize it to ${size[1]} × ${size[2]} px; GB Studio reads nothing else for this file.`;
   if (issue.title === "Smaller than the screen") return "Fine if it's meant to be small: GB Studio fills the rest of the scene. To draw the whole screen, open it and resize it to at least 160 × 144.";
   if (/ in slot 8$/.test(issue.title)) return "Open it and repaint those tiles with another palette (the palette brush), unless they are meant to change with the dialogue and menu palette.";
+  // (the author, 2026-11-02) The newer checks: explained, never deleted from here.
+  if (issue.title === "Unused picture") return "Nothing has to change: keep it if it's for later. If you don't need it, delete it from the painter's picture list (it goes to the backups) or in GB Studio.";
+  if (/ sprite tiles, over \d+$/.test(issue.title)) return "Open it and cut down the different tiles: reuse the same 8 × 8 pieces across frames, or split it into smaller sprite sheets.";
+  if (/^A frame of \d+ tiles, over \d+$/.test(issue.title)) return "In GB Studio's sprite editor, take tiles out of the biggest frames (or split the actor into two).";
+  if (/ is missing$/.test(issue.title)) return "Put the PNG back where it was, or open the project in GB Studio, which tidies its own files. GB Cartographer doesn't touch it.";
+  if (/: (background|sprite sheet) missing$/.test(issue.title)) return "In GB Studio, open that scene and pick a picture the project has (or put the old picture back).";
   if (/time-of-day palette/.test(issue.title)) return "Nothing to do: events switch these palettes in, so being unused or dim is expected.";
   return issue.file && PICTURE_KINDS.has(issue.kind) ? "Open it to have a look." : "Nothing to fix from here.";
 }

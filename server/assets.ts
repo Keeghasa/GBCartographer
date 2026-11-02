@@ -866,6 +866,87 @@ export interface HealthIssue { level: "problem" | "warning" | "note"; kind: Asse
 const tileCountCache = new Map<string, number>();
 
 /**
+ * GB Studio's sprite limits (4.3.2, maxSpriteTilesForBackgroundTilesLength): a scene holds at most 96 sprite tiles
+ * (192 in Color only) when its background leaves room, and the screen shows 40 hardware sprites at once.
+ */
+export const SPRITE_TILES_MONO = 96, SPRITE_TILES_COLOR = 192, SPRITES_ON_SCREEN = 40;
+
+/** A sprite sheet over what one scene can hold (its distinct 8 × 8 tiles), or with a frame of more than 40 tiles. */
+function spriteChecks(path: string, mtime: number, meta: Record<string, unknown> | null, colorOnly: boolean, where: { kind: AssetKind; file: string }, issues: HealthIssue[]) {
+  const max = colorOnly ? SPRITE_TILES_COLOR : SPRITE_TILES_MONO;
+  const key = `sprite|${path}|${mtime}`;
+  let tiles = tileCountCache.get(key);
+  if (tiles === undefined) {
+    try {
+      const image = decodePng(readFileSync(path), (bytes) => inflateSync(bytes));
+      tiles = countUniqueTiles(quantize(image.pixels, image.width, image.height).pixels, image.width, image.height, false);
+      tileCountCache.set(key, tiles);
+    } catch {
+      tiles = -1;
+    }
+  }
+  if (tiles > max) issues.push({ level: "problem", ...where, title: `${tiles} sprite tiles, over ${max}`, detail: `A scene holds at most ${max} sprite tiles${colorOnly ? " in Color only" : ""} (fewer with a big background); this sheet alone has ${tiles} different 8 × 8 tiles, so GB Studio can't fit it into any scene.` });
+  const biggest = meta ? Math.max(0, ...spriteAnimations(meta).flatMap((animation) => animation.frames.map((frame) => frame.tiles.length))) : 0;
+  if (biggest > SPRITES_ON_SCREEN) issues.push({ level: "problem", ...where, title: `A frame of ${biggest} tiles, over ${SPRITES_ON_SCREEN}`, detail: `The Game Boy shows at most ${SPRITES_ON_SCREEN} sprite tiles on screen at once (10 on a line); one of this sheet's frames uses ${biggest}.` });
+}
+
+/** The text of every project file (the .gbsres files under project/, and the .gbsproj): where scenes, actors and events name ids. */
+function projectTexts(project: string): string[] {
+  const texts: string[] = [];
+  const walk = (folder: string) => {
+    for (const entry of readdirSync(folder, { withFileTypes: true })) {
+      const path = join(folder, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith(".gbsres")) texts.push(readFileSync(path, "utf8"));
+    }
+  };
+  if (existsSync(join(project, "project"))) walk(join(project, "project"));
+  for (const file of readdirSync(project).filter((name) => name.endsWith(".gbsproj"))) texts.push(readFileSync(join(project, file), "utf8"));
+  return texts;
+}
+
+/**
+ * (the author, 2026-11-02) Pictures no project file names (no scene, actor, event or setting uses them), .gbsres
+ * files whose PNG is gone, and scenes or actors pointing at a background or sprite sheet the project doesn't have.
+ * Read only: the check-up explains these (and opens the picture); nothing is deleted from here.
+ */
+export function unusedAndMissing(project: string, ids: readonly { kind: AssetKind; file: string; id: string }[]): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+  const texts = projectTexts(project);
+  for (const entry of ids) {
+    if (entry.kind === "stamps") continue;
+    if (!texts.some((text) => text.includes(entry.id))) issues.push({ level: "note", kind: entry.kind, file: entry.file, title: "Unused picture", detail: "No scene, actor, event or setting uses it. Fine if it's for later; GB Studio leaves unused pictures out of the game." });
+  }
+  // A .gbsres left behind by a PNG that was moved, renamed or deleted outside GB Studio.
+  for (const kind of ASSET_KINDS) {
+    if (kind === "stamps") continue;
+    const folder = kindFolder(project, kind);
+    if (!existsSync(folder)) continue;
+    for (const sidecar of readdirSync(folder).filter((name) => /\.png\.gbsres$/i.test(name))) {
+      const png = sidecar.replace(/\.gbsres$/i, "");
+      if (!existsSync(join(folder, png))) issues.push({ level: "problem", kind: "project", file: `assets/${kind}/${sidecar}`, title: `${png} is missing`, detail: `assets/${kind}/${sidecar} describes ${png}, but the picture isn't there (moved, renamed or deleted outside GB Studio). Put the PNG back, or open the project in GB Studio, which tidies its own files.` });
+    }
+  }
+  const have = (kind: AssetKind) => new Set(ids.filter((entry) => entry.kind === kind).map((entry) => entry.id));
+  const backgrounds = have("backgrounds"), sprites = have("sprites");
+  const scenesDir = join(project, "project/scenes");
+  if (existsSync(scenesDir)) {
+    for (const folder of readdirSync(scenesDir).sort()) {
+      const scene = readJson(join(scenesDir, folder, "scene.gbsres"));
+      if (!scene) continue;
+      const name = typeof scene.name === "string" && scene.name ? scene.name : folder;
+      if (typeof scene.backgroundId === "string" && scene.backgroundId && !backgrounds.has(scene.backgroundId)) issues.push({ level: "problem", kind: "project", title: `${name}: background missing`, detail: `The scene ${name} shows a background the project doesn't have (id ${scene.backgroundId}). Pick another background for it in GB Studio, or put the picture back.` });
+      const actors: Record<string, unknown>[] = Array.isArray(scene.actors) ? [...scene.actors as Record<string, unknown>[]] : [];
+      const actorsDir = join(scenesDir, folder, "actors");
+      if (existsSync(actorsDir)) for (const entry of readdirSync(actorsDir)) { const actor = readJson(join(actorsDir, entry)); if (actor) actors.push(actor); }
+      const lost = [...new Set(actors.filter((actor) => typeof actor.spriteSheetId === "string" && actor.spriteSheetId && !sprites.has(actor.spriteSheetId)).map((actor) => typeof actor.name === "string" && actor.name ? actor.name : "an actor"))];
+      if (lost.length) issues.push({ level: "problem", kind: "project", title: `${name}: sprite sheet missing`, detail: `In ${name}, ${lost.join(", ")} use${lost.length === 1 ? "s" : ""} a sprite sheet the project doesn't have. Pick another one in GB Studio, or put the picture back.` });
+    }
+  }
+  return issues;
+}
+
+/**
  * A project health check: what GB Studio will complain about or quietly do differently. Backgrounds over the tile
  * budget of the project's color mode, pictures that are not whole tiles (or the size GB Studio expects), tiles in
  * slot 8 (the UI palette), pictures GB Studio hasn't read yet (no sidecar), and palettes that are unused, twins or
@@ -877,6 +958,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   const spriteMode = settings.spriteMode === "8x8" ? "8x8" : "8x16";
   const colorOnly = colorMode === "color", limit = colorOnly ? 384 : 192;
   const notRead: { kind: AssetKind; file: string }[] = [];
+  const ids: { kind: AssetKind; file: string; id: string }[] = [];
   const issues: HealthIssue[] = [];
   const palettes = listPalettes(project);
   if (colorMode === "mono" && palettes.length) issues.push({ level: "warning", kind: "project", title: "Color mode is off", detail: `The project is monochrome${typeof settings.colorMode === "string" ? "" : " (settings.gbsres has no colorMode, so GB Studio uses mono)"}: GB Studio shows the greens and none of the ${palettes.length} palettes. Turn on color in GB Studio's settings (Color only or GB + Color).` });
@@ -893,6 +975,9 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
       const want = asset.file === "frame.png" ? [24, 24] : asset.file === "cursor.png" ? [8, 8] : null;
       if (want && (asset.width !== want[0] || asset.height !== want[1])) issues.push({ level: "problem", ...where, title: `Should be ${want[0]} × ${want[1]}`, detail: `GB Studio reads ${asset.file} as ${want[0]} × ${want[1]} px; this one is ${asset.width} × ${asset.height}.` });
     }
+    const own = asset.kind === "ui" ? null : readJson(`${path}.gbsres`);
+    if (typeof own?.id === "string" && own.id) ids.push({ ...where, id: own.id });
+    if (asset.kind === "sprites") spriteChecks(path, asset.mtime, own, colorOnly, where, issues);
     if (asset.kind !== "backgrounds") continue;
     if (asset.width < 160 || asset.height < 144) issues.push({ level: "warning", ...where, title: "Smaller than the screen", detail: `${asset.width} × ${asset.height} px is smaller than one 160 × 144 screen; GB Studio fills the rest of the scene.` });
     const key = `${path}|${asset.mtime}|${colorOnly}`;
@@ -915,6 +1000,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
       if (ui) issues.push({ level: "warning", ...where, title: `${ui} tile${ui === 1 ? "" : "s"} in slot 8`, detail: "Slot 8 is the UI palette (dialogue and menus); tiles there change when it does." });
     }
   }
+  issues.push(...unusedAndMissing(project, ids));
   const usage = paletteUsage(project);
   const byId = new Map(palettes.map((palette) => [palette.id, palette]));
   const names = new Set(palettes.map((palette) => palette.name));
