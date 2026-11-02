@@ -129,6 +129,8 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
   // Which shelf tile is picked ("sample:house", "project:<folder>"), and a tick that makes the shelf reread the project.
   const [source, setSource] = useState<string | null>("sample:house");
   const [shelfTick, setShelfTick] = useState(0);
+  const [free, setFree] = useState(false), [roll, setRoll] = useState(0);
+  const rolled = useRef(0);
   const [, setTick] = useState(0);
   const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite", background };
   const shades = useRef<Uint8Array | null>(null);
@@ -244,8 +246,15 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
         <section className="sw-main">
           <div className="k-card sw-print-card">
             <div className="sw-head"><h2 className="k-heading">Print</h2><Segmented label="Print size" value={size} onChange={setSize} options={(Object.keys(SIZES) as Size[]).map((value) => ({ value, label: SIZES[value].label, title: SIZES[value].title }))} /></div>
+            <div className="sw-head sw-free">
+              <Switch checked={free} onChange={(on) => { setFree(on); setRoll(0); rolled.current = 0; stage.current?.setFree(on); }}>Free rotate</Switch>
+              {free ? <>
+                <label className="sw-row sw-roll"><span>Roll</span><Slider label="Roll the model about the view" min={-180} max={180} value={roll} onChange={(value) => { stage.current?.roll(((value - rolled.current) * Math.PI) / 180); rolled.current = value; setRoll(value); }} /><b>{roll}°</b></label>
+                <Button onClick={() => { stage.current?.resetTurn(); setRoll(0); rolled.current = 0; }}>Reset turn</Button>
+              </> : <span className="k-muted k-xs">Off: the model turns like a turntable (up and down stop at the poles)</span>}
+            </div>
             <div className="sw-frame"><canvas ref={print} className="sw-print" style={{ aspectRatio: `${settings.width} / ${settings.height}` }} title="Drag to turn the model, scroll to zoom" /></div>
-            <div className="sw-head"><span className="k-muted k-xs">Drag the print to turn the model · scroll to zoom</span><Button variant="primary" icon={<CameraIcon />} onClick={take}>Take picture</Button></div>
+            <div className="sw-head"><span className="k-muted k-xs">{free ? "Drag to turn on any axis · Shift-drag to roll · scroll to zoom · right-drag to move" : "Drag the print to turn the model · scroll to zoom"}</span><Button variant="primary" icon={<CameraIcon />} onClick={take}>Take picture</Button></div>
           </div>
           <div className="sw-pictures">
             <div className="sw-head"><h2 className="k-heading">Pictures</h2><span className="k-muted k-xs">{pictures.length ? "Hover a picture: open it to paint, or send it to the project" : "Take picture adds the print here"}</span></div>

@@ -32,6 +32,12 @@ export interface Stage {
   show: (model: THREE.Object3D) => void;
   /** The picture at the shot's size, in shades (0–3, CLEAR for see-through). */
   shot: (settings: ShotSettings) => Uint8Array;
+  /** Free rotation (the user, 2026-11-02): drag turns the model on every axis, Shift-drag rolls it about the view; off: the turntable. */
+  setFree: (free: boolean) => void;
+  /** Rolls the model about the view axis by `radians`. */
+  roll: (radians: number) => void;
+  /** The model back as it came in (the framing is kept). */
+  resetTurn: () => void;
   /** Called when the view changes (dragging the print, zooming). */
   onChange: (listener: () => void) => void;
   triangles: () => number;
@@ -52,8 +58,29 @@ export function createStage(handle: HTMLElement): Stage {
   const lights = { key: new THREE.DirectionalLight(0xffffff, 2), fill: new THREE.DirectionalLight(0xffffff, 0.7), rim: new THREE.DirectionalLight(0xffffff, 1.2) };
   for (const light of Object.values(lights)) { scene.add(light); scene.add(light.target); }
   let model: THREE.Object3D | null = null, radius = 1;
+  // The model sits in a pivot, so free rotation turns the model (the camera, and so the lights, stay put).
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+  let free = false;
   const listeners: (() => void)[] = [];
   controls.addEventListener("change", () => listeners.forEach((listener) => listener()));
+  const turn = (axis: THREE.Vector3, radians: number) => {
+    pivot.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(axis.normalize(), radians));
+    listeners.forEach((listener) => listener());
+  };
+  let last: { x: number; y: number } | null = null;
+  const down = (event: PointerEvent) => { if (free && event.button === 0) { last = { x: event.clientX, y: event.clientY }; handle.setPointerCapture(event.pointerId); } };
+  const move = (event: PointerEvent) => {
+    if (!free || !last) return;
+    const dx = event.clientX - last.x, dy = event.clientY - last.y, k = Math.PI / 220;
+    last = { x: event.clientX, y: event.clientY };
+    const up = camera.up.clone().applyQuaternion(camera.quaternion), right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    if (event.shiftKey) turn(camera.getWorldDirection(new THREE.Vector3()), -dx * k);
+    else { turn(up, dx * k); turn(right, dy * k); }
+  };
+  const up = () => { last = null; };
+  handle.addEventListener("pointerdown", down); handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", up); handle.addEventListener("pointercancel", up);
 
   let target: THREE.WebGLRenderTarget | null = null;
   const shot = (settings: ShotSettings) => {
@@ -85,9 +112,10 @@ export function createStage(handle: HTMLElement): Stage {
 
   return {
     show(next) {
-      if (model) { scene.remove(model); disposeObject(model); }
+      if (model) { pivot.remove(model); disposeObject(model); }
+      pivot.quaternion.identity();
       model = next;
-      scene.add(next);
+      pivot.add(next);
       const box = new THREE.Box3().setFromObject(next), center = box.getCenter(new THREE.Vector3());
       radius = Math.max(0.001, box.getSize(new THREE.Vector3()).length() / 2);
       next.position.sub(center);
@@ -99,6 +127,13 @@ export function createStage(handle: HTMLElement): Stage {
       listeners.forEach((listener) => listener());
     },
     shot,
+    setFree(on) {
+      free = on;
+      controls.enableRotate = !on;
+      if (!on) { pivot.quaternion.identity(); listeners.forEach((listener) => listener()); }
+    },
+    roll(radians) { turn(camera.getWorldDirection(new THREE.Vector3()), radians); },
+    resetTurn() { pivot.quaternion.identity(); listeners.forEach((listener) => listener()); },
     onChange(listener) { listeners.push(listener); },
     triangles() {
       let count = 0;
@@ -107,7 +142,7 @@ export function createStage(handle: HTMLElement): Stage {
     },
     // Everything on the GPU goes: the model, the render target, and the WebGL context itself (browsers allow only a
     // handful at once, and the window may open many times).
-    dispose() { if (model) disposeObject(model); controls.dispose(); target?.dispose(); renderer.dispose(); renderer.forceContextLoss(); },
+    dispose() { handle.removeEventListener("pointerdown", down); handle.removeEventListener("pointermove", move); handle.removeEventListener("pointerup", up); handle.removeEventListener("pointercancel", up); if (model) disposeObject(model); controls.dispose(); target?.dispose(); renderer.dispose(); renderer.forceContextLoss(); },
   };
 }
 
