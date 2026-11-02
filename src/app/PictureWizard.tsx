@@ -9,9 +9,9 @@ import { LOGO_TILES, logoHelps } from "../gb/limits";
 import { Crop, ImagePlus, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
-import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
-import { SCREEN_SIZES, fitPicture, type FitOptions, type FitResult } from "./pictureFit";
+import { SCREEN_SIZES, fitPicture, type DitherKind, type FitOptions, type FitResult } from "./pictureFit";
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
@@ -95,7 +95,9 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [framing, setFraming] = useState<Framing>("cover");
   const [pan, setPan] = useState({ x: 50, y: 50 });
   const [keep, setKeep] = useState(32);
-  const [dither, setDither] = useState(false);
+  // (the author, 2026-11-02): the dither pattern is a choice, with a strength; none stays the default.
+  const [dither, setDither] = useState<DitherKind>("none");
+  const [strength, setStrength] = useState(100);
   const [max, setMax] = useState<7 | 8>(8);
   const [budget, setBudget] = useState(true);
   const [name, setName] = useState(() => defaultName("Background", takenNames));
@@ -147,7 +149,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   });
 
   const framed = useMemo(() => source ? frame(source.image, width, height, framing, pan.x, pan.y) : null, [source, width, height, framing, pan.x, pan.y]);
-  const options = useMemo<FitOptions>(() => ({ keep, dither, max, budget }), [keep, dither, max, budget]);
+  const options = useMemo<FitOptions>(() => ({ keep, dither, strength, max, budget }), [keep, dither, strength, max, budget]);
 
   // The fit is the slow part (a few hundred ms on four screens): run it a beat after the last change.
   useEffect(() => {
@@ -198,13 +200,14 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
             </>}
           </div>
           <Field label={<>Keep colors <span className="k-muted">· {keep >= 64 ? "all" : keep}</span></>} hint="Fewer colors: cleaner tiles, fewer palettes needed"><Slider label="Keep colors" value={keep} onChange={setKeep} min={4} max={64} step={2} /></Field>
-          <Switch checked={dither} onChange={setDither}>Dithering</Switch>
+          <div className="pw-section"><span className="k-label">Dithering</span><Segmented fill size="sm" label="Dithering" value={dither} onChange={setDither} options={[{ value: "none", label: "None" }, { value: "ordered", label: "Ordered", title: "A 4 × 4 pattern: even textures" }, { value: "floyd", label: "Diffused", title: "Floyd-Steinberg: each pixel's error spreads to its neighbours" }]} />
+            {dither !== "none" && <Field label={<>Strength <span className="k-muted">· {strength}%</span></>}><Slider label="Dither strength" value={strength} onChange={setStrength} min={0} max={100} step={5} /></Field>}</div>
           <div className="pw-section"><span className="k-label">Palettes</span><Segmented fill size="sm" label="Palettes" value={String(max) as "7" | "8"} onChange={(value) => setMax(Number(value) as 7 | 8)} options={[{ value: "8", label: "8" }, { value: "7", label: "7 · keep slot 8 for the UI" }]} /></div>
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {result && <>
             <Meter label="Tiles" value={result.tiles} of={result.limit} tone={tone} title={result.merged ? `${result.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
             {logoHelps(result.width, result.height, result.limit) && <Meter label="Logo" value={result.tiles} of={LOGO_TILES} tone={result.tiles > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
-            <p className="pw-report">{result.merged ? `${result.tilesBefore} → ${result.tiles} tiles after merging ${result.merged} near ones. ` : ""}{result.report.after} palette{result.report.after === 1 ? "" : "s"} · {result.report.overfull.length} tile{result.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{result.tiles > result.limit ? ` Still ${result.tiles - result.limit} over GB Studio's ${result.limit}: keep fewer colors, or turn dithering off.` : ""}</p>
+            <p className="pw-report">{result.merged ? `${result.tilesBefore} → ${result.tiles} tiles after merging ${result.merged} near ones. ` : ""}{result.report.after} palette{result.report.after === 1 ? "" : "s"} · {result.report.overfull.length} tile{result.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{result.tiles > result.limit ? ` Still ${result.tiles - result.limit} over GB Studio's ${result.limit}: keep fewer colors, or set dithering to None.` : ""}</p>
             <div className="pw-palettes" aria-label="Palettes">{result.palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>
           </>}
         </div>
