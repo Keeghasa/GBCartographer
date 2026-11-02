@@ -13,6 +13,7 @@ import { isTurned, sanitizeViews, withView, type SavedView } from "./snapshotVie
 import type { ShotSettings, Stage } from "./snapshot3d";
 import { SourceShelf, storeSources, type SourceEntry } from "./SourceShelf";
 import { shotName } from "./shotName";
+import { useWizardSettings } from "./useWizardSettings";
 import "./SnapshotWindow.css";
 
 type Size = "screen" | "small" | "sprite";
@@ -119,21 +120,23 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
   onExport: (blob: Blob, name: string) => Promise<unknown> }) {
   const print = useRef<HTMLCanvasElement>(null);
   const stage = useRef<Stage | null>(null), engine = useRef<typeof import("./snapshot3d") | null>(null);
-  const [size, setSize] = useState<Size>("screen");
-  const [key, setKey] = useState(70), [fill, setFill] = useState(30), [rim, setRim] = useState(50);
-  const [rig, setRig] = useState<ShotSettings["rig"]>({ key: [-0.55, -0.55, 0.7], fill: [0.6, -0.35, 0.45], rim: [0.1, 0.7, 0.6] });
-  const [fov, setFov] = useState(35), [brightness, setBrightness] = useState(0), [contrast, setContrast] = useState(45);
-  const [dither, setDither] = useState(true), [outline, setOutline] = useState(true);
+  // Remembered per project, with presets (the author, 2026-11-02): size, lights, lens and look; not the model or camera.
+  const ws = useWizardSettings("snapshot", { size: "screen" as Size, key: 70, fill: 30, rim: 50, rig: { key: [-0.55, -0.55, 0.7], fill: [0.6, -0.35, 0.45], rim: [0.1, 0.7, 0.6] } as ShotSettings["rig"], fov: 35, brightness: 0, contrast: 45, dither: true, outline: true, background: "clear" as ShotSettings["background"], ortho: false });
+  const [size, setSize] = ws.field("size");
+  const [key, setKey] = ws.field("key"), [fill, setFill] = ws.field("fill"), [rim, setRim] = ws.field("rim");
+  const [rig, setRig] = ws.field("rig");
+  const [fov, setFov] = ws.field("fov"), [brightness, setBrightness] = ws.field("brightness"), [contrast, setContrast] = ws.field("contrast");
+  const [dither, setDither] = ws.field("dither"), [outline, setOutline] = ws.field("outline");
   const [model, setModel] = useState("Sample house"), [triangles, setTriangles] = useState(0), [problem, setProblem] = useState<string | null>(null);
   const [pictures, setPictures] = useState<Picture[]>([]);
-  const [background, setBackground] = useState<ShotSettings["background"]>("clear");
+  const [background, setBackground] = ws.field("background");
   // Which shelf tile is picked ("sample:house", "project:<folder>"), and a tick that makes the shelf reread the project.
   const [source, setSource] = useState<string | null>("sample:house");
   const [shelfTick, setShelfTick] = useState(0);
   const [free, setFree] = useState(false), [roll, setRoll] = useState(0);
   const rolled = useRef(0);
   // Flat lens (the author, 2026-11-02): no perspective, for top-down and isometric art; scroll still zooms.
-  const [ortho, setOrtho] = useState(false);
+  const [ortho, setOrtho] = ws.field("ortho");
   // Saved views (the author, 2026-11-02): a project model's in its folder's views.json, the others in this browser.
   const [views, setViews] = useState<SavedView[]>([]);
   const [prompt, ask] = usePrompt();
@@ -254,6 +257,7 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
       <div className="sw-page">
       <div className="sw-top"><span>Turn · light · take</span><span>{model} · {triangles.toLocaleString()} triangles · {settings.width} × {settings.height}</span></div>
       <h1 className="sw-h1"><b>GB Snapshot</b></h1>
+      {ws.bar}
       <div className="sw" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void open([...event.dataTransfer.files]); }}>
         <aside className="k-card sw-controls">
           <div className="sw-group">

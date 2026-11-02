@@ -7,17 +7,21 @@ import type { ReactNode } from "react";
 import { Dialog } from "../ui/kit";
 import "./WizardPage.css";
 
-export function WizardPage({ title, sub, icon, line, footer, busy, onClose, children }: {
+export function WizardPage({ title, sub, icon, line, footer, busy, onClose, tools, children }: {
   title: string; sub?: string; icon: ReactNode;
   /** The mono line above the title: a word or two on the left, the facts on the right. */
   line: [ReactNode, ReactNode];
-  footer?: ReactNode; busy?: boolean; onClose: () => void; children: ReactNode;
+  footer?: ReactNode; busy?: boolean; onClose: () => void;
+  /** Under the title: the wizard's presets and Reset to defaults (useWizardSettings). */
+  tools?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} full title={title} sub={sub} icon={icon} footer={footer}>
       <div className="wp">
         <div className="wp-top"><span>{line[0]}</span><span>{line[1]}</span></div>
         <h1 className="wp-h1"><b>{title}</b></h1>
+        {tools}
         {children}
       </div>
     </Dialog>

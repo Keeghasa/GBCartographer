@@ -15,6 +15,7 @@ import { SCREEN_SIZES, clampCrop, fitPicture, fitPictures, lockCell, rotatedSize
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
+import { useWizardSettings } from "./useWizardSettings";
 import "./PictureWizard.css";
 
 interface Props {
@@ -195,20 +196,22 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   // The shelf rereads the project's pictures when a drop or paste adds one.
   const [shelfTick, setShelfTick] = useState(0);
   const [source, setSource] = useState<Source | null>(null);
-  const [size, setSize] = useState<[number, number]>([160, 144]);
-  const [framing, setFraming] = useState<Framing>("cover");
+  // Remembered per project, with presets (the author, 2026-11-02); the picture, its crop and pan are not.
+  const ws = useWizardSettings("picture", { size: [160, 144] as [number, number], framing: "cover" as Framing, keep: 32, dither: "none" as DitherKind, strength: 100, max: 8 as 7 | 8, budget: true });
+  const [size, setSize] = ws.field("size");
+  const [framing, setFraming] = ws.field("framing");
   const [pan, setPan] = useState({ x: 50, y: 50 });
   // Crop and turn the source first (the author, 2026-11-02): quarter turns, a fine angle (-45 … 45°) and a crop box.
   const [quarter, setQuarter] = useState(0);
   const [angle, setAngle] = useState(0);
   const [crop, setCrop] = useState<CropBox | null>(null);
   const unturn = () => { setQuarter(0); setAngle(0); setCrop(null); };
-  const [keep, setKeep] = useState(32);
+  const [keep, setKeep] = ws.field("keep");
   // (the author, 2026-11-02): the dither pattern is a choice, with a strength; none stays the default.
-  const [dither, setDither] = useState<DitherKind>("none");
-  const [strength, setStrength] = useState(100);
-  const [max, setMax] = useState<7 | 8>(8);
-  const [budget, setBudget] = useState(true);
+  const [dither, setDither] = ws.field("dither");
+  const [strength, setStrength] = ws.field("strength");
+  const [max, setMax] = ws.field("max");
+  const [budget, setBudget] = ws.field("budget");
   const [name, setName] = useState(() => defaultName("Background", takenNames));
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -316,7 +319,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const tone = current ? (current.tiles > current.limit ? "bad" : current.tiles > current.limit * 0.9 ? "warn" : undefined) : undefined;
 
   return (
-    <WizardPage title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
       line={["Change anything, the result follows", batch ? `${batch.length} pictures · one shared set of ${current?.palettes.length ?? "…"} palettes · ${width} × ${height}` : result ? `${source?.name ?? "picture"} · ${width} × ${height} · ${result.tiles} / ${result.limit} tiles · ${result.palettes.length} palettes` : source ? `${source.name} · fitting…` : "drop, paste or choose a picture"]}
       footer={<>
         <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void keepFile(event.target.files?.[0]); event.target.value = ""; }} />

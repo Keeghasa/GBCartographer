@@ -13,6 +13,7 @@ import type { Picture } from "./mapEdges";
 import type { Asset } from "./model";
 import { fitPicture, type FitResult } from "./pictureFit";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
 import "./MapWizard.css";
 
 /** One screen of the planned map: a background already in the project, or a new PNG (blank when no picture). */
@@ -77,20 +78,22 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
   const [name, setName] = useState(suggestedName);
   // The file names follow the map's name until they are typed over.
   const [prefix, setPrefix] = useState<string | null>(null);
-  const [cols, setCols] = useState(2);
-  const [rows, setRows] = useState(2);
-  const [overlap, setOverlap] = useState<1 | 2>(1);
-  const [start, setStart] = useState<Start>("blank");
+  // Remembered per project, with presets (the author, 2026-11-02); the picked picture and placed screens are not.
+  const ws = useWizardSettings("map", { cols: 2, rows: 2, overlap: 1 as 1 | 2, start: "blank" as Start, keep: 32, dither: false, max: 8 as 7 | 8, budget: true, view: "colors" as "colors" | "greens", fillRest: true });
+  const [cols, setCols] = ws.field("cols");
+  const [rows, setRows] = ws.field("rows");
+  const [overlap, setOverlap] = ws.field("overlap");
+  const [start, setStart] = ws.field("start");
   const [source, setSource] = useState<{ image: ImageBitmap; name: string } | null>(null);
   const [pan, setPan] = useState({ x: 50, y: 50 });
-  const [keep, setKeep] = useState(32);
-  const [dither, setDither] = useState(false);
-  const [max, setMax] = useState<7 | 8>(8);
-  const [budget, setBudget] = useState(true);
-  const [view, setView] = useState<"colors" | "greens">("colors");
+  const [keep, setKeep] = ws.field("keep");
+  const [dither, setDither] = ws.field("dither");
+  const [max, setMax] = ws.field("max");
+  const [budget, setBudget] = ws.field("budget");
+  const [view, setView] = ws.field("view");
   const [placing, setPlacing] = useState(backgrounds[0]?.file ?? "");
   const [placed, setPlaced] = useState<Record<string, string>>({});
-  const [fillRest, setFillRest] = useState(true);
+  const [fillRest, setFillRest] = ws.field("fillRest");
   const [hover, setHover] = useState({ x: 0, y: 0 });
   const [over, setOver] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
@@ -174,7 +177,7 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
   const summary = parts.charAt(0).toUpperCase() + parts.slice(1);
 
   return (
-    <WizardPage title="New map" icon={<MapIcon size={18} />} busy={busy} onClose={onCancel}
+    <WizardPage tools={ws.bar} title="New map" icon={<MapIcon size={18} />} busy={busy} onClose={onCancel}
       line={["A grid of screens", "each a 160 × 144 background · change anything, the preview follows"]}
       footer={<>
         <span className="k-muted k-xs mw-summary" title={summary}>{summary}</span>

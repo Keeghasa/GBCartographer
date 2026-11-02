@@ -15,6 +15,7 @@ import { WizardPage } from "./WizardPage";
 import { VISIONS, visionClashes, simulate, type Vision } from "./colorBlind";
 import { CloseWarning } from "./CloseWarning";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
+import { useWizardSettings } from "./useWizardSettings";
 import "./PaletteSetWizard.css";
 
 export interface PaletteSetWizardProps {
@@ -67,13 +68,15 @@ function Thumb({ picture }: { picture: Picture }) {
 const Strip = ({ colors }: { colors: readonly string[] }) => <div className="psw-strip">{colors.map((color, at) => <i key={at} style={{ background: color }} title={color} />)}</div>;
 
 export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, onAddToProject, onAddToMine }: PaletteSetWizardProps): JSX.Element {
-  const [kind, setKind] = useState<SourceKind>("lospec");
+  // Remembered per project, with presets (the author, 2026-11-02): the source kind, the set and the colour-blind view.
+  const ws = useWizardSettings("palette-set", { kind: "lospec" as SourceKind, vision: "typical" as "typical" | Vision, setId: SETS[0]?.id ?? "" }, { setId: SETS.map((set) => set.id) });
+  const [kind, setKind] = ws.field("kind");
   const [link, setLink] = useState("");
   // Colour-blind check (the author, 2026-11-02): the set as seen with one kind of colour blindness; only the view changes.
-  const [vision, setVision] = useState<"typical" | Vision>("typical");
+  const [vision, setVision] = ws.field("vision");
   const [fetching, setFetching] = useState(false);
   const [lospec, setLospec] = useState<{ colors: string[]; base: string } | null>(null);
-  const [setId, setSetId] = useState(SETS[0]?.id ?? "");
+  const [setId, setSetId] = ws.field("setId");
   // The working set, loaded from the source on Next and edited in the Group and Name steps.
   const [palettes, setPalettes] = useState<string[][]>([]);
   const [base, setBase] = useState("");
@@ -152,7 +155,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
   const last = palettes.length;
 
   return (
-    <WizardPage title="Palette set" icon={<PaletteIcon size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Palette set" icon={<PaletteIcon size={18} />} busy={busy} onClose={onClose}
       line={["Eight palettes at once", last ? `${last} palette${last === 1 ? "" : "s"} · lightest first` : "pick a source"]}
       footer={<>
         {projectName && slotsWhere && !done.project ? <Checkbox checked={slots} onChange={setSlots}>Put them in slots 1–{Math.min(8, last || 8)} of {slotsWhere}</Checkbox> : <span />}

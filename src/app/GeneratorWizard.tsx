@@ -14,6 +14,7 @@ import { autotileOf } from "./autotile";
 import { defaultName, isSuggestedName, type NameKind } from "./names";
 import { NameInput } from "./NameInput";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -84,15 +85,18 @@ function ShapePad({ shape, ratio, onChange }: { shape: Uint8Array | null; ratio:
 }
 
 export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onSave, onSaveMap, tileStamps, loadTiles, takenNames }: Props) {
-  const [cave, setCave] = useState<CaveSettings>(() => ({ ...CAVE_DEFAULTS, seed: newSeed(), theme: "V20-5-Stone" }));
-  const [world, setWorld] = useState<WorldSettings>(() => ({ ...WORLD_DEFAULTS, seed: newSeed() }));
+  // Remembered per project with the seed, and presets (the author, 2026-11-02); each mode keeps its own.
+  const caveSettings = useWizardSettings("cave", { ...CAVE_DEFAULTS, seed: newSeed(), theme: "V20-5-Stone" } as CaveSettings & Record<string, unknown>);
+  const worldSettings = useWizardSettings("world", { ...WORLD_DEFAULTS, seed: newSeed() } as WorldSettings & Record<string, unknown>);
+  const ws = mode === "cave" ? caveSettings : worldSettings;
+  const cave: CaveSettings = caveSettings.settings, world: WorldSettings = worldSettings.settings;
   // A random "Kind-Name" (the author, 2026-10-12): Cave- or Dungeon- follows the style while it's still a suggestion.
   const nameKind = (style = cave.style): NameKind => mode === "world" ? "Overworld" : style === "dungeon" ? "Dungeon" : "Cave";
   const [name, setName] = useState(() => defaultName(nameKind(), takenNames));
   const rollName = (kind = nameKind()) => setName(() => defaultName(kind, takenNames));
   const [busy, setBusy] = useState(false);
-  const setC = (change: Partial<CaveSettings>) => setCave((old) => ({ ...old, ...change }));
-  const setW = (change: Partial<WorldSettings>) => setWorld((old) => ({ ...old, ...change }));
+  const setC = (change: Partial<CaveSettings>) => caveSettings.set(change);
+  const setW = (change: Partial<WorldSettings>) => worldSettings.set(change);
   const themes = mode === "cave" ? CAVE_THEMES : WORLD_THEMES;
   const theme = themeOf(themes, (mode === "cave" ? cave.theme : world.theme) ?? "");
   const columns = mode === "cave" ? cave.columns : world.columns, rows = mode === "cave" ? cave.rows : world.rows;
@@ -152,7 +156,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
 
   const reroll = <IconButton label="New layout (another seed)" onClick={() => mode === "cave" ? setC({ seed: newSeed() }) : setW({ seed: newSeed() })}><Dices /></IconButton>;
   return (
-    <WizardPage title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title={mode === "cave" ? "Cave or dungeon" : "Overworld"} icon={mode === "cave" ? <Pickaxe size={18} /> : <Mountain size={18} />} busy={busy} onClose={onClose}
       line={[mode === "cave" ? "In the catalog's art" : "Water, forest, mountains, towns", mode === "cave" ? "sized in screens · sliders redraw it live" : "in the palettes you pick · sliders redraw it live"]}
       footer={<>
         <span className="k-spacer" />

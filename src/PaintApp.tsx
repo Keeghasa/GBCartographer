@@ -37,6 +37,7 @@ import { PaletteSetWizard } from "./app/PaletteSetWizard";
 import { GeneratorWizard, type GeneratorMode } from "./app/GeneratorWizard";
 import { StoreWindow } from "./app/StoreWindow";
 import { WizardGallery, type WizardCard } from "./app/WizardGallery";
+import { setWizardProject } from "./app/wizardSettings";
 import { SnapshotWindow } from "./app/SnapshotWindow";
 import { SettingsWindow } from "./app/SettingsWindow";
 import type { Generated } from "./app/generators";
@@ -143,6 +144,8 @@ export default function PaintApp() {
   const [copiedColors, setCopiedColors] = useState<string[] | null>(null);
   const [paletteFilter, setPaletteFilter] = useState("");
   const [project, setProject] = useState<Project | null>(null);
+  // The wizards remember their settings per project (wizardSettings.ts); idempotent, so set while rendering.
+  setWizardProject(project?.path ?? null);
   /** Whether the page is served by something that can open a project (the dev server or the desktop app). */
   const [served, setServed] = useState(false);
   const [showPalettes, setShowPalettes] = useState(false);

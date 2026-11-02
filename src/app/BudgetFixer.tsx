@@ -12,6 +12,7 @@ import { countUniqueTiles, tileUsage, toRgba } from "../paint";
 import { Button, Chip, Checkbox, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
 import { applyMerges, fixAll, mergeSteps, stepTile, tilePixels, type MergeStep } from "./budgetSteps";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
 import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
@@ -108,12 +109,14 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
   const colorOnlyLimit = openFlips ? openLimit : UNIQUE_TILE_LIMITS.colorOnly;
   const flips = budget === "colorOnly";
   const limit = flips ? colorOnlyLimit : gbLimit;
-  const [heatOn, setHeatOn] = useState(false);
+  // Remembered per project, with presets (the author, 2026-11-02); the budget follows the scene it opened for.
+  const ws = useWizardSettings("budget", { heatOn: false, maxDiff: 3 });
+  const [heatOn, setHeatOn] = ws.field("heatOn");
   // Fix all's target; null follows the limit.
   const [target, setTarget] = useState<number | null>(null);
   const [working, setWorking] = useState(() => picture.pixels.slice());
   const [history, setHistory] = useState<Uint8Array[]>([]);
-  const [maxDiff, setMaxDiff] = useState(3);
+  const [maxDiff, setMaxDiff] = ws.field("maxDiff");
   // The candidate list and what it was built from (a stale list can't be merged).
   const [found, setFound] = useState<{ steps: MergeStep[]; pixels: Uint8Array; maxDiff: number; flips: boolean } | null>(null);
   const [unchecked, setUnchecked] = useState<ReadonlySet<number>>(() => new Set());
@@ -191,7 +194,7 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
 
   const under = now <= limit;
   return (
-    <WizardPage title="Tile budget fixer" icon={<Sparkles size={18} />} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Tile budget fixer" icon={<Sparkles size={18} />} onClose={onClose}
       line={["One safe step at a time", `${picture.name} · under GB Studio's tile limit`]}
       footer={<>
         <span className="k-muted k-small">{history.length ? `${plural(history.length, "merge step")} made here` : "Nothing changes in the picture until you apply"}</span>

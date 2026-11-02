@@ -11,6 +11,7 @@ import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba, type TimeLett
 import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
+import { useWizardSettings } from "./useWizardSettings";
 import "./DnsWizard.css";
 
 type SlotPalette = { id: string; name: string; colors: string[] };
@@ -84,8 +85,11 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   }, [slots]);
 
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(bases.usable.map((base) => base.id)));
-  const [times, setTimes] = useState<Set<Time>>(() => new Set<Time>(["D", "S", "N"]));
-  const [strength, setStrength] = useState(100);
+  // Remembered per project, with presets (the author, 2026-11-02); which palettes are picked follows the picture.
+  const ws = useWizardSettings("dns", { times: ["D", "S", "N"] as Time[], strength: 100 });
+  const times = useMemo(() => new Set<Time>(ws.settings.times), [ws.settings.times]);
+  const setTimes = (next: Set<Time>) => ws.set({ times: [...next] });
+  const [strength, setStrength] = ws.field("strength");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -220,7 +224,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button></>;
 
   return (
-    <WizardPage title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
+    <WizardPage tools={ws.bar} title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
       line={["Your palettes are the day", `${plural(picked.length, "palette")} · ${pickedTimes.map((time) => time.name).join(", ") || "no times"} · ${plural(toAdd.length, "new palette")}`]}>
       <div className="wp-cols">{palettesStep}{versionsStep}</div>
     </WizardPage>

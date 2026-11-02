@@ -245,3 +245,45 @@ export function writeModelViews(project: string, file: string, views: unknown, b
   writeJson(path, { views: clean });
   return clean;
 }
+
+/**
+ * The wizards' saved presets (the author, 2026-11-02: "Desert cave", "Snowy overworld"): Cartographer/presets.json,
+ * `{ presets: { <wizard>: { <name>: settings } } }`, so a project's presets travel with it. Settings are each
+ * wizard's own plain object (src/app/wizardSettings.ts); here only their shape is checked. Backed up before each write.
+ */
+const PRESETS_FILE = "presets.json";
+export type Presets = Record<string, Record<string, Record<string, unknown>>>;
+const plainObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const wizardKey = /^[a-z][a-z0-9-]{0,39}$/;
+export function sanitizePresets(value: unknown): Presets {
+  const clean: Presets = {};
+  if (!plainObject(value)) return clean;
+  for (const [wizard, named] of Object.entries(value).slice(0, 64)) {
+    if (!wizardKey.test(wizard) || !plainObject(named)) continue;
+    const kept: Record<string, Record<string, unknown>> = {};
+    for (const [name, settings] of Object.entries(named).slice(0, 200)) {
+      const trimmed = name.trim();
+      if (trimmed && trimmed.length <= 60 && plainObject(settings) && JSON.stringify(settings).length <= 20000) kept[trimmed] = settings;
+    }
+    if (Object.keys(kept).length) clean[wizard] = kept;
+  }
+  return clean;
+}
+export function readPresets(project: string): Presets {
+  return sanitizePresets(readJson(ownFile(project, PRESETS_FILE))?.presets);
+}
+/** Saves (settings) or deletes (null) one wizard's named preset; the others are kept. */
+export function writePreset(project: string, wizard: string, name: string, settings: unknown, backupDir: string): Presets {
+  const presets = readPresets(project);
+  const key = String(name ?? "").trim();
+  if (!wizardKey.test(wizard) || !key || key.length > 60) throw new Error("A wizard and a name, please.");
+  if (settings !== null && !plainObject(settings)) throw new Error("Settings, please.");
+  const named = { ...presets[wizard] };
+  if (settings === null) delete named[key]; else named[key] = settings as Record<string, unknown>;
+  const next = sanitizePresets({ ...presets, [wizard]: named });
+  ownFolderReadme(project);
+  const path = ownFile(project, PRESETS_FILE);
+  if (existsSync(path)) backupFile(backupDir, project, path);
+  writeJson(path, { presets: next });
+  return next;
+}
