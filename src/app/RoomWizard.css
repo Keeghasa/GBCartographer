@@ -1,0 +1,3 @@
+/* The Interior wizard: the map generators' layout (GeneratorWizard.css); a room is often not whole screens, so its
+   edges follow the picture's own size in screens. */
+.rw-map { min-width: 0; }

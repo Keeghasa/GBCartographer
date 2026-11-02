@@ -6,8 +6,10 @@
 import library from "../palettes/library.json";
 import { Pen, canvas } from "../graphics/pen";
 import { drawCave, drawWorld, type Generated } from "./generators";
+import { drawRoom } from "./room";
+import { FRAME_STYLES, STYLE_SHADES, drawFrame, sliceFrame } from "./uiFrame";
 
-export type WizardThumb = "picture" | "dns" | "paletteSet" | "budget" | "cave" | "world" | "checkup" | "snapshot";
+export type WizardThumb = "picture" | "dns" | "paletteSet" | "budget" | "cave" | "world" | "checkup" | "snapshot" | "frame" | "room";
 
 const W = 160, H = 96, TILES_WIDE = W / 8;
 const palette = (name: string) => {
@@ -134,6 +136,22 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     }
     return crop(map, 1, best.y, best.x);
   }
+  if (id === "frame") {
+    // The UI frame wizard (2026-11-02): a dialogue box on a little scene, its frame trying each style in turn.
+    const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
+    landscape(p.at(0, 0, 80, 96), 0); landscape(p.at(80, 0, 80, 96), 0);
+    const style = FRAME_STYLES[frame % FRAME_STYLES.length].value;
+    const box = sliceFrame(drawFrame({ style, corners: frame >= FRAME_STYLES.length ? "rounded" : "drawn", ...STYLE_SHADES[style] }), 18, 5);
+    for (let y = 0; y < box.height; y += 1) for (let x = 0; x < box.width; x += 1) out.pixels[(52 + y) * W + 8 + x] = box.pixels[y * box.width + x];
+    const ink = STYLE_SHADES[style].fill >= 2 ? 0 : 3;
+    p.text(18, 62, "HELLO THERE!", ink); p.text(18, 72, "COME INSIDE?", ink);
+    return out;
+  }
+  if (id === "room") {
+    // The Interior wizard (2026-11-02): a room refurnished frame by frame, its door going round the walls.
+    const doors = ["bottom", "left", "top", "right"] as const;
+    return crop(drawRoom({ width: 8, height: 5, door: doors[frame % doors.length], doorAt: 40, floor: (["woodFloor", "tileFloor", "carpet"] as const)[frame % 3], windows: true, rug: frame % 2 === 0, furniture: 4 + (frame % 3), seed: 3 + frame * 5 }), 1, 24);
+  }
   if (id === "world") return crop(drawWorld({ columns: 2, rows: 2, seed: pick(5, 21, 40), water: 38, mountains: 18, forest: 35, towns: 2, scale: 4, island: true, roads: true, theme: "vibe20" }), 1, 72);
   // checkup: a health report, ticked off one by one.
   const out = blank([pick("V20-8-UI", "Vibe21-8-UI", "DWC-6-MauveBldg")]), p = new Pen(out);
@@ -153,11 +171,12 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
 /** How many frames each wizard's loop has, and how long each shows (ms). */
 /** The look each card shows (the author's picks, 2026-10-14 review): GB Snapshot, the palette set, the budget fixer
  * and the check-up in their third look; Picture to background cycles through all three. */
-export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 2, world: 0, cave: 0, dns: 0, paletteSet: 2, budget: 2, checkup: 2 };
+export const WIZARD_LOOK: Record<WizardThumb, number> = { picture: 0, snapshot: 2, world: 0, cave: 0, dns: 0, paletteSet: 2, budget: 2, checkup: 2, frame: 0, room: 0 };
 
 export const WIZARD_FRAMES: Record<WizardThumb, { count: number; ms: number }> = {
   picture: { count: 12, ms: 220 }, dns: { count: 64, ms: 90 }, paletteSet: { count: 1, ms: 1000 }, budget: { count: 6, ms: 700 },
   cave: { count: 8, ms: 1300 }, world: { count: 1, ms: 1000 }, checkup: { count: 1, ms: 1000 }, snapshot: { count: 24, ms: 110 },
+  frame: { count: 10, ms: 900 }, room: { count: 6, ms: 1200 },
 };
 
 /**

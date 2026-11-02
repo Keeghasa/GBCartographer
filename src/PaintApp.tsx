@@ -4,7 +4,7 @@
  * A tint only changes how the plain tiles look while painting. Saving writes one flat PNG, and for a project
  * picture also its tile palettes (see server/endpoints.ts).
  */
-import { Highlighter, Box, Settings as SettingsIcon, Check, Layers, Eraser, FlipHorizontal, FlipVertical, RotateCw, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil } from "lucide-react";
+import { Highlighter, Box, Settings as SettingsIcon, Check, Layers, Eraser, FlipHorizontal, FlipVertical, RotateCw, Pause, Play, FileImage, Mountain, Pickaxe, Store as StoreIcon, ChevronDown, Clock, Copy, ImagePlus, FolderArchive, FolderSearch, FolderX, Gamepad2, History, Info, MessageSquare, RotateCcw, FilePlus, FolderOpen, FolderTree, Grid3x3, Magnet, Map as MapIcon, Minus, SwatchBook, Plus, Redo2, Rocket, Save, Undo2, X, Plane, CopyPlus, Trash2, BrickWall, CopyX, SquareX, Pencil, PanelsTopLeft, Sofa } from "lucide-react";
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { LogoMark } from "./ui/LogoMark";
@@ -23,6 +23,8 @@ import { AboutWindow } from "./app/AboutWindow";
 import { HealthWindow } from "./app/HealthWindow";
 import { SpriteOnBackground } from "./app/SpriteOnBackground";
 import { DialoguePreview } from "./app/DialoguePreview";
+import { FrameWizard } from "./app/FrameWizard";
+import { RoomWizard } from "./app/RoomWizard";
 import { MapRoom } from "./app/MapRoom";
 import { FitWindow } from "./app/FitWindow";
 import { PictureWizard } from "./app/PictureWizard";
@@ -165,7 +167,7 @@ export default function PaintApp() {
   const [closing, setClosing] = useState<{ changes: ClosingChanges; busy: boolean; /** Closing these tabs, not the window. */ tabs?: Doc[] } | null>(null);
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [wizard, setWizard] = useState<"dns" | "paletteSet" | "budget" | "checkup" | GeneratorMode | null>(null);
+  const [wizard, setWizard] = useState<"dns" | "paletteSet" | "budget" | "checkup" | "frame" | "room" | GeneratorMode | null>(null);
   /** A wizard waiting for a project picture with palette slots to open (Dawn, sunset and night picked with none open). */
   const [wizardAfterOpen, setWizardAfterOpen] = useState<"dns" | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
@@ -2824,6 +2826,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },
     { thumb: "cave", name: "Cave or dungeon", icon: <Pickaxe />, about: "A cave or a dungeon of rooms drawn with the catalog’s cliffs and floors, 2 × 2 screens to start; sliders redraw it live.", blocked: null, onStart: () => setWizard("cave") },
     { thumb: "world", name: "Overworld", icon: <Mountain />, about: "An RPG-style overworld: water, forest, mountains, towns and roads, in the palettes you pick.", blocked: null, onStart: () => setWizard("world") },
+    { thumb: "room", name: "Interior", icon: <Sofa />, about: "A room in the catalog's indoor tiles: walls, floor, a door where you want it, windows, a rug and furniture; sliders redraw it live.", blocked: null, onStart: () => setWizard("room") },
+    { thumb: "frame", name: "UI frame", icon: <PanelsTopLeft />, about: "A window frame for the ui folder in your style (the catalog's frames, corners, shades), shown as a dialogue box in your project's font.", blocked: null, onStart: () => setWizard("frame") },
     { thumb: "checkup", name: "Project check-up", icon: <PxHeart size={15} />, about: "The health report one issue at a time, each with its fix (old → new shown first).", blocked: needProject, onStart: () => setWizard("checkup") },
   ];
   const lookName = look === "dmg" ? "Game Boy screen" : look === "pocket" ? "Pocket screen" : "GBC screen";
@@ -3103,6 +3107,11 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} onSaveMap={(picture, name, columns, rows) => saveGeneratedMap(picture, name, columns, rows)}
           takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} tileStamps={(project?.assets ?? []).filter((asset) => asset.kind === "stamps" && (asset.autotile === "wallface" || asset.autotile === "wang" || asset.autotile === "edges" || asset.autotile === "corner" || asset.autotile === "path" || asset.autotile === "forest" || asset.autotile === "xpCliff" || asset.autotile === "xpCliffTall" || asset.autotile === "xp") && autotileKind(asset.autotile)?.fits(asset.width, asset.height))} loadTiles={loadCaveTiles} />
       )}
+      {wizard === "room" && (
+        <RoomWizard projectName={project?.name ?? null} limit={budget.limit} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setWizard(null)}
+          onOpen={(picture, name) => void openFittedPicture(generatedPicture(picture), name)} onSave={(picture, name) => saveFittedBackground(generatedPicture(picture), name)} />
+      )}
+      {wizard === "frame" && <FrameWizard projectName={project?.name ?? null} uiFiles={(project?.assets ?? []).filter((asset) => asset.kind === "ui").map((asset) => asset.file)} onClose={() => setWizard(null)} onCreate={createPicture} />}
       {wizard === "budget" && doc && (
         <BudgetFixer picture={{ name: doc.name, pixels: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return flat; })(), cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }}
           limit={budget.limit} flips={budget.flips} onClose={() => setWizard(null)} onApply={(pixels) => { dropFloat(doc); pushUndo(doc); doc.pixels.set(pixels); touch(doc); say(`${doc.name}: merged near tiles; ${countUniqueTiles(doc.pixels, doc.width, doc.height, budget.flips)} unique tiles now. Undo brings them back.`); }} />
