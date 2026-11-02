@@ -8,6 +8,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { CLEAR } from "../paint";
+import { orthoHalfHeight, perspectiveDistance, type SavedView } from "./snapshotViews";
 
 export interface ShotSettings {
   width: number; height: number;
@@ -38,6 +39,12 @@ export interface Stage {
   roll: (radians: number) => void;
   /** The model back as it came in (the framing is kept). */
   resetTurn: () => void;
+  /** The lens (the author, 2026-11-02): orthographic (no perspective) or perspective; the model keeps about its size. */
+  setOrtho: (ortho: boolean, fov: number) => void;
+  /** The view as it is now (for Saved views), under `name`. */
+  getView: (name: string, fov: number) => SavedView;
+  /** Goes back to a saved view (its lens too; the window sets its own switches to match). */
+  setView: (view: SavedView) => void;
   /** Called when the view changes (dragging the print, zooming). */
   onChange: (listener: () => void) => void;
   triangles: () => number;
@@ -52,7 +59,10 @@ export function createStage(handle: HTMLElement): Stage {
   const canvas = document.createElement("canvas");
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
+  const perspective = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
+  // Orthographic: its frustum is set in shot(), `flat` its half height at zoom 1.
+  const orthographic = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 1000);
+  let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = perspective, flat = 1;
   const controls = new OrbitControls(camera, handle);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 0.5));
   const lights = { key: new THREE.DirectionalLight(0xffffff, 2), fill: new THREE.DirectionalLight(0xffffff, 0.7), rim: new THREE.DirectionalLight(0xffffff, 1.2) };
@@ -89,9 +99,12 @@ export function createStage(handle: HTMLElement): Stage {
       target?.dispose();
       target = new THREE.WebGLRenderTarget(width, height, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     }
-    camera.aspect = width / height;
-    camera.fov = settings.fov;
-    camera.updateProjectionMatrix();
+    perspective.aspect = width / height;
+    perspective.fov = settings.fov;
+    perspective.updateProjectionMatrix();
+    const aspect = width / height;
+    Object.assign(orthographic, { left: -flat * aspect, right: flat * aspect, top: flat, bottom: -flat });
+    orthographic.updateProjectionMatrix();
     // The rig is seen from above with the camera at the front: turn it with the camera so the lights stay put in the picture.
     const view = Math.atan2(camera.position.x, camera.position.z);
     for (const name of ["key", "fill", "rim"] as const) {
@@ -121,8 +134,8 @@ export function createStage(handle: HTMLElement): Stage {
       next.position.sub(center);
       controls.target.set(0, 0, 0);
       camera.position.set(radius * 1.6, radius * 1.1, radius * 2.2);
-      camera.near = radius / 100; camera.far = radius * 100;
-      camera.updateProjectionMatrix();
+      for (const lens of [perspective, orthographic]) { lens.near = radius / 100; lens.far = radius * 100; lens.updateProjectionMatrix(); }
+      flat = orthoHalfHeight(camera.position.length(), perspective.fov); orthographic.zoom = 1; orthographic.updateProjectionMatrix();
       controls.update();
       listeners.forEach((listener) => listener());
     },
@@ -131,6 +144,44 @@ export function createStage(handle: HTMLElement): Stage {
       free = on;
       controls.enableRotate = !on;
       if (!on) { pivot.quaternion.identity(); listeners.forEach((listener) => listener()); }
+    },
+    setOrtho(on, fov) {
+      if (on === (camera === orthographic)) return;
+      const distance = camera.position.distanceTo(controls.target);
+      if (on) {
+        // The flat view is as tall as the lens saw at the target.
+        flat = orthoHalfHeight(distance, fov); orthographic.zoom = 1;
+        orthographic.position.copy(perspective.position); orthographic.quaternion.copy(perspective.quaternion);
+        camera = orthographic;
+      } else {
+        // Back to perspective at the distance that sees what the flat view showed (its zoom included).
+        const direction = orthographic.position.clone().sub(controls.target).normalize();
+        perspective.position.copy(controls.target).addScaledVector(direction, perspectiveDistance(flat / orthographic.zoom, fov));
+        camera = perspective;
+      }
+      controls.object = camera;
+      camera.updateProjectionMatrix();
+      controls.update();
+      listeners.forEach((listener) => listener());
+    },
+    getView(name, fov) {
+      const ortho = camera === orthographic;
+      // A flat view's zoom is kept against the height its lens sees from where it stands, so it comes back the same.
+      return { name, position: camera.position.toArray() as [number, number, number], target: controls.target.toArray() as [number, number, number],
+        zoom: ortho ? (orthographic.zoom * orthoHalfHeight(camera.position.distanceTo(controls.target), fov)) / flat : 1, ortho, fov,
+        pivot: pivot.quaternion.toArray() as [number, number, number, number] };
+    },
+    setView(view) {
+      camera = view.ortho ? orthographic : perspective;
+      controls.object = camera;
+      controls.target.fromArray(view.target);
+      camera.position.fromArray(view.position);
+      if (view.ortho) { flat = orthoHalfHeight(camera.position.distanceTo(controls.target), view.fov); orthographic.zoom = view.zoom; }
+      perspective.fov = view.fov;
+      camera.updateProjectionMatrix();
+      pivot.quaternion.fromArray(view.pivot).normalize();
+      controls.update();
+      listeners.forEach((listener) => listener());
     },
     roll(radians) { turn(camera.getWorldDirection(new THREE.Vector3()), radians); },
     resetTurn() { pivot.quaternion.identity(); listeners.forEach((listener) => listener()); },

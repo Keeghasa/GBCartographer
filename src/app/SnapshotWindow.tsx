@@ -131,6 +131,8 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
   const [shelfTick, setShelfTick] = useState(0);
   const [free, setFree] = useState(false), [roll, setRoll] = useState(0);
   const rolled = useRef(0);
+  // Flat lens (the author, 2026-11-02): no perspective, for top-down and isometric art; scroll still zooms.
+  const [ortho, setOrtho] = useState(false);
   const [, setTick] = useState(0);
   const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite", background };
   const shades = useRef<Uint8Array | null>(null);
@@ -229,8 +231,11 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
             <h2 className="k-heading">Develop</h2>
             <label className="sw-row"><span>Brightness</span><Slider label="Brightness" min={-50} max={50} value={brightness} onChange={setBrightness} /><b>{brightness}</b></label>
             <label className="sw-row"><span>Contrast</span><Slider label="Contrast" min={0} max={100} value={contrast} onChange={setContrast} /><b>{contrast}</b></label>
-            <label className="sw-row"><span>Lens</span><Slider label="Lens (field of view)" min={15} max={75} value={fov} onChange={setFov} /><b>{fov}°</b></label>
-            <div className="sw-switches"><Switch checked={outline} onChange={setOutline}>Outline</Switch><Switch checked={dither} onChange={setDither}>Dither</Switch></div>
+            <label className="sw-row" title={ortho ? "Flat: no perspective. The lens is the one Flat goes back to." : undefined}><span>Lens</span><Slider label="Lens (field of view)" min={15} max={75} value={fov} onChange={setFov} /><b>{ortho ? "flat" : `${fov}°`}</b></label>
+            <div className="sw-switches">
+              <Switch checked={ortho} onChange={(on) => { setOrtho(on); stage.current?.setOrtho(on, fov); }}>Flat (orthographic)</Switch>
+              <Switch checked={outline} onChange={setOutline}>Outline</Switch><Switch checked={dither} onChange={setDither}>Dither</Switch>
+            </div>
           </div>
           <div className="sw-group">
             <h2 className="k-heading">Background</h2>
