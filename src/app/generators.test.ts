@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { countUniqueTiles } from "../paint";
-import { OVERWORLD_PALETTES, TOWN, CAVE_DEFAULTS, MOUNTAIN, ROAD, WATER, WORLD_DEFAULTS, caveGrid, drawCave, drawWorld, worldGrid } from "./generators";
+import { OVERWORLD_PALETTES, TOWN, CAVE_DEFAULTS, MOUNTAIN, ROAD, WATER, WORLD_DEFAULTS, caveGrid, drawCave, drawWorld, worldGrid, STAIRS, DOOR_ACROSS, DOOR_DOWN, TREASURE, ENEMY } from "./generators";
+import { SOLID } from "./pendingCollisions";
 
 /** Floor cells reachable from the first one, by sides. */
 function reachable(grid: Uint8Array, w: number, open: (cell: number) => boolean) {
@@ -95,5 +96,38 @@ describe("map generators", () => {
       expect(world.cells?.[tileOf(town) + offset]).toBe(7);
     }
     expect(drawWorld({ ...WORLD_DEFAULTS, theme: "" }).cells).toBeUndefined();
+  });
+});
+
+describe("cave doorways, marks and collisions (2026-11-02)", () => {
+  const SIDE = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  it("puts a doorway on every edge where two screens meet, and start and end stairs", () => {
+    for (const style of ["cave", "dungeon"] as const) for (let seed = 1; seed <= 12; seed += 1) for (const cell of [16, 32] as const) {
+      const { grid, start, end } = caveGrid({ ...CAVE_DEFAULTS, style, cell, seed, columns: 3, rows: 2 });
+      expect(grid.filter((value) => value === DOOR_ACROSS).length, `${style} ${seed} ${cell}`).toBe(2 * 2);
+      expect(grid.filter((value) => value === DOOR_DOWN).length, `${style} ${seed} ${cell}`).toBe(3);
+      expect([grid[start], grid[end]]).toEqual([STAIRS, STAIRS]);
+    }
+    expect(caveGrid({ ...CAVE_DEFAULTS, doors: false }).grid.some((value) => value === DOOR_ACROSS || value === DOOR_DOWN)).toBe(false);
+  });
+
+  it("marks treasure and enemy spots only when asked, without moving the cave", () => {
+    const plain = caveGrid({ ...CAVE_DEFAULTS, seed: 3 }), marked = caveGrid({ ...CAVE_DEFAULTS, seed: 3, marks: true });
+    expect(plain.grid.some((value) => value === TREASURE || value === ENEMY)).toBe(false);
+    expect(marked.grid.some((value) => value === ENEMY)).toBe(true);
+    expect(Array.from(marked.grid, (value) => value === 1)).toEqual(Array.from(plain.grid, (value) => value === 1));
+    // Treasure sits in dead ends.
+    const { w, grid } = marked;
+    grid.forEach((value, at) => { if (value === TREASURE) expect(SIDE.filter(([dx, dy]) => grid[at + dy * w + dx] !== 1).length).toBe(1); });
+    expect(drawCave({ ...CAVE_DEFAULTS, seed: 3, marks: true }).pixels).not.toEqual(drawCave({ ...CAVE_DEFAULTS, seed: 3 }).pixels);
+  });
+
+  it("makes the rock solid and the floor open, one value per tile", () => {
+    for (const cell of [16, 32] as const) {
+      const settings = { ...CAVE_DEFAULTS, cell, seed: 6 }, cave = drawCave(settings), { w, grid } = caveGrid(settings);
+      expect(cave.collisions?.length).toBe((cave.width / 8) * (cave.height / 8));
+      const per = cell / 8, tw = cave.width / 8;
+      cave.collisions!.forEach((value, at) => expect(value).toBe(grid[Math.floor(Math.floor(at / tw) / per) * w + Math.floor((at % tw) / per)] === 1 ? SOLID : 0));
+    }
   });
 });

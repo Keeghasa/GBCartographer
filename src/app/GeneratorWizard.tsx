@@ -167,7 +167,9 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
               <Setting label="Rooms" value={cave.rooms} min={2} max={20} onChange={(rooms) => setC({ rooms })} />
               <Setting label="Room size" value={cave.roomSize} min={3} max={10} onChange={(roomSize) => setC({ roomSize })} title="Typical room size, in cells" />
             </>}
-            <Switch checked={cave.stairs} onChange={(stairs) => setC({ stairs })}>Stairs at the far ends</Switch>
+            <Switch checked={cave.stairs} onChange={(stairs) => setC({ stairs })}>Stairs at the far ends (start ↑, end ↓)</Switch>
+            {columns * rows > 1 && <Switch checked={cave.doors ?? true} onChange={(doors) => setC({ doors })}>Doorways where screens meet</Switch>}
+            <Switch checked={cave.marks ?? false} onChange={(marks) => setC({ marks })}>Mark treasure (T) and enemy (E) spots</Switch>
           </>}
           {mode === "world" && <>
             <Setting label="Water" value={world.water} unit="%" min={0} max={80} onChange={(water) => setW({ water })} />

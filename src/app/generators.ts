@@ -10,6 +10,7 @@ import { Pen } from "../graphics/pen";
 import { paintCliffs, paintForest, paintSliced, paintXp, sheet } from "../graphics/areas";
 import { OUTDOOR, outdoorTile } from "../graphics/tiles";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
+import { SOLID } from "./pendingCollisions";
 
 export { OVERWORLD_PALETTES } from "./mapThemes";
 
@@ -26,7 +27,11 @@ export function seeded(seed: number): () => number {
 }
 
 /** A picture in GB shades, one byte per pixel; with colors, each 8 × 8 tile's palette (1-based, 0 the greens) and those palettes. */
-export interface Generated { width: number; height: number; pixels: Uint8Array; cells?: Uint16Array; palettes?: { name: string; colors: string[] }[] }
+export interface Generated {
+  width: number; height: number; pixels: Uint8Array; cells?: Uint16Array; palettes?: { name: string; colors: string[] }[];
+  /** A GB Studio collision value per 8 × 8 tile (the author, 2026-11-02), kept for the background's scene by src/app/pendingCollisions.ts. */
+  collisions?: Uint8Array;
+}
 
 const SCREEN_W = 160, SCREEN_H = 144;
 const SIDES: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -55,8 +60,12 @@ export interface CaveSettings {
   rooms: number; roomSize: number;
   /** Cave: keep only the biggest open area, so every floor cell can be reached. */
   connected: boolean;
-  /** Stairs at two far-apart floor cells (a way in and a way on). */
+  /** Stairs at two far-apart floor cells (a way in and a way on), marked start (an up arrow) and end (a down arrow). */
   stairs: boolean;
+  /** A doorway wherever two screens meet (the author, 2026-11-02): a passage across the edge, its posts drawn. */
+  doors?: boolean;
+  /** Opt-in (the author, 2026-11-02: "Mark it in with a T or a E. then make sure its an opt-in checkbox"): a T on treasure spots (dead ends) and an E on enemy spots (open floor). */
+  marks?: boolean;
   /** The palette it wears: a CAVE_THEMES id ("" or unknown: the GB greens). */
   theme?: string;
   /** The catalog's walls (16 px cells and up; unset: cliff32 for a cave, stone for a dungeon). */
@@ -93,8 +102,11 @@ export const floorOf = (settings: CaveSettings, forest = false): CaveFloor => se
 
 export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 32, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 3, connected: true, stairs: true };
 
-/** The cave's grid: 1 rock, 0 floor (2 stairs), the edge always rock. */
-export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array } {
+/** The cave grid's cells besides rock (1) and plain floor (0): every one of them is floor. */
+export const STAIRS = 2, DOOR_ACROSS = 3, DOOR_DOWN = 4, TREASURE = 5, ENEMY = 6;
+
+/** The cave's grid: 1 rock, 0 floor (2 stairs, 3 / 4 doorways, 5 treasure, 6 enemy), the edge always rock; `start` and `end` the stairs (-1 none). */
+export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array; start: number; end: number } {
   // 32-pixel cells don't divide a 144-pixel screen: the grid runs one row past it and the picture is cut to the screens.
   const w = Math.max(3, Math.ceil(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.ceil(settings.rows * SCREEN_H / settings.cell));
   const random = seeded(settings.seed);
@@ -133,8 +145,92 @@ export function caveGrid(settings: CaveSettings, topRows?: number): { w: number;
     // A thin wall that keeps coming back (the rejoining tunnel needs it) is opened instead: the two spaces become one.
     for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) grid[y * w + x] = 0;
   }
-  if (settings.stairs) placeStairs(grid, w, h);
-  return { w, h, grid };
+  const doors = settings.doors ?? true;
+  if (doors) { carveDoorways(grid, w, h, settings, top); markDoorways(grid, w, h, settings, top); }
+  const [start, end] = settings.stairs ? placeStairs(grid, w, h) : [-1, -1];
+  if (settings.marks) placeMarks(grid, w, h, settings, start);
+  return { w, h, grid, start, end };
+}
+
+/** Where screens meet, in cells: each inner vertical edge (`at`: the cell right of it) and horizontal edge (the cell below it), with each screen's span of cells along it. */
+function screenEdges(w: number, h: number, settings: CaveSettings, top: number) {
+  const span = (from: number, to: number, low: number, high: number) => [Math.max(low, Math.ceil(from / settings.cell)), Math.min(high, Math.ceil(to / settings.cell) - 1)] as const;
+  const edges: { across: boolean; at: number; from: number; to: number }[] = [];
+  for (let sx = 1; sx < settings.columns; sx += 1) for (let sy = 0; sy < settings.rows; sy += 1) {
+    const [from, to] = span(sy * SCREEN_H, (sy + 1) * SCREEN_H, top, h - 2);
+    edges.push({ across: true, at: Math.round(sx * SCREEN_W / settings.cell), from, to });
+  }
+  for (let sy = 1; sy < settings.rows; sy += 1) for (let sx = 0; sx < settings.columns; sx += 1) {
+    const [from, to] = span(sx * SCREEN_W, (sx + 1) * SCREEN_W, 1, w - 2);
+    edges.push({ across: false, at: Math.max(top + 1, Math.round(sy * SCREEN_H / settings.cell)), from, to });
+  }
+  return edges;
+}
+
+/**
+ * A way through every edge where two screens meet: when no floor already crosses it, a passage is carved across it
+ * (in the middle of the screen's span, out both ways to the nearest floor), and the areas are joined again.
+ */
+function carveDoorways(grid: Uint8Array, w: number, h: number, settings: CaveSettings, top: number) {
+  let carved = false;
+  for (const { across, at, from, to } of screenEdges(w, h, settings, top)) {
+    if (from > to) continue;
+    const cell = (along: number, step: number) => across ? along * w + at + step : (at + step) * w + along;
+    let open = false;
+    for (let along = from; along <= to && !open; along += 1) open = grid[cell(along, -1)] !== 1 && grid[cell(along, 0)] !== 1;
+    if (open) continue;
+    const along = Math.floor((from + to) / 2), low = across ? 1 : top, high = (across ? w : h) - 2;
+    grid[cell(along, -1)] = 0; grid[cell(along, 0)] = 0;
+    for (let step = -2; at + step >= low && grid[cell(along, step)] === 1; step -= 1) grid[cell(along, step)] = 0;
+    for (let step = 1; at + step <= high && grid[cell(along, step)] === 1; step += 1) grid[cell(along, step)] = 0;
+    carved = true;
+  }
+  if (!carved) return;
+  joinAreas(grid, w, h);
+  // A passage can leave rock one cell thin beside it, which the walls can't draw: as after the cave's own tunnels.
+  if (settings.style === "cave") wearThinRock(grid, w, h);
+  else for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) grid[y * w + x] = 0;
+}
+
+/** One doorway on each screen edge: the floor cell just past the edge nearest the middle of the screen's span (3 walked across, 4 walked down). */
+function markDoorways(grid: Uint8Array, w: number, h: number, settings: CaveSettings, top: number) {
+  for (const { across, at, from, to } of screenEdges(w, h, settings, top)) {
+    const middle = (from + to) / 2;
+    const cell = (along: number, step: number) => across ? along * w + at + step : (at + step) * w + along;
+    // A crossing: floor on both sides, one of them plain (a corner where two edges meet can hold the other's doorway).
+    let best = -1;
+    for (let along = from; along <= to; along += 1) if (grid[cell(along, -1)] !== 1 && grid[cell(along, 0)] !== 1 && (grid[cell(along, -1)] === 0 || grid[cell(along, 0)] === 0) && (best < 0 || Math.abs(along - middle) < Math.abs(best - middle))) best = along;
+    if (best >= 0) grid[cell(best, grid[cell(best, 0)] === 0 ? 0 : -1)] = across ? DOOR_ACROSS : DOOR_DOWN;
+  }
+}
+
+/**
+ * Treasure and enemy spots (opt-in): a T on the dead ends farthest from the start (one a screen), an E on open floor
+ * (three or four open sides) well apart from each other, the stairs and the treasure (two a screen). Its own random
+ * numbers, so ticking it never moves the cave.
+ */
+function placeMarks(grid: Uint8Array, w: number, h: number, settings: CaveSettings, start: number) {
+  const random = seeded(settings.seed ^ 0x7e57);
+  const plain = Array.from(grid.keys()).filter((at) => grid[at] === 0);
+  if (!plain.length) return;
+  const openSides = (at: number) => [at - w, at + w, at - 1, at + 1].filter((next) => grid[next] !== 1).length;
+  const from = start >= 0 ? distances(grid, w, h, start, (cell) => cell !== 1) : null;
+  const screens = settings.columns * settings.rows;
+  const spaced = (at: number, others: number[], gap: number) => others.every((other) => Math.hypot(other % w - at % w, Math.floor(other / w) - Math.floor(at / w)) >= gap);
+  const taken = Array.from(grid.keys()).filter((at) => grid[at] === STAIRS);
+  const ends = plain.filter((at) => openSides(at) === 1).sort((a, b) => (from ? from[b] - from[a] : 0) || a - b);
+  let treasure = 0;
+  for (const at of ends) {
+    if (treasure >= screens) break;
+    if (spaced(at, taken, 3)) { grid[at] = TREASURE; taken.push(at); treasure += 1; }
+  }
+  const gap = Math.max(3, Math.min(SCREEN_W, SCREEN_H) / settings.cell / 2);
+  const open = plain.filter((at) => grid[at] === 0 && openSides(at) >= 3);
+  for (let count = 0, tries = 0; count < screens * 2 && tries < open.length * 2; tries += 1) {
+    const at = open[Math.floor(random() * open.length)];
+    if (grid[at] !== 0 || !spaced(at, taken, gap)) continue;
+    grid[at] = ENEMY; taken.push(at); count += 1;
+  }
 }
 
 /**
@@ -250,15 +346,16 @@ function distances(grid: Uint8Array, w: number, h: number, from: number, passabl
 }
 
 /** Stairs at the two floor cells farthest apart (found from any floor cell, then from the farthest one). */
-function placeStairs(grid: Uint8Array, w: number, h: number) {
+function placeStairs(grid: Uint8Array, w: number, h: number): [number, number] {
   const first = grid.indexOf(0);
-  if (first < 0) return;
-  const farthest = (distance: Int32Array) => distance.reduce((best, d, at) => d > distance[best] ? at : best, first);
-  const a = farthest(distances(grid, w, h, first, (cell) => cell === 0));
-  const fromA = distances(grid, w, h, a, (cell) => cell === 0);
-  const b = farthest(fromA);
-  if (a === b) return;
-  grid[a] = 2; grid[b] = 2;
+  if (first < 0) return [-1, -1];
+  // Only plain floor takes stairs, found walking any floor.
+  const farthest = (distance: Int32Array) => distance.reduce((best, d, at) => grid[at] === 0 && d > distance[best] ? at : best, first);
+  const a = farthest(distances(grid, w, h, first, (cell) => cell !== 1));
+  const b = farthest(distances(grid, w, h, a, (cell) => cell !== 1));
+  if (a === b) return [-1, -1];
+  grid[a] = STAIRS; grid[b] = STAIRS;
+  return [a, b];
 }
 
 /** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
@@ -278,7 +375,7 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floor
   const asArt = (t: CaveTiles) => ({ width: t.width, height: t.pixels.length / t.width, pixels: t.pixels });
   const area = given && (given.kind === "forest" || given.kind === "xpCliff" || given.kind === "xpCliffTall" || given.kind === "xp") ? given : null;
   const tiles = area ? null : given;
-  const { w, h, grid } = caveGrid(settings, area?.kind === "xpCliffTall" ? 3 : area?.kind === "xpCliff" ? 2 : area ? 1 : undefined);
+  const { w, h, grid, ...caveMarks } = caveGrid(settings, area?.kind === "xpCliffTall" ? 3 : area?.kind === "xpCliff" ? 2 : area ? 1 : undefined);
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
   const theme = themeOf(CAVE_THEMES, settings.theme ?? "");
@@ -338,15 +435,49 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floor
     pen.fill(2);
     SIDES.forEach(([dx, dy], side) => { if (!wall(x + dx, y + dy)) pen.side(side, 0); });
   }
-  // Stairs: a box of steps on their cell.
+  const { start } = caveMarks;
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
-    if (grid[y * w + x] !== 2) continue;
-    const pen = new Pen(out, x * size, y * size, size), inset = size / 8;
-    pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
-    pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
-    for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+    const cell = grid[y * w + x], pen = new Pen(out, x * size, y * size, size), inset = size / 8;
+    if (cell === STAIRS) {
+      // Stairs: a box of steps on their cell, with an arrow on a plate: up at the start (the way in), down at the end.
+      pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
+      pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
+      for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+      drawGlyph(pen, y * w + x === start ? "up" : "down", size);
+    } else if (cell === DOOR_ACROSS || cell === DOOR_DOWN) {
+      // A doorway where screens meet: two dark posts either side of the way through, on the edge it crosses.
+      const post = Math.max(2, size / 8), length = Math.max(4, size / 4);
+      if (cell === DOOR_ACROSS) { pen.rect(0, 0, post, length, 3); pen.rect(0, size - length, post, length, 3); pen.rect(post, 0, 1, length, 0); pen.rect(post, size - length, 1, length, 0); }
+      else { pen.rect(0, 0, length, post, 3); pen.rect(size - length, 0, length, post, 3); pen.rect(0, post, length, 1, 0); pen.rect(size - length, post, length, 1, 0); }
+    } else if (cell === TREASURE || cell === ENEMY) drawGlyph(pen, cell === TREASURE ? "T" : "E", size);
   }
-  return cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+  const cropped = cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+  // Collisions for GB Studio (the author, 2026-11-02): the rock solid, every floor cell open.
+  cropped.collisions = tileCollisions(cropped.width, cropped.height, (tx, ty) => grid[Math.floor(ty / per) * w + Math.floor(tx / per)] === 1);
+  return cropped;
+}
+
+/** 3 × 5 pixel letters and arrows for the cave's marks, a row a string. */
+const GLYPHS: Record<"T" | "E" | "up" | "down", string[]> = {
+  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  E: ["###", "#..", "##.", "#..", "###"],
+  up: [".#.", "###", "#.#", ".#.", ".#."],
+  down: [".#.", ".#.", "#.#", "###", ".#."],
+};
+
+/** A mark on a light plate in the middle of a cell: dark (shade 3) on the lightest shade, so it reads on any floor. */
+function drawGlyph(pen: Pen, glyph: keyof typeof GLYPHS, size: number) {
+  const scale = size >= 32 ? 3 : 2, gw = 3 * scale, gh = 5 * scale, x0 = Math.floor((size - gw) / 2), y0 = Math.floor((size - gh) / 2);
+  pen.rect(x0 - 1, y0 - 1, gw + 2, gh + 2, 0);
+  pen.box(x0 - 2, y0 - 2, gw + 4, gh + 4, 3);
+  GLYPHS[glyph].forEach((row, gy) => [...row].forEach((dot, gx) => { if (dot === "#") pen.rect(x0 + gx * scale, y0 + gy * scale, scale, scale, 3); }));
+}
+
+/** One GB Studio collision value per 8 × 8 tile of a `width` × `height` picture: Solid where `solid`, else open. */
+function tileCollisions(width: number, height: number, solid: (tx: number, ty: number) => boolean): Uint8Array {
+  const tw = Math.ceil(width / 8), th = Math.ceil(height / 8), out = new Uint8Array(tw * th);
+  for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) if (solid(tx, ty)) out[ty * tw + tx] = SOLID;
+  return out;
 }
 
 /**
