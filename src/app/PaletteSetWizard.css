@@ -27,6 +27,8 @@
 .psw-name { display: flex; align-items: center; gap: var(--k-2); }
 .psw-name .psw-strip { width: 72px; flex: none; height: 22px; }
 .psw-base { max-width: 280px; }
+/* The colour-blind check: which vision the swatches show, and a line on what runs together. */
+.psw-vision { display: flex; flex-direction: column; gap: 4px; }
 
 /* A picture source: its thumbnail, what it is, and a button (or a drop) to pick another. */
 .psw-drop { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--k-edge-2); border-radius: 12px; }
