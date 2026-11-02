@@ -34,6 +34,7 @@
  *   GET  /__cartographer/panel                 hidden and pinned pictures (Cartographer/panel.json); POST { hidden, pinned }
  *   GET  /__cartographer/sources?kind=         the wizards' own 3D models or pictures kept in Cartographer/models|pictures;
  *        /__cartographer/source?kind=&file=    GET one file (&inner= a model's), POST ?name=[&into=] adds, DELETE removes (to the backups)
+ *   GET/POST /__cartographer/model-views?file=  GB Snapshot's saved views of a project model (Cartographer/models/<file>/views.json)
  *   GET  /__cartographer/unsaved               pictures' unsaved changes kept in Cartographer/unsaved/; POST ?kind=&file=
  *                                             keeps one, DELETE ?kind=&file= takes it away (into the backups)
  *   GET  /__cartographer/dialogue-settings    { colorMode, uiPalette, defaultFont, fonts } for the dialogue preview (read only)
@@ -53,7 +54,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, migrateOutOfProject, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
-import { addSource, listSources, listUnsaved, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, SOURCE_KINDS, sourcePath, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
+import { addSource, listSources, listUnsaved, readModelViews, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, SOURCE_KINDS, sourcePath, writeModelViews, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
@@ -310,6 +311,16 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
         if (req.method === "POST") { writeUnsaved(project, kind, file, JSON.parse((await readBody(req)).toString("utf8"))); reply(res, 200, { ok: true }); }
         else if (req.method === "DELETE") reply(res, 200, { ok: true, removed: removeUnsaved(project, kind, file, options.backupDir) });
         else reply(res, 200, { ok: true, pictures: listUnsaved(project) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
+      return true;
+    }
+    // GB Snapshot's saved views of one of the project's models (server/own.ts): views.json in its folder.
+    if (url.pathname === "/__cartographer/model-views") {
+      const file = url.searchParams.get("file") ?? "";
+      try {
+        reply(res, 200, { ok: true, views: req.method === "POST" ? writeModelViews(project, file, JSON.parse((await readBody(req)).toString("utf8")).views, options.backupDir) : readModelViews(project, file) });
       } catch (error) {
         reply(res, 400, { error: (error as Error).message });
       }

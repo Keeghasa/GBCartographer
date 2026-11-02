@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { OWN_FOLDER, OWN_FORMAT, backupFile, ownFolderReadme } from "./backups";
+import { sanitizeViews, type SavedView } from "../src/app/snapshotViews";
 
 const ownFile = (project: string, name: string) => join(project, OWN_FOLDER, name);
 
@@ -214,6 +215,33 @@ export function removeSource(project: string, kind: SourceKind, file: string, ba
     backupFile(backupDir, project, path);
     unlinkSync(path);
   }
-  if (kind === "models") { try { rmdirSync(join(root, entry.file)); } catch { /* something else is in it: it stays */ } }
+  if (kind === "models") {
+    const views = join(root, entry.file, VIEWS_FILE);
+    if (existsSync(views)) { backupFile(backupDir, project, views); unlinkSync(views); }
+    try { rmdirSync(join(root, entry.file)); } catch { /* something else is in it: it stays */ }
+  }
   return true;
+}
+
+/**
+ * GB Snapshot's saved views of a model (the author, 2026-11-02): Cartographer/models/<model>/views.json beside the
+ * model, so all of one model's sprites can be taken from the same angles on any computer. Backed up before each write.
+ */
+const VIEWS_FILE = "views.json";
+function viewsPath(project: string, file: string): string | null {
+  if (!file || safeFileName(file) !== file) return null;
+  const folder = join(sourceRoot(project, "models"), file);
+  return existsSync(folder) && statSync(folder).isDirectory() ? join(folder, VIEWS_FILE) : null;
+}
+export function readModelViews(project: string, file: string): SavedView[] {
+  const path = viewsPath(project, file);
+  return path ? sanitizeViews(readJson(path)?.views) : [];
+}
+export function writeModelViews(project: string, file: string, views: unknown, backupDir: string): SavedView[] {
+  const path = viewsPath(project, file);
+  if (!path) throw new Error(`No model ${file} in Cartographer/models.`);
+  const clean = sanitizeViews(views);
+  backupFile(backupDir, project, path);
+  writeJson(path, { views: clean });
+  return clean;
 }

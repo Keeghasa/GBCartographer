@@ -6,9 +6,10 @@
  * console's own.
  */
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Box, Camera as CameraIcon, Download, FolderInput, ImagePlus, Trash2 } from "lucide-react";
+import { BookmarkPlus, Box, Camera as CameraIcon, Download, FolderInput, ImagePlus, Trash2, X } from "lucide-react";
 import { toRgba } from "../paint";
-import { Button, Dialog, IconButton, Segmented, Slider, Switch } from "../ui/kit";
+import { Button, Dialog, IconButton, Segmented, Slider, Switch, usePrompt } from "../ui/kit";
+import { isTurned, sanitizeViews, withView, type SavedView } from "./snapshotViews";
 import type { ShotSettings, Stage } from "./snapshot3d";
 import { SourceShelf, storeSources, type SourceEntry } from "./SourceShelf";
 import { shotName } from "./shotName";
@@ -133,6 +134,51 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
   const rolled = useRef(0);
   // Flat lens (the author, 2026-11-02): no perspective, for top-down and isometric art; scroll still zooms.
   const [ortho, setOrtho] = useState(false);
+  // Saved views (the author, 2026-11-02): a project model's in its folder's views.json, the others in this browser.
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [prompt, ask] = usePrompt();
+  const viewsHome: { file: string } | { local: string } = source && source.startsWith("project:") && projectName ? { file: source.slice("project:".length) } : { local: `gbc.snapshot.views.${source ?? `loose:${model}`}` };
+  const viewsKey = "file" in viewsHome ? `project:${viewsHome.file}` : viewsHome.local;
+  useEffect(() => {
+    let gone = false;
+    if ("file" in viewsHome) {
+      void fetch(`./__cartographer/model-views?${new URLSearchParams({ file: viewsHome.file })}`, { cache: "no-cache" }).then((response) => response.json())
+        .then((body: { views?: unknown }) => { if (!gone) setViews(sanitizeViews(body.views)); }).catch(() => { if (!gone) setViews([]); });
+    } else {
+      let stored: unknown = null;
+      try { stored = JSON.parse(localStorage.getItem(viewsHome.local) ?? "null"); } catch { /* none */ }
+      setViews(sanitizeViews(stored));
+    }
+    return () => { gone = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewsKey]);
+  async function keepViews(next: SavedView[]) {
+    if ("file" in viewsHome) {
+      try {
+        const response = await fetch(`./__cartographer/model-views?${new URLSearchParams({ file: viewsHome.file })}`, { method: "POST", body: JSON.stringify({ views: next }) });
+        const body = await response.json() as { views?: unknown; error?: string };
+        if (!response.ok) throw new Error(body.error ?? response.statusText);
+        setViews(sanitizeViews(body.views));
+      } catch (error) { say(`Could not keep the view in the project: ${(error as Error).message}`); }
+    } else {
+      setViews(next);
+      try { localStorage.setItem(viewsHome.local, JSON.stringify(next)); } catch { /* storage off: kept until the window closes */ }
+    }
+  }
+  async function saveView() {
+    if (!stage.current) return;
+    const name = await ask({ title: "Save this view", label: "Name", hint: `Comes back to this angle, zoom, lens and turn for ${model}. A taken name is replaced.`, placeholder: "Front, Isometric, Top-down…", initial: `View ${views.length + 1}`, confirm: "Save view" });
+    if (name && stage.current) await keepViews(withView(views, stage.current.getView(name, fov)));
+  }
+  function goTo(view: SavedView) {
+    if (!stage.current) return;
+    // A turned model needs Free rotate on (turning it off sets the model back).
+    const turned = isTurned(view);
+    if (turned !== free) { setFree(turned); stage.current.setFree(turned); }
+    setRoll(0); rolled.current = 0;
+    setOrtho(view.ortho); setFov(Math.round(view.fov));
+    stage.current.setView(view);
+  }
   const [, setTick] = useState(0);
   const settings: ShotSettings = { ...SIZES[size], key, fill, rim, rig, fov, brightness, contrast, dither, outline, sprite: size === "sprite", background };
   const shades = useRef<Uint8Array | null>(null);
@@ -258,6 +304,16 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
                 <Button onClick={() => { stage.current?.resetTurn(); setRoll(0); rolled.current = 0; }}>Reset turn</Button>
               </> : <span className="k-muted k-xs">Off: the model turns like a turntable (up and down stop at the poles)</span>}
             </div>
+            <div className="sw-head sw-views">
+              <span className="k-muted k-xs" title={"file" in viewsHome ? `Kept in ${projectName} (Cartographer/models/${viewsHome.file}/views.json)` : "Kept in this browser"}>Views</span>
+              {views.map((view) => (
+                <span key={view.name} className="sw-view">
+                  <Button size="sm" onClick={() => goTo(view)}>{view.name}{view.ortho ? " · flat" : ""}</Button>
+                  <IconButton label={`Delete the view ${view.name}`} size="sm" onClick={() => void keepViews(views.filter((item) => item.name !== view.name))}><X /></IconButton>
+                </span>
+              ))}
+              <Button size="sm" icon={<BookmarkPlus />} onClick={() => void saveView()}>Save view</Button>
+            </div>
             <div className="sw-frame"><canvas ref={print} className="sw-print" style={{ aspectRatio: `${settings.width} / ${settings.height}` }} title="Drag to turn the model, scroll to zoom" /></div>
             <div className="sw-head"><span className="k-muted k-xs">{free ? "Drag to turn on any axis · Shift-drag to roll · scroll to zoom · right-drag to move" : "Drag the print to turn the model · scroll to zoom"}</span><Button variant="primary" icon={<CameraIcon />} onClick={take}>Take picture</Button></div>
           </div>
@@ -282,6 +338,7 @@ export function SnapshotWindow({ onClose, onTake, onSend, onExport, projectName,
         </section>
       </div>
       </div>
+      {prompt}
     </Dialog>
   );
 }

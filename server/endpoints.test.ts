@@ -440,6 +440,23 @@ describe("stamps", () => {
   });
 });
 
+describe("GB Snapshot's saved views", () => {
+  it("keeps a project model's views in views.json beside it, only well-formed ones, and refuses other folders", async () => {
+    expect((await fetch(`${base}/source?kind=models&name=crate.glb`, { method: "POST", body: Buffer.from("glTF") })).status).toBe(200);
+    const view = { name: "Iso", position: [1, 1, 1], target: [0, 0, 0], zoom: 2, ortho: true, fov: 35, pivot: [0, 0, 0, 1] };
+    const save = (file: string, views: unknown[]) => fetch(`${base}/model-views?file=${file}`, { method: "POST", body: JSON.stringify({ views }) });
+    expect(await json(await save("crate", [view, { name: "broken" }]))).toEqual({ ok: true, views: [view] });
+    expect(JSON.parse(readFileSync(join(project, "Cartographer/models/crate/views.json"), "utf8"))).toEqual({ views: [view] });
+    expect(await json(await fetch(`${base}/model-views?file=crate`))).toEqual({ ok: true, views: [view] });
+    expect((await save("..", [view])).status).toBe(400);
+    expect((await save("nope", [view])).status).toBe(400);
+    // The model's files listed on the shelf don't include it, and taking the model out takes it to the backups.
+    expect((await json<{ sources: { files: string[] }[] }>(await fetch(`${base}/sources?kind=models`))).sources[0].files).toEqual(["crate.glb"]);
+    await fetch(`${base}/source?kind=models&file=crate`, { method: "DELETE" });
+    expect(existsSync(join(project, "Cartographer/models/crate"))).toBe(false);
+  });
+});
+
 describe("palette usage", () => {
   it("lists each palette's uses by scene and default, inherited blanks, and palettes with the same colors", async () => {
     const result = await json<{ palettes: { id: string; uses: { kind: string; slot: number; scene: string | null; inherited?: boolean }[]; sameColors: string[] }[] }>(await fetch(`${base}/palette-usage`));
