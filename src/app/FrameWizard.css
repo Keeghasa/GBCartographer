@@ -1,0 +1,10 @@
+/* The UI frame wizard: settings on the left, the Game Boy screen with the dialogue box filling the rest. */
+.fw { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--k-4); height: 100%; min-height: 0; }
+.fw-controls { overflow: auto; min-height: 0; padding: 0 6px 12px 0; gap: 12px; }
+.fw-controls > * { flex: none; }
+.fw-text { width: 100%; resize: vertical; }
+.fw-tile { width: 72px; height: 72px; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 0 0 1px var(--k-edge-2); }
+.fw-stage { display: flex; flex-direction: column; gap: var(--k-2); min-width: 0; min-height: 0; }
+.fw-stage > .k-row { flex-wrap: wrap; }
+.fw-screen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; container-type: size; }
+.fw-screen canvas { width: min(100cqw, 100cqh * 160 / 144); aspect-ratio: 160 / 144; image-rendering: pixelated; }
