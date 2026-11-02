@@ -219,25 +219,25 @@ export function toRgba(pixels: Uint8Array, cells: Cells, width: number, palettes
 }
 
 /**
- * The time-of-day letters: D dawn, S sunset, N night, and (the author, 2026-11-02: "D, S, N, U, C") U underwater and
+ * The time-of-day letters: M morning (D dawn until 2026-11-02: people read it as Day), S sunset, N night, and (the author, 2026-11-02: "D, S, N, U, C") U underwater and
  * C cave dark. The palette as painted is the day.
  */
-export type TimeLetter = "D" | "N" | "S" | "U" | "C";
+export type TimeLetter = "M" | "N" | "S" | "U" | "C";
 /** The letters in the order they're listed and played. */
-export const TIME_LETTERS: readonly TimeLetter[] = ["D", "S", "N", "U", "C"];
+export const TIME_LETTERS: readonly TimeLetter[] = ["M", "S", "N", "U", "C"];
 
 /**
- * A time-of-day version of a palette (the DWC convention: the base name, a space, then D for dawn, N for night or S
+ * A time-of-day version of a palette (the DWC convention: the base name, a space, then M for morning, N for night or S
  * for sunset; U underwater and C cave dark since 2026-11-02), or null. Events switch these in, so they may be unused,
  * and night, sunset, underwater and cave ones are meant to be dim.
  */
 export function timeVariant(name: string): { base: string; variant: TimeLetter } | null {
-  const match = /^(.+) ([DNSUC])$/.exec(name.trim());
+  const match = /^(.+) ([MNSUC])$/.exec(name.trim());
   return match ? { base: match[1], variant: match[2] as TimeLetter } : null;
 }
 
 /**
- * The slot a palette outside the eight saves as: a time-of-day version ("<base> D", "<base> N", "<base> S") takes
+ * The slot a palette outside the eight saves as: a time-of-day version ("<base> M", "<base> N", "<base> S") takes
  * its base palette's slot when the base is in the slots, else -1, as does any other palette. Numbers in palette names
  * are only labels for the reader (the author, 2026-10-10): they never pick a slot. `slotNames` are the eight slot
  * palettes' names.
@@ -249,7 +249,7 @@ export function namedSlot(name: string, slotNames: readonly (string | undefined)
 
 /**
  * The slot each palette saves as (palette number, 1-based → slot 0–7): one of the eight slots, or with Time-of-day
- * palettes on (`named`), a D / N / S version takes its base palette's. A palette not in the map isn't loaded into
+ * palettes on (`named`), an M / N / S version takes its base palette's. A palette not in the map isn't loaded into
  * the slots: Save leaves its tiles' slots as they are, so the palette brush won't paint with it (2026-10-12).
  */
 export function paletteSlots(palettes: readonly { id?: string; name: string }[], slots: readonly string[], named: boolean): Map<number, number> {
@@ -790,7 +790,7 @@ const fromHsl = (h: number, s: number, l: number): string => {
 const pullHue = (from: number, to: number, amount: number) => { const turn = ((to - from + 540) % 360) - 180; return (from + turn * amount + 360) % 360; };
 
 /**
- * Time-of-day variants of a day palette, as a starting point: D (dawn) cooler and lilac, N dark and blue, S warm and
+ * Time-of-day variants of a day palette, as a starting point: M (morning) cooler and lilac, N dark and blue, S warm and
  * saturated, U (underwater) blue-green and softer, C (cave) dark and grey. Modeled on how the author's DWC set's D, N and S palettes differ from their base palettes.
  */
 export function paletteVariant(colors: readonly string[], variant: TimeLetter): string[] {
@@ -801,7 +801,7 @@ export function paletteVariant(colors: readonly string[], variant: TimeLetter): 
     if (variant === "U") return fromHsl(pullHue(h, 185, 0.6), Math.min(0.85, s * 0.7 + 0.12), 0.12 + l * 0.68);
     // Cave dark (2026-11-02): much darker and greyer; the lightest shade is dimmed the most so nothing glows.
     if (variant === "C") return fromHsl(pullHue(h, 230, 0.25), s * 0.3, l * (at === 0 ? 0.42 : 0.5));
-    if (variant === "D") return darkest ? fromHsl(pullHue(h, 248, 0.7), Math.min(1, s * 0.9 + 0.1), l * 0.9 + 0.04) : fromHsl(at === 0 ? pullHue(h, 25, 0.3) : pullHue(h, 300, 0.45), s * 0.65, Math.min(0.95, l * 1.05));
+    if (variant === "M") return darkest ? fromHsl(pullHue(h, 248, 0.7), Math.min(1, s * 0.9 + 0.1), l * 0.9 + 0.04) : fromHsl(at === 0 ? pullHue(h, 25, 0.3) : pullHue(h, 300, 0.45), s * 0.65, Math.min(0.95, l * 1.05));
     // Night: lights go grey (the DWC night palettes keep color only in their darks), everything about half as light.
     if (variant === "N") return fromHsl(pullHue(h, 240, 0.55), Math.min(1, s * (0.15 + 0.3 * at)), l * 0.5);
     return fromHsl(pullHue(h, 15, 0.45), Math.min(0.95, s * 1.25 + 0.08), l * 0.8);

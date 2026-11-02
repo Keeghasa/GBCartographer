@@ -59,13 +59,13 @@ export function PicturePane({ time, onTime, playing, onPlaying, timesAvailable, 
         <span className="k-label">Tile budget</span>
         <Segmented fill size="sm" label="Tile budget" value={budget.id as string} onChange={onBudget} options={BUDGETS.map((item) => ({ value: item.id, label: `${item.id === "colorOnly" ? "Color" : "Mono"} · ${item.limit}`, title: item.label }))} />
       </section>
-      <section className="app-section" title="The picture with each palette's dawn, sunset or night version (names ending in D, S or N), fading between them. The palettes as painted are the day. Nothing is saved.">
+      <section className="app-section" title="The picture with each palette's morning, sunset or night version (names ending in M, S or N), fading between them. The palettes as painted are the day. Nothing is saved.">
         <span className="k-label">Time of day{timesAvailable ? null : <span className="k-muted"> · no versions yet</span>}</span>
         <div className="k-row">
           <Segmented fill size="sm" label="Time of day" value={time} onChange={(key) => onTime(key as TimeKey)} options={TIMES.map(({ key, name }) => ({ value: key, label: name, disabled: !timesAvailable && key !== "day" }))} />
-          <IconButton size="sm" label={playing ? "Stop" : "Play a day (dawn, day, sunset, night)"} pressed={playing} disabled={!timesAvailable} onClick={() => onPlaying(!playing)}>{playing ? <Pause /> : <Play />}</IconButton>
+          <IconButton size="sm" label={playing ? "Stop" : "Play a day (morning, day, sunset, night)"} pressed={playing} disabled={!timesAvailable} onClick={() => onPlaying(!playing)}>{playing ? <Pause /> : <Play />}</IconButton>
         </div>
-        {!timesAvailable && <span className="k-muted k-xs">Make dawn, sunset and night versions with the Dawn, sunset and night wizard.</span>}
+        {!timesAvailable && <span className="k-muted k-xs">Make morning, sunset and night versions with the Morning, sunset and night wizard.</span>}
       </section>
       <section className="app-section" title="How the picture shows while you paint, like a real Game Boy screen. Never saved.">
         <span className="k-label">Screen</span>

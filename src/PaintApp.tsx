@@ -175,7 +175,7 @@ export default function PaintApp() {
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [wizard, setWizard] = useState<"dns" | "paletteSet" | "budget" | "checkup" | "frame" | "room" | GeneratorMode | null>(null);
-  /** A wizard waiting for a project picture with palette slots to open (Dawn, sunset and night picked with none open). */
+  /** A wizard waiting for a project picture with palette slots to open (Morning, sunset and night picked with none open). */
   const [wizardAfterOpen, setWizardAfterOpen] = useState<"dns" | null>(null);
   const [stampSave, setStampSave] = useState<{ hint: string; resolve: (save: StampSave | null) => void } | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
@@ -217,7 +217,7 @@ export default function PaintApp() {
   const fontSheets = useRef(new Map<string, FontSheet>());
   /** The selection's right-click menu: use or save it as a stamp, copy. */
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number } | null>(null);
-  /** Time-of-day versions ("DWC-2-Computer D") save as their base palette's slot when the base is in the slots. */
+  /** Time-of-day versions ("DWC-2-Computer M") save as their base palette's slot when the base is in the slots. */
   const [namedSlots, setNamedSlots] = useState<boolean>(() => readStored(NAMED_SLOTS_KEY, false));
   const namedSlotsRef = useRef(namedSlots);
   namedSlotsRef.current = namedSlots;
@@ -265,7 +265,7 @@ export default function PaintApp() {
   const merged = doc?.keyGreen && markMerged ? MERGED_MARK : undefined;
   const shown = (colors: readonly string[]) => doc?.keyGreen ? spriteShades(colors, merged) : colors;
   const baseColors = doc?.keyGreen ? spriteBase(tintColors, merged) : tintColors;
-  // The Picture tab's time of day: each palette drawn as its dawn / sunset / night version (view only).
+  // The Picture tab's time of day: each palette drawn as its morning / sunset / night version (view only).
   const timeOfDay = useTimeOfDay();
   const luts = [baseColors, ...docPalettes.map((palette) => shown(timeColors(palette, palettes, timeOfDay.view)))].map((colors) => shadeLut(colors));
   const picked = activePalette ? docPalettes[activePalette - 1] : undefined;
@@ -2865,10 +2865,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   const needProject = noProject ? "Open a GB Studio project first" : null;
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
-    { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
+    { thumb: "dns", name: "Morning, sunset and night", icon: <PxCloudMoon size={15} />, about: "Morning, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
       blocked: sceneOpen || project ? null : "Open a project background first",
       needs: sceneOpen ? undefined : "Click, then pick a background from the project list: it starts on that one",
-      onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Dawn, sunset and night starts on it"); } } },
+      onStart: () => { if (sceneOpen) setWizard("dns"); else { setProjectKind("backgrounds"); setWizardAfterOpen("dns"); say("Pick a background: Morning, sunset and night starts on it"); } } },
     { thumb: "paletteSet", name: "Palette set", icon: <SwatchBook />, about: "Eight palettes from a Lospec palette, any picture or the library, grouped lightest first.", blocked: needProject, onStart: () => setWizard("paletteSet") },
     { thumb: "snapshot", name: "GB Snapshot", icon: <Box />, about: "Turn a 3D model (.glb, .gltf or .obj), light it, and take its picture in the four shades: a screen, a smaller picture or a sprite.", blocked: null, onStart: () => setShowSnapshot(true) },
     { thumb: "budget", name: "Tile budget fixer", icon: <PhPiggyBank size={15} />, about: "Get the open picture under GB Studio's tile limit, one merge of near-twin tiles at a time.", blocked: doc ? null : "Open a picture first", onStart: () => setWizard("budget") },

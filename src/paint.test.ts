@@ -37,7 +37,7 @@ describe("GB Cartographer pixels", () => {
   it("makes D, N and S variants of a palette: lilac, dark and blue, warm", () => {
     const base = ["#EFBD7B", "#C5844A", "#732121", "#211029"];
     const light = (hex: string) => hexRgb(hex).reduce((sum, value) => sum + value, 0);
-    const night = paletteVariant(base, "N"), sunset = paletteVariant(base, "S"), dusk = paletteVariant(base, "D");
+    const night = paletteVariant(base, "N"), sunset = paletteVariant(base, "S"), dusk = paletteVariant(base, "M");
     for (const variant of [night, sunset, dusk]) expect(variant).toHaveLength(4);
     night.forEach((color, at) => expect(light(color)).toBeLessThan(light(base[at])));
     // Night pulls toward blue: more blue than red in the light colors.
@@ -151,7 +151,7 @@ describe("GB Cartographer pixels", () => {
 
   it("gives a time-of-day version its base palette's slot, and never reads numbers in names", () => {
     const slots = ["DWC-1-Cliffs", "DWC-4-Foliage", undefined, "Town"];
-    expect(namedSlot("DWC-1-Cliffs D", slots)).toBe(0);
+    expect(namedSlot("DWC-1-Cliffs M", slots)).toBe(0);
     expect(namedSlot("DWC-4-Foliage N", slots)).toBe(1);
     expect(namedSlot("Town S", slots)).toBe(3);
     // The base isn't in the slots: no slot, whatever number the name has.
@@ -316,7 +316,7 @@ describe("GB Cartographer pixels", () => {
 describe("timeVariant", () => {
   it("reads the DWC day / night / sunset naming", () => {
     expect(timeVariant("DWC-2-Computer N")).toEqual({ base: "DWC-2-Computer", variant: "N" });
-    expect(timeVariant("WIN-1-Snow D")).toEqual({ base: "WIN-1-Snow", variant: "D" });
+    expect(timeVariant("WIN-1-Snow M")).toEqual({ base: "WIN-1-Snow", variant: "M" });
     expect(timeVariant("DWC-SP6-Fire")).toBeNull();
     expect(timeVariant("Sunset")).toBeNull();
     expect(timeVariant("Lake U")).toEqual({ base: "Lake", variant: "U" });

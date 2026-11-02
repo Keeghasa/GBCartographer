@@ -1,8 +1,8 @@
 /**
- * Dawn, sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one
- * go. The palettes as painted are the day (the author, 2026-10-10); the versions are Dawn (D), Sunset (S) and Night
+ * Morning, sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one
+ * go. The palettes as painted are the day (the author, 2026-10-10); the versions are Morning (M; Dawn D until 2026-11-02), Sunset (S) and Night
  * (N), and since 2026-11-02 Underwater (U) and Cave dark (C). One page (the author, 2026-10-14: no steps): the palettes and times on the left, the versions with a strength
- * and the open picture under each time on the right, Add in the footer. Versions are named "<base> D", "<base> S" and "<base> N", so with
+ * and the open picture under each time on the right, Add in the footer. Versions are named "<base> M", "<base> S" and "<base> N", so with
  * Time-of-day palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
  */
 import { Check, Moon, Mountain, Pause, Play, Sunrise, Sunset, Waves } from "lucide-react";
@@ -37,7 +37,7 @@ export interface DnsWizardProps {
 type Time = TimeLetter;
 // Underwater and Cave dark (the author, 2026-11-02: "D, S, N, U, C"): off at first, named "<base> U" / "<base> C".
 const TIMES: { key: Time; name: string; icon: ReactNode; hint: string }[] = [
-  { key: "D", name: "Dawn", icon: <Sunrise size={14} />, hint: "Cool and lilac" },
+  { key: "M", name: "Morning", icon: <Sunrise size={14} />, hint: "Cool and lilac" },
   { key: "S", name: "Sunset", icon: <Sunset size={14} />, hint: "Warm and saturated" },
   { key: "N", name: "Night", icon: <Moon size={14} />, hint: "Dark and blue" },
   { key: "U", name: "Underwater", icon: <Waves size={14} />, hint: "Blue-green and soft" },
@@ -93,7 +93,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate, 
 
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(bases.usable.map((base) => base.id)));
   // Remembered per project, with presets (the author, 2026-11-02); which palettes are picked follows the picture.
-  const ws = useWizardSettings("dns", { times: ["D", "S", "N"] as Time[], strength: 100 });
+  const ws = useWizardSettings("dns", { times: ["M", "S", "N"] as Time[], strength: 100 });
   const times = useMemo(() => new Set<Time>(ws.settings.times), [ws.settings.times]);
   const setTimes = (next: Set<Time>) => ws.set({ times: [...next] });
   const [strength, setStrength] = ws.field("strength");
@@ -239,7 +239,7 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate, 
       <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button></>;
 
   return (
-    <WizardPage tools={ws.bar} title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
+    <WizardPage tools={ws.bar} title="Morning, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
       line={["Your palettes are the day", `${plural(picked.length, "palette")} · ${pickedTimes.map((time) => time.name).join(", ") || "no times"} · ${plural(toAdd.length, "new palette")}`]}>
       <div className="wp-cols">{palettesStep}{versionsStep}</div>
     </WizardPage>

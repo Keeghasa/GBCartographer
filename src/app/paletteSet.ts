@@ -146,7 +146,7 @@ export interface LibrarySet { id: string; label: string; base: string; palettes:
 
 /**
  * The bundled library as sets to pick from: a small collection whole (eight or fewer), a big one by its name
- * prefixes ("DWC-1-Cliffs" … "DWC-8-UI" make the DWC set). Time-of-day variants ("… D", "… N", "… S", U, C) are left
+ * prefixes ("DWC-1-Cliffs" … "DWC-8-UI" make the DWC set). Time-of-day variants ("… M", "… N", "… S", U, C) are left
  * out, since they are versions of a set's palettes rather than members of it.
  */
 export function librarySets(collections: readonly { name: string; palettes: readonly { name: string; colors: readonly string[] }[] }[]): LibrarySet[] {

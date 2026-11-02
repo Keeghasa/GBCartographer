@@ -1,17 +1,17 @@
 /**
- * Time of day preview (roadmap 53, the author's pick 2026-10-10): shows the open picture at dawn, sunset or night by
- * drawing each palette as its "<base> D", "<base> S" or "<base> N" version from the project, fading between them.
+ * Time of day preview (roadmap 53, the author's pick 2026-10-10): shows the open picture in the morning, at sunset or night by
+ * drawing each palette as its "<base> M", "<base> S" or "<base> N" version from the project, fading between them.
  * The palette as painted is the day. Only the view changes: nothing is written, and painting still uses the day
  * palettes.
  */
 import { useEffect, useRef, useState } from "react";
 import { hexRgb, timeVariant, TIME_LETTERS } from "../paint";
 
-export type TimeKey = "day" | "D" | "S" | "N" | "U" | "C";
+export type TimeKey = "day" | "M" | "S" | "N" | "U" | "C";
 /** Underwater and Cave (the author, 2026-11-02) are places rather than times: they show, but a played day skips them. */
-export const TIMES: { key: TimeKey; name: string }[] = [{ key: "day", name: "Day" }, { key: "D", name: "Dawn" }, { key: "S", name: "Sunset" }, { key: "N", name: "Night" }, { key: "U", name: "Water" }, { key: "C", name: "Cave" }];
+export const TIMES: { key: TimeKey; name: string }[] = [{ key: "day", name: "Day" }, { key: "M", name: "Morning" }, { key: "S", name: "Sunset" }, { key: "N", name: "Night" }, { key: "U", name: "Water" }, { key: "C", name: "Cave" }];
 /** The order a day plays in. */
-const PLAY: TimeKey[] = ["D", "day", "S", "N"];
+const PLAY: TimeKey[] = ["M", "day", "S", "N"];
 const FADE_MS = 700, HOLD_MS = 1800;
 
 export interface TimeView { from: TimeKey; to: TimeKey; mix: number }
@@ -54,7 +54,7 @@ const blend = (a: readonly string[], b: readonly string[], mix: number) => a.map
   return `#${x.map((value, channel) => Math.round(value + (y[channel] - value) * mix).toString(16).padStart(2, "0")).join("")}`;
 });
 
-/** A palette's colors at this time of day: its D / S / N version from `all` when there is one, else its own. */
+/** A palette's colors at this time of day: its M / S / N version from `all` when there is one, else its own. */
 export function timeColors(palette: { name: string; colors: readonly string[] }, all: readonly { name: string; colors: readonly string[] }[], view: TimeView): readonly string[] {
   if (view.from === "day" && view.to === "day") return palette.colors;
   const base = timeVariant(palette.name)?.base ?? palette.name;
@@ -62,7 +62,7 @@ export function timeColors(palette: { name: string; colors: readonly string[] },
   return view.mix >= 1 ? at(view.to) : blend(at(view.from), at(view.to), view.mix);
 }
 
-/** How many of these palettes have at least one dawn, sunset, night, underwater or cave version in `all`. */
+/** How many of these palettes have at least one morning, sunset, night, underwater or cave version in `all`. */
 export function palettesWithTimes(list: readonly { name: string }[], all: readonly { name: string }[]): number {
   const names = new Set(all.map((item) => item.name));
   return list.filter((palette) => { const base = timeVariant(palette.name)?.base ?? palette.name; return TIME_LETTERS.some((key) => names.has(`${base} ${key}`)); }).length;

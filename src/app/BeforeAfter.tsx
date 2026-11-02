@@ -1,7 +1,7 @@
 /**
  * Before / after (the author, 2026-11-02: "only if it makes sense"): two pictures of the same size, one over the
  * other, and a slider that wipes from the before to the after. Used where a wizard has a real "before": Picture to
- * background (your picture framed vs. the result), Tile budget fixer (as opened vs. now), Dawn, sunset and night
+ * background (your picture framed vs. the result), Tile budget fixer (as opened vs. now), Morning, sunset and night
  * (day vs. a picked time).
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";

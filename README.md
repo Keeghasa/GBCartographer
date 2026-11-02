@@ -39,7 +39,7 @@ The code is free: [build it yourself](#running-it) (see [Install](#install)).
   the eight slots: the scene's palette list, or the project's default palettes. Right-click a slot to fill it with
   any project palette, rename or duplicate a palette from the same menu, or copy one background's eight palettes
   onto another's scene. The palette brush only paints with palettes that are in the slots. The optional **Time-of-day palettes**
-  switch lets dawn / sunset / night versions (`Forest Trees D`, `S`, `N`) save as their base palette's slot.
+  switch lets morning / sunset / night versions (`Forest Trees M`, `S`, `N`) save as their base palette's slot.
 - **A palette manager.** The project's palettes, a bundled library (Game Boy classics and the author's own CC0
   sets) and your own, with a live preview of the open picture; add palettes to the project or edit its own, and
   see which scenes use each one (unused and duplicate palettes are marked, and an unused one can be taken out);
@@ -49,7 +49,7 @@ The code is free: [build it yourself](#running-it) (see [Install](#install)).
   and source, plus links to Game Boy art on itch.io and OpenGameArt. And **Art**: 65 placeholder graphics (CC0) to
   add to a project and paint over in your own way: walking characters, things and animated things, emotes, avatars,
   window frames and cursors, tile sheets (with tall trees), whole scenes, a village cut into Map Room screens, a template for every auto-tile, and the author's **Outdoor pieces** as auto-tiles: a mound ledge that wraps any plateau you paint, pine and round forests that fill with a clump and ring themselves with single trees, and water in three animation frames whose shores fit (RPG Maker's 2 × 3 water layout, 16 px cells).
-- **Wizards and generators.** A picture to a background, dawn / sunset / night versions of a scene's palettes (as painted, they're the day), a
+- **Wizards and generators.** A picture to a background, morning / sunset / night versions of a scene's palettes (as painted, they're the day), a
   palette set from Lospec, any picture or the library, a new background with its palettes, a tile budget fixer, a
   project check-up, and live cave / dungeon and overworld generators that paint placeholder maps in your choice of
   palettes, drawn with your own auto-tile stamps if you like (the cave's walls and floor, the overworld's shores and roads),
@@ -77,7 +77,7 @@ The code is free: [build it yourself](#running-it) (see [Install](#install)).
   of which tiles repeat), an overlay shows where each 160 × 144 screen falls, and Project health lists what GB
   Studio will trip on (sizes, tile budgets, missing sidecars, palettes) with a click to each one.
 - **Screen looks and time of day.** See a picture as it shows on a Game Boy, a Game Boy Pocket or a Game Boy Color
-  screen, or at dawn, sunset or night (its palettes' D, S and N versions, fading between them); the file stays as it is.
+  screen, or in the morning, at sunset or at night (its palettes' M, S and N versions, fading between them); the file stays as it is.
 - **Sprite frames and font samples.** A sprite sheet shows its animations' frames above it (and plays them at GB
   Studio's speed, or walking over one of the project's backgrounds); a font sheet shows a sample sentence set in
   its own glyphs.

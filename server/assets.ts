@@ -1007,7 +1007,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   // Time-of-day versions (DWC-2-Computer N) of a palette the project has: unused is expected (events switch them
   // in) and night or sunset ones are meant to be dim, so they skip those two checks; one note counts them.
   let variants = 0;
-  // Same-color pairs are gathered first, so a palette and its dawn / sunset / night versions make one note.
+  // Same-color pairs are gathered first, so a palette and its morning / sunset / night versions make one note.
   const twins: { name: string; twin: string[] }[] = [];
   for (const entry of usage) {
     const palette = byId.get(entry.id);
@@ -1029,14 +1029,14 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
       detail: (close.map(({ a, b, delta }) => `colors ${a + 1} and ${b + 1} ${delta === 0 ? "are the same color" : "are hard to tell apart"}`).join("; ") + ".").replace(/^c/, "C"),
       tip: close.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1}: difference ${delta}`).join(" · ") + " (12 or more tells apart well)" });
   }
-  // One note per family: "A has B's colors", and when their dawn / sunset / night versions match too, it says so.
+  // One note per family: "A has B's colors", and when their morning / sunset / night versions match too, it says so.
   const family = (name: string) => { const variant = timeVariant(name); return variant && names.has(variant.base) ? variant.base : name; };
   const groups = new Map<string, { name: string; twin: string[] }[]>();
   for (const pair of twins) {
     const key = `${family(pair.name)}\u0000${pair.twin.map(family).join(",")}`;
     groups.set(key, [...groups.get(key) ?? [], pair]);
   }
-  const TIME_WORDS: Record<string, string> = { D: "dawn", S: "sunset", N: "night", U: "underwater", C: "cave" };
+  const TIME_WORDS: Record<string, string> = { M: "morning", S: "sunset", N: "night", U: "underwater", C: "cave" };
   for (const group of groups.values()) {
     const lead = group.find((pair) => family(pair.name) === pair.name) ?? group[0];
     const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is TimeLetter => Boolean(time)).sort((a, b) => "DSNUC".indexOf(a) - "DSNUC".indexOf(b));
@@ -1044,7 +1044,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
     const also = times.length ? ` Its ${words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0]} version${times.length === 1 ? "" : "s"} (${times.join(", ")}) match ${[...new Set(lead.twin.map(family))].join(", ")}'s too.` : "";
     issues.push({ level: "note", kind: "palettes", file: lead.name, title: "Same colors as another", detail: `The same four colors as ${lead.twin.join(", ")}.${also}` });
   }
-  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Dawn, sunset, night, underwater and cave versions (names ending in D, S, N, U or C) of the project's palettes: events switch them in, so being unused or dim is expected." });
+  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Morning, sunset, night, underwater and cave versions (names ending in M, S, N, U or C) of the project's palettes: events switch them in, so being unused or dim is expected." });
   const order = { problem: 0, warning: 1, note: 2 };
   issues.sort((a, b) => order[a.level] - order[b.level]);
   // Pictures GB Studio hasn't read yet: one note each when there are a few, one note for all of them past five.

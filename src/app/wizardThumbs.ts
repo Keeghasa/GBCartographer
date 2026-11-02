@@ -73,9 +73,9 @@ export function wizardThumb(id: WizardThumb, frame = 0, variant = 0): Generated 
     return out;
   }
   if (id === "dns") {
-    // The day going round (the author, 2026-10-14: a smooth loop): dawn → day → sunset → night → dawn, each frame's
+    // The day going round (the author, 2026-10-14: a smooth loop): morning → day → sunset → night → morning, each frame's
     // palette a blend of the two versions it lies between (the wizard itself makes only the four).
-    const [day, dawn, sunset, night] = (() => { const base = pick("DWC-1-Cliffs", "DWC-4-Foliage", "DWC-6-MauveBldg"); return [base, `${base} D`, `${base} S`, `${base} N`]; })().map(palette);
+    const [day, dawn, sunset, night] = (() => { const base = pick("DWC-1-Cliffs", "DWC-4-Foliage", "DWC-6-MauveBldg"); return [base, `${base} M`, `${base} S`, `${base} N`]; })().map(palette);
     const stops = [dawn, day, sunset, night], per = WIZARD_FRAMES.dns.count / stops.length;
     const blendAt = (phase: number) => {
       const at = ((phase % stops.length) + stops.length) % stops.length, from = stops[Math.floor(at)], to = stops[(Math.floor(at) + 1) % stops.length];
