@@ -83,3 +83,5 @@
 .sw-light--key::after { content: "K"; } .sw-light--fill::after { content: "F"; } .sw-light--rim::after { content: "R"; }
 .sw-free { justify-content: flex-start; }
 .sw-roll { flex: 1 1 160px; min-width: 160px; }
+.sw-views { justify-content: flex-start; flex-wrap: wrap; }
+.sw-view { display: inline-flex; align-items: center; }
