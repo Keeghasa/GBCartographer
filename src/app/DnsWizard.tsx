@@ -1,13 +1,13 @@
 /**
  * Dawn, sunset and night (W2, the author's pick 2026-10-10): time-of-day versions of a scene's slot palettes in one
  * go. The palettes as painted are the day (the author, 2026-10-10); the versions are Dawn (D), Sunset (S) and Night
- * (N). One page (the author, 2026-10-14: no steps): the palettes and times on the left, the versions with a strength
+ * (N), and since 2026-11-02 Underwater (U) and Cave dark (C). One page (the author, 2026-10-14: no steps): the palettes and times on the left, the versions with a strength
  * and the open picture under each time on the right, Add in the footer. Versions are named "<base> D", "<base> S" and "<base> N", so with
  * Time-of-day palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
  */
-import { Check, Moon, Sunrise, Sunset } from "lucide-react";
+import { Check, Moon, Mountain, Sunrise, Sunset, Waves } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
-import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba } from "../paint";
+import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba, type TimeLetter } from "../paint";
 import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
@@ -29,11 +29,14 @@ export interface DnsWizardProps {
   onCreate: (palettes: { name: string; colors: string[] }[]) => Promise<number>;
 }
 
-type Time = "D" | "S" | "N";
+type Time = TimeLetter;
+// Underwater and Cave dark (the author, 2026-11-02: "D, S, N, U, C"): off at first, named "<base> U" / "<base> C".
 const TIMES: { key: Time; name: string; icon: ReactNode; hint: string }[] = [
   { key: "D", name: "Dawn", icon: <Sunrise size={14} />, hint: "Cool and lilac" },
   { key: "S", name: "Sunset", icon: <Sunset size={14} />, hint: "Warm and saturated" },
   { key: "N", name: "Night", icon: <Moon size={14} />, hint: "Dark and blue" },
+  { key: "U", name: "Underwater", icon: <Waves size={14} />, hint: "Blue-green and soft" },
+  { key: "C", name: "Cave dark", icon: <Mountain size={14} />, hint: "Dark and grey" },
 ];
 
 interface Version { base: SlotPalette; time: Time; name: string; colors: string[]; exists: boolean; close: number }

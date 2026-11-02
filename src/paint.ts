@@ -219,12 +219,21 @@ export function toRgba(pixels: Uint8Array, cells: Cells, width: number, palettes
 }
 
 /**
- * A time-of-day version of a palette (the DWC convention: the base name, a space, then D for day, N for night or S
- * for sunset), or null. Events switch these in, so they may be unused, and night or sunset ones are meant to be dim.
+ * The time-of-day letters: D dawn, S sunset, N night, and (the author, 2026-11-02: "D, S, N, U, C") U underwater and
+ * C cave dark. The palette as painted is the day.
  */
-export function timeVariant(name: string): { base: string; variant: "D" | "N" | "S" } | null {
-  const match = /^(.+) ([DNS])$/.exec(name.trim());
-  return match ? { base: match[1], variant: match[2] as "D" | "N" | "S" } : null;
+export type TimeLetter = "D" | "N" | "S" | "U" | "C";
+/** The letters in the order they're listed and played. */
+export const TIME_LETTERS: readonly TimeLetter[] = ["D", "S", "N", "U", "C"];
+
+/**
+ * A time-of-day version of a palette (the DWC convention: the base name, a space, then D for dawn, N for night or S
+ * for sunset; U underwater and C cave dark since 2026-11-02), or null. Events switch these in, so they may be unused,
+ * and night, sunset, underwater and cave ones are meant to be dim.
+ */
+export function timeVariant(name: string): { base: string; variant: TimeLetter } | null {
+  const match = /^(.+) ([DNSUC])$/.exec(name.trim());
+  return match ? { base: match[1], variant: match[2] as TimeLetter } : null;
 }
 
 /**
@@ -782,12 +791,16 @@ const pullHue = (from: number, to: number, amount: number) => { const turn = ((t
 
 /**
  * Time-of-day variants of a day palette, as a starting point: D (dawn) cooler and lilac, N dark and blue, S warm and
- * saturated. Modeled on how the author's DWC set's D, N and S palettes differ from their base palettes.
+ * saturated, U (underwater) blue-green and softer, C (cave) dark and grey. Modeled on how the author's DWC set's D, N and S palettes differ from their base palettes.
  */
-export function paletteVariant(colors: readonly string[], variant: "D" | "N" | "S"): string[] {
+export function paletteVariant(colors: readonly string[], variant: TimeLetter): string[] {
   return colors.map((color, at) => {
     const [h, s, l] = toHsl(color);
     const darkest = at === colors.length - 1;
+    // Underwater (2026-11-02): a cool blue-green tint, a little darker, lower contrast (lights down, darks up a bit).
+    if (variant === "U") return fromHsl(pullHue(h, 185, 0.6), Math.min(0.85, s * 0.7 + 0.12), 0.12 + l * 0.68);
+    // Cave dark (2026-11-02): much darker and greyer; the lightest shade is dimmed the most so nothing glows.
+    if (variant === "C") return fromHsl(pullHue(h, 230, 0.25), s * 0.3, l * (at === 0 ? 0.42 : 0.5));
     if (variant === "D") return darkest ? fromHsl(pullHue(h, 248, 0.7), Math.min(1, s * 0.9 + 0.1), l * 0.9 + 0.04) : fromHsl(at === 0 ? pullHue(h, 25, 0.3) : pullHue(h, 300, 0.45), s * 0.65, Math.min(0.95, l * 1.05));
     // Night: lights go grey (the DWC night palettes keep color only in their darks), everything about half as light.
     if (variant === "N") return fromHsl(pullHue(h, 240, 0.55), Math.min(1, s * (0.15 + 0.3 * at)), l * 0.5);

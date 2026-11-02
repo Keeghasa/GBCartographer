@@ -47,6 +47,19 @@ describe("GB Cartographer pixels", () => {
     expect(dusk.every((color) => /^#[0-9A-F]{6}$/.test(color))).toBe(true);
   });
 
+  it("makes U and C variants: blue-green and softer, dark and grey", () => {
+    const base = ["#EFBD7B", "#C5844A", "#732121", "#211029"];
+    const light = (hex: string) => hexRgb(hex).reduce((sum, value) => sum + value, 0);
+    const water = paletteVariant(base, "U"), cave = paletteVariant(base, "C");
+    // Underwater: the lights cooler (blue-green above red), lower contrast end to end, a little darker at the top.
+    water.slice(0, 2).forEach((color) => { const [r, g, b] = hexRgb(color); expect(g + b).toBeGreaterThan(2 * r); });
+    expect(light(water[0]) - light(water[3])).toBeLessThan(light(base[0]) - light(base[3]));
+    expect(light(water[0])).toBeLessThan(light(base[0]));
+    // Cave: every shade much darker, the lightest well under half.
+    cave.forEach((color, at) => expect(light(color)).toBeLessThan(light(base[at]) * 0.75));
+    expect(light(cave[0])).toBeLessThan(light(base[0]) * 0.5);
+  });
+
   it("fills with patterns anchored to the picture", () => {
     const pixels = new Uint8Array(16);
     floodFill(pixels, 4, 4, 0, 0, 3, "checker");
@@ -306,6 +319,8 @@ describe("timeVariant", () => {
     expect(timeVariant("WIN-1-Snow D")).toEqual({ base: "WIN-1-Snow", variant: "D" });
     expect(timeVariant("DWC-SP6-Fire")).toBeNull();
     expect(timeVariant("Sunset")).toBeNull();
+    expect(timeVariant("Lake U")).toEqual({ base: "Lake", variant: "U" });
+    expect(timeVariant("Lake C")).toEqual({ base: "Lake", variant: "C" });
   });
 });
 

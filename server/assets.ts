@@ -12,7 +12,7 @@ import { deflateSync, inflateSync } from "node:zlib";
 import { OWN_FOLDER, backupFile, ownFolderReadme } from "./backups";
 import { decodeTileColors, encodeTileColors, resolveScenePaletteIds } from "../src/gb/gbstudio";
 import { decodePng, encodePng } from "../src/gb/png";
-import { GB_SHADES, KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, spriteBase, spriteShades, timeVariant, toRgba } from "../src/paint";
+import { GB_SHADES, KEY_GREEN, assignSlots, closeShades, countUniqueTiles, quantize, spriteBase, spriteShades, timeVariant, toRgba, type TimeLetter } from "../src/paint";
 
 /** The picture folders under assets/. Emotes are read like sprites (key green see-through); avatars and the UI
  * frame and cursor (assets/ui, no sidecars) like background tiles. Only backgrounds, sprites and tilesets carry palettes. */
@@ -971,15 +971,15 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
     const key = `${family(pair.name)}\u0000${pair.twin.map(family).join(",")}`;
     groups.set(key, [...groups.get(key) ?? [], pair]);
   }
-  const TIME_WORDS: Record<string, string> = { D: "dawn", S: "sunset", N: "night" };
+  const TIME_WORDS: Record<string, string> = { D: "dawn", S: "sunset", N: "night", U: "underwater", C: "cave" };
   for (const group of groups.values()) {
     const lead = group.find((pair) => family(pair.name) === pair.name) ?? group[0];
-    const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is "D" | "N" | "S" => Boolean(time)).sort((a, b) => "DSN".indexOf(a) - "DSN".indexOf(b));
+    const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is TimeLetter => Boolean(time)).sort((a, b) => "DSNUC".indexOf(a) - "DSNUC".indexOf(b));
     const words = times.map((time) => TIME_WORDS[time]);
     const also = times.length ? ` Its ${words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0]} version${times.length === 1 ? "" : "s"} (${times.join(", ")}) match ${[...new Set(lead.twin.map(family))].join(", ")}'s too.` : "";
     issues.push({ level: "note", kind: "palettes", file: lead.name, title: "Same colors as another", detail: `The same four colors as ${lead.twin.join(", ")}.${also}` });
   }
-  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Dawn, sunset and night versions (names ending in D, S or N) of the project's palettes: events switch them in, so being unused or dim is expected." });
+  if (variants) issues.push({ level: "note", kind: "palettes", title: `${variants} time-of-day palette${variants === 1 ? "" : "s"} not checked`, detail: "Dawn, sunset, night, underwater and cave versions (names ending in D, S, N, U or C) of the project's palettes: events switch them in, so being unused or dim is expected." });
   const order = { problem: 0, warning: 1, note: 2 };
   issues.sort((a, b) => order[a.level] - order[b.level]);
   // Pictures GB Studio hasn't read yet: one note each when there are a few, one note for all of them past five.
