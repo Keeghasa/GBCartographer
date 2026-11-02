@@ -5,7 +5,7 @@
  * and the open picture under each time on the right, Add in the footer. Versions are named "<base> D", "<base> S" and "<base> N", so with
  * Time-of-day palettes on, tiles painted with one save in their base's slot and GB Studio events can swap them in.
  */
-import { Check, Moon, Mountain, Sunrise, Sunset, Waves } from "lucide-react";
+import { Check, Moon, Mountain, Pause, Play, Sunrise, Sunset, Waves } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba, type TimeLetter } from "../paint";
 import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
@@ -120,6 +120,18 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
     return [{ key: "now", label: "Day (as painted)", rgba: draw(null) }, ...pickedTimes.map((time) => ({ key: time.key, label: time.name, rgba: draw(time.key) }))];
   }, [picture, versions, pickedTimes]);
 
+  // Play (the author, 2026-11-02): one big preview stepping through day and each picked time on a timer. It never
+  // starts by itself, so prefers-reduced-motion is respected; with reduced motion it steps more slowly.
+  const [playing, setPlaying] = useState(false);
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!playing || previews.length < 2) return;
+    const slow = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setInterval(() => setFrame((at) => (at + 1) % previews.length), slow ? 2500 : 1200);
+    return () => window.clearInterval(timer);
+  }, [playing, previews.length]);
+  const shown = previews[frame % Math.max(1, previews.length)];
+
   const toggle = <T,>(set: Set<T>, value: T, on: boolean) => { const next = new Set(set); if (on) next.add(value); else next.delete(value); return next; };
 
   const create = async () => {
@@ -184,7 +196,11 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
       <Field label={<>Strength <span className="k-muted">· {strength}%</span></>} hint="From a hint of the time of day to the full version"><Slider label="Strength" value={strength} onChange={setStrength} min={0} max={100} /></Field>
       {previews.length > 0 && picture && (
         <div className="k-stack k-stack--tight">
-          <h2 className="k-heading">Your picture</h2><span className="k-eyebrow">The open picture under each time</span>
+          <div className="k-row"><h2 className="k-heading">Your picture</h2><span className="k-spacer" />
+            {previews.length > 1 && <Button size="sm" aria-pressed={playing} title="Step the picture through day and each picked time" onClick={() => setPlaying(!playing)}>{playing ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Play the cycle</>}</Button>}
+          </div>
+          <span className="k-eyebrow">The open picture under each time</span>
+          {playing && shown && <figure className="dw-pic dw-pic--play" aria-live="polite"><figcaption className="k-muted k-xs">{shown.label}</figcaption><Pixels rgba={shown.rgba} width={picture.width} height={picture.height} /></figure>}
           <div className="dw-pics">{previews.map((preview) => (
             <figure key={preview.key} className="dw-pic"><figcaption className="k-muted k-xs">{preview.label}</figcaption><Pixels rgba={preview.rgba} width={picture.width} height={picture.height} /></figure>
           ))}</div>
