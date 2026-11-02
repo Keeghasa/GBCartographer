@@ -16,6 +16,7 @@ import { VISIONS, visionClashes, simulate, type Vision } from "./colorBlind";
 import { CloseWarning } from "./CloseWarning";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
 import { useWizardSettings } from "./useWizardSettings";
+import { SceneTarget, type SceneBackground } from "./SceneTarget";
 import "./PaletteSetWizard.css";
 
 export interface PaletteSetWizardProps {
@@ -27,7 +28,9 @@ export interface PaletteSetWizardProps {
   picture: { rgba: Uint8ClampedArray; width: number; height: number; name: string } | null;
   onClose: () => void;
   /** Adds the palettes to the project; with putInSlots also into slots 1…n of slotsWhere. Resolves to how many were written. */
-  onAddToProject: (palettes: { name: string; colors: string[] }[], putInSlots: boolean) => Promise<number>;
+  onAddToProject: (palettes: { name: string; colors: string[] }[], putInSlots: boolean, sendTo?: string) => Promise<number>;
+  /** The project's backgrounds, whose scene's slots can get the set too (SceneTarget). */
+  scenes?: readonly SceneBackground[];
   /** Adds them to "Mine" (the user's own palettes in this browser). */
   onAddToMine: (palettes: { name: string; colors: string[] }[]) => void;
 }
@@ -67,7 +70,8 @@ function Thumb({ picture }: { picture: Picture }) {
 
 const Strip = ({ colors }: { colors: readonly string[] }) => <div className="psw-strip">{colors.map((color, at) => <i key={at} style={{ background: color }} title={color} />)}</div>;
 
-export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, onAddToProject, onAddToMine }: PaletteSetWizardProps): JSX.Element {
+export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, onAddToProject, onAddToMine, scenes = [] }: PaletteSetWizardProps): JSX.Element {
+  const [sendTo, setSendTo] = useState("");
   // Remembered per project, with presets (the author, 2026-11-02): the source kind, the set and the colour-blind view.
   const ws = useWizardSettings("palette-set", { kind: "lospec" as SourceKind, vision: "typical" as "typical" | Vision, setId: SETS[0]?.id ?? "" }, { setId: SETS.map((set) => set.id) });
   const [kind, setKind] = ws.field("kind");
@@ -141,7 +145,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
     setBusy(true);
     setError("");
     try {
-      const written = await onAddToProject(result(), Boolean(slotsWhere) && slots);
+      const written = await onAddToProject(result(), Boolean(slotsWhere) && slots, sendTo);
       setDone((was) => ({ ...was, project: `Added ${written} palette${written === 1 ? "" : "s"} to ${projectName}` }));
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : String(problem));
@@ -159,6 +163,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
       line={["Eight palettes at once", last ? `${last} palette${last === 1 ? "" : "s"} · lightest first` : "pick a source"]}
       footer={<>
         {projectName && slotsWhere && !done.project ? <Checkbox checked={slots} onChange={setSlots}>Put them in slots 1–{Math.min(8, last || 8)} of {slotsWhere}</Checkbox> : <span />}
+        {projectName && !done.project && <SceneTarget backgrounds={scenes} value={sendTo} onChange={setSendTo} />}
         <span className="k-spacer" />
         {(done.project || done.mine) && <Chip tone="acc"><Check size={12} strokeWidth={3} />{[done.project, done.mine].filter(Boolean).join(" · ")}</Chip>}
         <Button variant={projectName ? undefined : "primary"} disabled={!named || busy || Boolean(done.mine)} title="Your own palettes, kept in this browser" onClick={addToMine}>Add to Mine</Button>

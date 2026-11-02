@@ -18,6 +18,7 @@ import { SourceShelf, storeSources } from "./SourceShelf";
 import { useWizardSettings } from "./useWizardSettings";
 import { TileBudget } from "./TileBudget";
 import { BeforeAfter } from "./BeforeAfter";
+import { SceneTarget, type SceneBackground } from "./SceneTarget";
 import "./PictureWizard.css";
 
 interface Props {
@@ -29,7 +30,9 @@ interface Props {
    * Writes the result into the project as a new background, palettes in the slots; resolves true when done. `asked`
    * skips the question (a batch asks once, for its first picture).
    */
-  onSave: (result: FitResult, name: string, asked?: boolean) => Promise<boolean>;
+  onSave: (result: FitResult, name: string, asked?: boolean, sendTo?: string) => Promise<boolean>;
+  /** The project's backgrounds, whose scene's slots can get the palettes too (SceneTarget). */
+  scenes?: readonly SceneBackground[];
   /** The project's background names (the suggested name is never one of them). */
   takenNames?: string[];
   /** A line for the message bar (kept pictures, problems). */
@@ -194,7 +197,7 @@ function SourceView({ name, turned, crop, onCrop, width, height, framing, pan }:
   );
 }
 
-export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [], say }: Props) {
+export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [], say, scenes = [] }: Props) {
   // The shelf rereads the project's pictures when a drop or paste adds one.
   const [shelfTick, setShelfTick] = useState(0);
   const [source, setSource] = useState<Source | null>(null);
@@ -218,6 +221,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [over, setOver] = useState(false);
   // Before / after (the author, 2026-11-02): your picture as framed, wiped into the result.
   const [compare, setCompare] = useState(false);
+  const [sendTo, setSendTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
@@ -331,9 +335,10 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
         <Button icon={<Images />} title="Several pictures at once, fitted to one shared set of palettes, each saved as its own background" onClick={() => several.current?.click()}>{batch ? "Other pictures…" : "Several…"}</Button>
         <span className="k-spacer" />
         <span className="pw-name"><NameInput kind="Background" value={name} onChange={setName} taken={takenNames} /></span>
+        {projectName && !batch && <SceneTarget backgrounds={scenes} value={sendTo} onChange={setSendTo} what="its palettes" />}
         <Button disabled={!current || busy || working} title={batch ? "Opens the picture shown here as an untitled picture" : "Opens the result here as an untitled picture"} onClick={() => current && void act(() => onOpen(current, batch ? batchNames()[shown] ?? "Picture" : name.trim() || "Picture"))}>Open as a picture</Button>
         {batch ? <Button variant="primary" disabled={batchResults.length !== batch.length || busy || working || !projectName || !name.trim()} title={projectName ? `${batch.length} new backgrounds in ${projectName} (${batchNames().join(", ")}), the shared palettes added once and put in the default slots` : "Open a project to save into it"} onClick={() => void act(async () => { if (await saveBatch()) onClose(); })}>Save {batch.length} into {projectName ?? "the project"}</Button>
-          : <Button variant="primary" disabled={!result || busy || working || !projectName || !name.trim()} title={projectName ? `A new background in ${projectName}, its palettes added to the project and put in the default slots` : "Open a project to save into it"} onClick={() => result && void act(async () => { if (await onSave(result, name.trim())) onClose(); })}>Save into {projectName ?? "the project"}</Button>}
+          : <Button variant="primary" disabled={!result || busy || working || !projectName || !name.trim()} title={projectName ? `A new background in ${projectName}, its palettes added to the project and put in the default slots` : "Open a project to save into it"} onClick={() => result && void act(async () => { if (await onSave(result, name.trim(), false, sendTo)) onClose(); })}>Save into {projectName ?? "the project"}</Button>}
       </>}>
       <div className="pw-body">
         <div className="pw-stage">

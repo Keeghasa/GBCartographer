@@ -13,6 +13,7 @@ import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
 import { useWizardSettings } from "./useWizardSettings";
 import { BeforeAfter } from "./BeforeAfter";
+import { SceneTarget, type SceneBackground } from "./SceneTarget";
 import "./DnsWizard.css";
 
 type SlotPalette = { id: string; name: string; colors: string[] };
@@ -28,7 +29,9 @@ export interface DnsWizardProps {
   picture: { pixels: Uint8Array; cells: Uint16Array; width: number; height: number; palettes: { name: string; colors: string[]; id?: string }[] } | null;
   onClose: () => void;
   /** Adds these palettes to the project; resolves to how many were written (the parent writes them, with backups). */
-  onCreate: (palettes: { name: string; colors: string[] }[]) => Promise<number>;
+  onCreate: (palettes: { name: string; colors: string[]; slot?: number }[], sendTo?: string) => Promise<number>;
+  /** The project's backgrounds: one time's versions can go straight into a scene's slots, each in its day palette's slot. */
+  scenes?: readonly SceneBackground[];
 }
 
 type Time = TimeLetter;
@@ -71,7 +74,10 @@ function Pixels({ rgba, width, height }: { rgba: Uint8ClampedArray; width: numbe
   return <canvas ref={canvas} width={width} height={height} />;
 }
 
-export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }: DnsWizardProps): JSX.Element {
+export function DnsWizard({ slots, where, existing, picture, onClose, onCreate, scenes = [] }: DnsWizardProps): JSX.Element {
+  // Send straight to a scene's slots (the author, 2026-11-02): one time's versions, each in its day palette's slot.
+  const [sendTo, setSendTo] = useState("");
+  const [sendTime, setSendTime] = useState<string>("");
   // The slot palettes once each (a palette may sit in two slots); ones that are already a version are left out.
   const bases = useMemo(() => {
     const seen = new Set<string>();
@@ -145,7 +151,8 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   const create = async () => {
     setBusy(true);
     setError(null);
-    try { setDone(await onCreate(toAdd.map(({ name, colors }) => ({ name, colors })))); }
+    const time = sendTime || pickedTimes[0]?.key;
+    try { setDone(await onCreate(toAdd.map(({ name, colors, base, time: at }) => ({ name, colors, slot: sendTo && at === time ? slots.findIndex((slot) => slot?.id === base.id) : undefined })), sendTo)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   };
@@ -226,7 +233,9 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
 
   const footer = done !== null
     ? <><span className="k-muted k-small dw-done"><Check size={14} /> Added {plural(done, "palette")}. With Time-of-day palettes on, tiles painted with a version save in their base's slot.</span><span className="k-spacer" /><Button variant="primary" onClick={onClose}>Close</Button></>
-    : <><span className="k-muted k-small">{toAdd.length ? `Adds ${plural(toAdd.length, "palette")} (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : "Nothing new to add"}</span><span className="k-spacer" />
+    : <><SceneTarget backgrounds={scenes} value={sendTo} onChange={setSendTo} what="one time's versions" />
+      {sendTo && pickedTimes.length > 1 && <Select label="Which time goes in the scene" value={sendTime || pickedTimes[0].key} onChange={setSendTime} options={pickedTimes.map((time) => ({ value: time.key, label: time.name }))} />}
+      <span className="k-muted k-small">{toAdd.length ? `Adds ${plural(toAdd.length, "palette")} (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : "Nothing new to add"}</span><span className="k-spacer" />
       <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button></>;
 
   return (
