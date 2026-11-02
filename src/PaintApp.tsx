@@ -18,6 +18,7 @@ import { copyName } from "./app/names";
 import { PATTERN_TAG } from "./app/stampGroups";
 import { TOOLS } from "./app/tools";
 import { readStored, sessionStore, store } from "./app/storage";
+import { dropPending, keepPending, pendingFor, sliceTiles, withPending } from "./app/pendingCollisions";
 import { HelpWindow } from "./app/HelpWindow";
 import { AboutWindow } from "./app/AboutWindow";
 import { HealthWindow } from "./app/HealthWindow";
@@ -42,7 +43,7 @@ import type { Generated } from "./app/generators";
 import type { FitResult } from "./app/pictureFit";
 
 /** A finished picture from a wizard: shades, each tile's palette (1-based, 0 none) and those palettes. */
-type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[] };
+type FittedPicture = Pick<FitResult, "width" | "height" | "pixels" | "cells" | "palettes"> & { /** The palettes' own names (else "<name> 1"…). */ names?: string[]; /** A generator's collisions, kept for the background's scene (pendingCollisions.ts). */ collisions?: Uint8Array };
 import { NewPictureWindow, ResizeWindow, type NewPicture } from "./app/NewPictureWindow";
 import { Button, Chip, IconButton, Kbd, Menu, MenuAt, Slider, TabList, Tabs, Tooltip, useConfirm, usePrompt, type MenuEntry } from "./ui/kit";
 import "./app/shell.css";
@@ -1080,6 +1081,14 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       types: read.collisionTypes ?? {},
       scenes: read.scenes.map(({ collisions, ...scene }) => ({ ...scene, opened: collisions.slice(), values: Uint8Array.from(collisions) })),
     };
+    // A generator's collisions (2026-11-02) go into each scene showing it that has none yet, unsaved: Save writes them.
+    const project = projectRef.current?.path, pending = project ? pendingFor(project, asset.file) : undefined;
+    const taken = pending ? target.collision.scenes.filter((scene) => { const values = withPending(scene.values, pending); if (values) scene.values = values; return Boolean(values); }) : [];
+    if (taken.length && project) {
+      dropPending(project, asset.file);
+      touch(target);
+      say(`${target.name}: the generator's collisions are in ${taken.map((scene) => scene.name).join(", ")}, unsaved. Save writes them.`);
+    }
     bump();
   }
 
@@ -1211,6 +1220,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const response = await fetch(`./__cartographer/gbstudio-new-asset?${new URLSearchParams({ kind: "backgrounds", name })}`, { method: "POST", body: blob }).catch(() => null);
     const made = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;
     if (!response?.ok || !made?.ok || !made.file) { say(`Could not make the background: ${made?.error ?? response?.statusText ?? "no answer"}`); return false; }
+    // A generator's collisions wait until GB Studio puts the background in a scene (taken in when it's next opened).
+    if (result.collisions && projectRef.current) keepPending(projectRef.current.path, made.file, result.collisions);
     await loadProject();
     setProjectKind("backgrounds");
     const asset = projectRef.current?.assets.find((item) => item.kind === "backgrounds" && item.file === made.file);
@@ -1251,7 +1262,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       for (let y = 0; y < H; y += 1) pixels.set(whole.pixels.subarray((y0 + y) * whole.width + x0, (y0 + y) * whole.width + x0 + W), y * W);
       for (let ty = 0; ty < H / CELL; ty += 1) for (let tx = 0; tx < W / CELL; tx += 1) tileCells[ty * (W / CELL) + tx] = whole.cells[(y0 / CELL + ty) * cw + x0 / CELL + tx] ?? 0;
       const screen = `${name} ${column + 1}-${row + 1}`;
-      if (!await saveFittedBackground({ ...whole, width: W, height: H, pixels, cells: tileCells }, screen, true)) return false;
+      const collisions = whole.collisions && sliceTiles(whole.collisions, cw, x0 / CELL, y0 / CELL, W / CELL, H / CELL);
+      if (!await saveFittedBackground({ ...whole, width: W, height: H, pixels, cells: tileCells, collisions }, screen, true)) return false;
       cells.push({ x: column, y: row, file: `${screen}.png` });
     }
     // The screens' tabs close again once saved (one still waiting for GB Studio stays open, unsaved).
@@ -1289,7 +1301,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /** A generated map as a fitted picture: its tiles' palettes when it has them, else every tile in the greens. */
-  const generatedPicture = ({ width, height, pixels, cells, palettes }: Generated): FittedPicture => ({ width, height, pixels, cells: cells ?? new Uint16Array(cellsWide(width) * Math.ceil(height / CELL)), palettes: palettes?.map((palette) => palette.colors) ?? [], names: palettes?.map((palette) => palette.name) });
+  const generatedPicture = ({ width, height, pixels, cells, palettes, collisions }: Generated): FittedPicture => ({ width, height, pixels, cells: cells ?? new Uint16Array(cellsWide(width) * Math.ceil(height / CELL)), palettes: palettes?.map((palette) => palette.colors) ?? [], names: palettes?.map((palette) => palette.name), collisions });
 
   // ---- the text tool (W5) ------------------------------------------------------------------------------------------
 

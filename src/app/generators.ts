@@ -10,6 +10,7 @@ import { Pen } from "../graphics/pen";
 import { paintCliffs, paintForest, paintSliced, paintXp, sheet } from "../graphics/areas";
 import { OUTDOOR, outdoorTile } from "../graphics/tiles";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
+import { SOLID } from "./pendingCollisions";
 
 export { OVERWORLD_PALETTES } from "./mapThemes";
 
@@ -26,7 +27,11 @@ export function seeded(seed: number): () => number {
 }
 
 /** A picture in GB shades, one byte per pixel; with colors, each 8 × 8 tile's palette (1-based, 0 the greens) and those palettes. */
-export interface Generated { width: number; height: number; pixels: Uint8Array; cells?: Uint16Array; palettes?: { name: string; colors: string[] }[] }
+export interface Generated {
+  width: number; height: number; pixels: Uint8Array; cells?: Uint16Array; palettes?: { name: string; colors: string[] }[];
+  /** A GB Studio collision value per 8 × 8 tile (the author, 2026-11-02), kept for the background's scene by src/app/pendingCollisions.ts. */
+  collisions?: Uint8Array;
+}
 
 const SCREEN_W = 160, SCREEN_H = 144;
 const SIDES: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -44,7 +49,7 @@ export interface CaveSettings {
   style: "cave" | "dungeon";
   /** Size in GB screens (160 × 144 each). */
   columns: number; rows: number;
-  /** Pixels per map cell: 32 (4 × 4 tiles) or 16 (2 × 2 tiles); 8 went (the author, 2026-10-13: the catalog walls need 16). */
+  /** Pixels per map cell: 32 (4 × 4 tiles, the default and first choice since the author, 2026-11-02) or 16 (2 × 2 tiles); 8 went (the author, 2026-10-13: the catalog walls need 16). */
   cell: 16 | 32;
   seed: number;
   /** Cave: how much starts as rock (percent). */
@@ -55,8 +60,12 @@ export interface CaveSettings {
   rooms: number; roomSize: number;
   /** Cave: keep only the biggest open area, so every floor cell can be reached. */
   connected: boolean;
-  /** Stairs at two far-apart floor cells (a way in and a way on). */
+  /** Stairs at two far-apart floor cells (a way in and a way on), marked start (an up arrow) and end (a down arrow). */
   stairs: boolean;
+  /** A doorway wherever two screens meet (the author, 2026-11-02): a passage across the edge, its posts drawn. */
+  doors?: boolean;
+  /** Opt-in (the author, 2026-11-02: "Mark it in with a T or a E. then make sure its an opt-in checkbox"): a T on treasure spots (dead ends) and an E on enemy spots (open floor). */
+  marks?: boolean;
   /** The palette it wears: a CAVE_THEMES id ("" or unknown: the GB greens). */
   theme?: string;
   /** The catalog's walls (16 px cells and up; unset: cliff32 for a cave, stone for a dungeon). */
@@ -91,10 +100,13 @@ const FLOOR_SHEETS: Record<Exclude<CaveFloor, "plain">, Parameters<typeof sheet>
 /** The floor it wears: the one picked, else grass under a forest (`forest`: a forest stamp's), a dungeon's tiled floor, or a cave's stone floor. */
 export const floorOf = (settings: CaveSettings, forest = false): CaveFloor => settings.floor ?? (forest || settings.walls === "pines" || settings.walls === "oaks" ? "grass" : settings.style === "dungeon" ? "tile" : "stone");
 
-export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 16, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 5, connected: true, stairs: true };
+export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 32, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 3, connected: true, stairs: true };
 
-/** The cave's grid: 1 rock, 0 floor (2 stairs), the edge always rock. */
-export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array } {
+/** The cave grid's cells besides rock (1) and plain floor (0): every one of them is floor. */
+export const STAIRS = 2, DOOR_ACROSS = 3, DOOR_DOWN = 4, TREASURE = 5, ENEMY = 6;
+
+/** The cave's grid: 1 rock, 0 floor (2 stairs, 3 / 4 doorways, 5 treasure, 6 enemy), the edge always rock; `start` and `end` the stairs (-1 none). */
+export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array; start: number; end: number } {
   // 32-pixel cells don't divide a 144-pixel screen: the grid runs one row past it and the picture is cut to the screens.
   const w = Math.max(3, Math.ceil(settings.columns * SCREEN_W / settings.cell)), h = Math.max(3, Math.ceil(settings.rows * SCREEN_H / settings.cell));
   const random = seeded(settings.seed);
@@ -133,8 +145,92 @@ export function caveGrid(settings: CaveSettings, topRows?: number): { w: number;
     // A thin wall that keeps coming back (the rejoining tunnel needs it) is opened instead: the two spaces become one.
     for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) grid[y * w + x] = 0;
   }
-  if (settings.stairs) placeStairs(grid, w, h);
-  return { w, h, grid };
+  const doors = settings.doors ?? true;
+  if (doors) { carveDoorways(grid, w, h, settings, top); markDoorways(grid, w, h, settings, top); }
+  const [start, end] = settings.stairs ? placeStairs(grid, w, h) : [-1, -1];
+  if (settings.marks) placeMarks(grid, w, h, settings, start);
+  return { w, h, grid, start, end };
+}
+
+/** Where screens meet, in cells: each inner vertical edge (`at`: the cell right of it) and horizontal edge (the cell below it), with each screen's span of cells along it. */
+function screenEdges(w: number, h: number, settings: CaveSettings, top: number) {
+  const span = (from: number, to: number, low: number, high: number) => [Math.max(low, Math.ceil(from / settings.cell)), Math.min(high, Math.ceil(to / settings.cell) - 1)] as const;
+  const edges: { across: boolean; at: number; from: number; to: number }[] = [];
+  for (let sx = 1; sx < settings.columns; sx += 1) for (let sy = 0; sy < settings.rows; sy += 1) {
+    const [from, to] = span(sy * SCREEN_H, (sy + 1) * SCREEN_H, top, h - 2);
+    edges.push({ across: true, at: Math.round(sx * SCREEN_W / settings.cell), from, to });
+  }
+  for (let sy = 1; sy < settings.rows; sy += 1) for (let sx = 0; sx < settings.columns; sx += 1) {
+    const [from, to] = span(sx * SCREEN_W, (sx + 1) * SCREEN_W, 1, w - 2);
+    edges.push({ across: false, at: Math.max(top + 1, Math.round(sy * SCREEN_H / settings.cell)), from, to });
+  }
+  return edges;
+}
+
+/**
+ * A way through every edge where two screens meet: when no floor already crosses it, a passage is carved across it
+ * (in the middle of the screen's span, out both ways to the nearest floor), and the areas are joined again.
+ */
+function carveDoorways(grid: Uint8Array, w: number, h: number, settings: CaveSettings, top: number) {
+  let carved = false;
+  for (const { across, at, from, to } of screenEdges(w, h, settings, top)) {
+    if (from > to) continue;
+    const cell = (along: number, step: number) => across ? along * w + at + step : (at + step) * w + along;
+    let open = false;
+    for (let along = from; along <= to && !open; along += 1) open = grid[cell(along, -1)] !== 1 && grid[cell(along, 0)] !== 1;
+    if (open) continue;
+    const along = Math.floor((from + to) / 2), low = across ? 1 : top, high = (across ? w : h) - 2;
+    grid[cell(along, -1)] = 0; grid[cell(along, 0)] = 0;
+    for (let step = -2; at + step >= low && grid[cell(along, step)] === 1; step -= 1) grid[cell(along, step)] = 0;
+    for (let step = 1; at + step <= high && grid[cell(along, step)] === 1; step += 1) grid[cell(along, step)] = 0;
+    carved = true;
+  }
+  if (!carved) return;
+  joinAreas(grid, w, h);
+  // A passage can leave rock one cell thin beside it, which the walls can't draw: as after the cave's own tunnels.
+  if (settings.style === "cave") wearThinRock(grid, w, h);
+  else for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) if (grid[y * w + x] === 1 && grid[(y + 1) * w + x] !== 1 && grid[(y - 1) * w + x] !== 1) grid[y * w + x] = 0;
+}
+
+/** One doorway on each screen edge: the floor cell just past the edge nearest the middle of the screen's span (3 walked across, 4 walked down). */
+function markDoorways(grid: Uint8Array, w: number, h: number, settings: CaveSettings, top: number) {
+  for (const { across, at, from, to } of screenEdges(w, h, settings, top)) {
+    const middle = (from + to) / 2;
+    const cell = (along: number, step: number) => across ? along * w + at + step : (at + step) * w + along;
+    // A crossing: floor on both sides, one of them plain (a corner where two edges meet can hold the other's doorway).
+    let best = -1;
+    for (let along = from; along <= to; along += 1) if (grid[cell(along, -1)] !== 1 && grid[cell(along, 0)] !== 1 && (grid[cell(along, -1)] === 0 || grid[cell(along, 0)] === 0) && (best < 0 || Math.abs(along - middle) < Math.abs(best - middle))) best = along;
+    if (best >= 0) grid[cell(best, grid[cell(best, 0)] === 0 ? 0 : -1)] = across ? DOOR_ACROSS : DOOR_DOWN;
+  }
+}
+
+/**
+ * Treasure and enemy spots (opt-in): a T on the dead ends farthest from the start (one a screen), an E on open floor
+ * (three or four open sides) well apart from each other, the stairs and the treasure (two a screen). Its own random
+ * numbers, so ticking it never moves the cave.
+ */
+function placeMarks(grid: Uint8Array, w: number, h: number, settings: CaveSettings, start: number) {
+  const random = seeded(settings.seed ^ 0x7e57);
+  const plain = Array.from(grid.keys()).filter((at) => grid[at] === 0);
+  if (!plain.length) return;
+  const openSides = (at: number) => [at - w, at + w, at - 1, at + 1].filter((next) => grid[next] !== 1).length;
+  const from = start >= 0 ? distances(grid, w, h, start, (cell) => cell !== 1) : null;
+  const screens = settings.columns * settings.rows;
+  const spaced = (at: number, others: number[], gap: number) => others.every((other) => Math.hypot(other % w - at % w, Math.floor(other / w) - Math.floor(at / w)) >= gap);
+  const taken = Array.from(grid.keys()).filter((at) => grid[at] === STAIRS);
+  const ends = plain.filter((at) => openSides(at) === 1).sort((a, b) => (from ? from[b] - from[a] : 0) || a - b);
+  let treasure = 0;
+  for (const at of ends) {
+    if (treasure >= screens) break;
+    if (spaced(at, taken, 3)) { grid[at] = TREASURE; taken.push(at); treasure += 1; }
+  }
+  const gap = Math.max(3, Math.min(SCREEN_W, SCREEN_H) / settings.cell / 2);
+  const open = plain.filter((at) => grid[at] === 0 && openSides(at) >= 3);
+  for (let count = 0, tries = 0; count < screens * 2 && tries < open.length * 2; tries += 1) {
+    const at = open[Math.floor(random() * open.length)];
+    if (grid[at] !== 0 || !spaced(at, taken, gap)) continue;
+    grid[at] = ENEMY; taken.push(at); count += 1;
+  }
 }
 
 /**
@@ -250,15 +346,16 @@ function distances(grid: Uint8Array, w: number, h: number, from: number, passabl
 }
 
 /** Stairs at the two floor cells farthest apart (found from any floor cell, then from the farthest one). */
-function placeStairs(grid: Uint8Array, w: number, h: number) {
+function placeStairs(grid: Uint8Array, w: number, h: number): [number, number] {
   const first = grid.indexOf(0);
-  if (first < 0) return;
-  const farthest = (distance: Int32Array) => distance.reduce((best, d, at) => d > distance[best] ? at : best, first);
-  const a = farthest(distances(grid, w, h, first, (cell) => cell === 0));
-  const fromA = distances(grid, w, h, a, (cell) => cell === 0);
-  const b = farthest(fromA);
-  if (a === b) return;
-  grid[a] = 2; grid[b] = 2;
+  if (first < 0) return [-1, -1];
+  // Only plain floor takes stairs, found walking any floor.
+  const farthest = (distance: Int32Array) => distance.reduce((best, d, at) => grid[at] === 0 && d > distance[best] ? at : best, first);
+  const a = farthest(distances(grid, w, h, first, (cell) => cell !== 1));
+  const b = farthest(distances(grid, w, h, a, (cell) => cell !== 1));
+  if (a === b) return [-1, -1];
+  grid[a] = STAIRS; grid[b] = STAIRS;
+  return [a, b];
 }
 
 /** A stamp sheet the cave draws with instead of the placeholder art (src/app/autotile.ts layouts). */
@@ -278,7 +375,7 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floor
   const asArt = (t: CaveTiles) => ({ width: t.width, height: t.pixels.length / t.width, pixels: t.pixels });
   const area = given && (given.kind === "forest" || given.kind === "xpCliff" || given.kind === "xpCliffTall" || given.kind === "xp") ? given : null;
   const tiles = area ? null : given;
-  const { w, h, grid } = caveGrid(settings, area?.kind === "xpCliffTall" ? 3 : area?.kind === "xpCliff" ? 2 : area ? 1 : undefined);
+  const { w, h, grid, ...caveMarks } = caveGrid(settings, area?.kind === "xpCliffTall" ? 3 : area?.kind === "xpCliff" ? 2 : area ? 1 : undefined);
   const size = settings.cell, per = size / 8;
   const out: Generated = { width: w * size, height: h * size, pixels: new Uint8Array(w * size * h * size) };
   const theme = themeOf(CAVE_THEMES, settings.theme ?? "");
@@ -338,15 +435,49 @@ export function drawCave(settings: CaveSettings, given?: CaveTiles | null, floor
     pen.fill(2);
     SIDES.forEach(([dx, dy], side) => { if (!wall(x + dx, y + dy)) pen.side(side, 0); });
   }
-  // Stairs: a box of steps on their cell.
+  const { start } = caveMarks;
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
-    if (grid[y * w + x] !== 2) continue;
-    const pen = new Pen(out, x * size, y * size, size), inset = size / 8;
-    pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
-    pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
-    for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+    const cell = grid[y * w + x], pen = new Pen(out, x * size, y * size, size), inset = size / 8;
+    if (cell === STAIRS) {
+      // Stairs: a box of steps on their cell, with an arrow on a plate: up at the start (the way in), down at the end.
+      pen.rect(inset, inset, size - inset * 2, size - inset * 2, 0);
+      pen.box(inset, inset, size - inset * 2, size - inset * 2, 3);
+      for (let step = inset + 2; step < size - inset - 1; step += size * 3 / 16) pen.rect(inset, step, size - inset * 2, 1, 2);
+      drawGlyph(pen, y * w + x === start ? "up" : "down", size);
+    } else if (cell === DOOR_ACROSS || cell === DOOR_DOWN) {
+      // A doorway where screens meet: two dark posts either side of the way through, on the edge it crosses.
+      const post = Math.max(2, size / 8), length = Math.max(4, size / 4);
+      if (cell === DOOR_ACROSS) { pen.rect(0, 0, post, length, 3); pen.rect(0, size - length, post, length, 3); pen.rect(post, 0, 1, length, 0); pen.rect(post, size - length, 1, length, 0); }
+      else { pen.rect(0, 0, length, post, 3); pen.rect(size - length, 0, length, post, 3); pen.rect(0, post, length, 1, 0); pen.rect(size - length, post, length, 1, 0); }
+    } else if (cell === TREASURE || cell === ENEMY) drawGlyph(pen, cell === TREASURE ? "T" : "E", size);
   }
-  return cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+  const cropped = cropTo(out, Math.min(out.width, settings.columns * SCREEN_W), Math.min(out.height, settings.rows * SCREEN_H));
+  // Collisions for GB Studio (the author, 2026-11-02): the rock solid, every floor cell open.
+  cropped.collisions = tileCollisions(cropped.width, cropped.height, (tx, ty) => grid[Math.floor(ty / per) * w + Math.floor(tx / per)] === 1);
+  return cropped;
+}
+
+/** 3 × 5 pixel letters and arrows for the cave's marks, a row a string. */
+const GLYPHS: Record<"T" | "E" | "up" | "down", string[]> = {
+  T: ["###", ".#.", ".#.", ".#.", ".#."],
+  E: ["###", "#..", "##.", "#..", "###"],
+  up: [".#.", "###", "#.#", ".#.", ".#."],
+  down: [".#.", ".#.", "#.#", "###", ".#."],
+};
+
+/** A mark on a light plate in the middle of a cell: dark (shade 3) on the lightest shade, so it reads on any floor. */
+function drawGlyph(pen: Pen, glyph: keyof typeof GLYPHS, size: number) {
+  const scale = size >= 32 ? 3 : 2, gw = 3 * scale, gh = 5 * scale, x0 = Math.floor((size - gw) / 2), y0 = Math.floor((size - gh) / 2);
+  pen.rect(x0 - 1, y0 - 1, gw + 2, gh + 2, 0);
+  pen.box(x0 - 2, y0 - 2, gw + 4, gh + 4, 3);
+  GLYPHS[glyph].forEach((row, gy) => [...row].forEach((dot, gx) => { if (dot === "#") pen.rect(x0 + gx * scale, y0 + gy * scale, scale, scale, 3); }));
+}
+
+/** One GB Studio collision value per 8 × 8 tile of a `width` × `height` picture: Solid where `solid`, else open. */
+function tileCollisions(width: number, height: number, solid: (tx: number, ty: number) => boolean): Uint8Array {
+  const tw = Math.ceil(width / 8), th = Math.ceil(height / 8), out = new Uint8Array(tw * th);
+  for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) if (solid(tx, ty)) out[ty * tw + tx] = SOLID;
+  return out;
 }
 
 /**
@@ -399,14 +530,45 @@ export interface WorldSettings {
   roads: boolean;
   /** The palettes it wears: a WORLD_THEMES id ("" or unknown: the GB greens). */
   theme: string;
+  /** The land it is (the author, 2026-11-02): which trees it grows; the wizard also picks the biome's palettes and sliders. */
+  biome?: Biome;
+  /**
+   * A rough shape painted first (the author, 2026-11-02), SHAPE_W × SHAPE_H stretched over the map: 0 left to the
+   * generator, LAND or SEA. Painted land stays land and painted water water; the noise fills in round them.
+   */
+  shape?: Uint8Array | null;
 }
+
+export type Biome = "grassland" | "desert" | "snow" | "swamp";
+/** Each biome's palettes (a WORLD_THEMES id) and the sliders it starts from. */
+export const BIOMES: { value: Biome; label: string; theme: string; settings: Partial<WorldSettings> }[] = [
+  { value: "grassland", label: "Grassland", theme: "overworld", settings: { water: 35, mountains: 18, forest: 35 } },
+  { value: "desert", label: "Desert", theme: "biome-desert", settings: { water: 10, mountains: 25, forest: 8 } },
+  { value: "snow", label: "Snow", theme: "biome-snow", settings: { water: 30, mountains: 30, forest: 40 } },
+  { value: "swamp", label: "Swamp", theme: "biome-swamp", settings: { water: 45, mountains: 5, forest: 55 } },
+];
+
+export const SHAPE_W = 16, SHAPE_H = 16, LAND = 1, SEA = 2;
 
 export const WORLD_DEFAULTS: WorldSettings = { columns: 3, rows: 3, seed: 1, water: 35, mountains: 18, forest: 35, towns: 3, scale: 5, island: true, roads: true, theme: "overworld" };
 
-export const WATER = 0, SHORE = 1, GRASS = 2, FOREST = 3, MOUNTAIN = 4, TOWN = 5, ROAD = 6;
+/** BRIDGE (the author, 2026-11-02): a road over water. */
+export const WATER = 0, SHORE = 1, GRASS = 2, FOREST = 3, MOUNTAIN = 4, TOWN = 5, ROAD = 6, BRIDGE = 7;
 
-/** Each terrain's palette in a seven-palette theme (1-based): grass 1, forest 2, mountain 3, water 4, shore 5, road 6, town 7. */
-const TERRAIN_PALETTE: Record<number, number> = { [GRASS]: 1, [FOREST]: 2, [MOUNTAIN]: 3, [WATER]: 4, [SHORE]: 5, [ROAD]: 6, [TOWN]: 7 };
+/** Each terrain's palette in a seven-palette theme (1-based): grass 1, forest 2, mountain 3, water 4 (bridges too), shore 5, road 6, town 7. */
+const TERRAIN_PALETTE: Record<number, number> = { [GRASS]: 1, [FOREST]: 2, [MOUNTAIN]: 3, [WATER]: 4, [SHORE]: 5, [ROAD]: 6, [TOWN]: 7, [BRIDGE]: 4 };
+
+/** The painted shape over the map's cells: +1 land … -1 water, blended between the shape's squares (0: unpainted). */
+function shapeField(shape: Uint8Array, w: number, h: number): Float32Array {
+  const value = (sx: number, sy: number) => { const v = shape[Math.min(SHAPE_H - 1, Math.max(0, sy)) * SHAPE_W + Math.min(SHAPE_W - 1, Math.max(0, sx))]; return v === LAND ? 1 : v === SEA ? -1 : 0; };
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    const fx = (x + 0.5) / w * SHAPE_W - 0.5, fy = (y + 0.5) / h * SHAPE_H - 0.5, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const top = value(ix, iy) * (1 - tx) + value(ix + 1, iy) * tx, bottom = value(ix, iy + 1) * (1 - tx) + value(ix + 1, iy + 1) * tx;
+    out[y * w + x] = top * (1 - ty) + bottom * ty;
+  }
+  return out;
+}
 
 /** Smooth noise: random values on a lattice, blended (smoothstep) between them, a few octaves summed. */
 function valueNoise(w: number, h: number, period: number, random: () => number): Float32Array {
@@ -449,9 +611,17 @@ export function worldGrid(settings: WorldSettings): { w: number; h: number; grid
     }
   }
   const grid = new Uint8Array(w * h).fill(GRASS);
-  const sea = cut(height, settings.water);
+  // A painted shape decides the cells well inside its land and water; the rest (its edges, the unpainted) go by height,
+  // nudged towards the shape, with the Water share of them under water.
+  const field = settings.shape?.some((value) => value) ? shapeField(settings.shape, w, h) : null;
+  const level = field ? Float32Array.from(height, (value, at) => value + field[at] * 0.5) : height;
+  const open = field ? Array.from(level.keys()).filter((at) => Math.abs(field[at]) <= 0.35) : null;
+  const sea = cut(open ? open.map((at) => level[at]) : level, settings.water);
   const land: number[] = [];
-  for (let at = 0; at < w * h; at += 1) if (height[at] < sea || (settings.island && settings.water > 0 && edgeCell(at, w, h))) grid[at] = WATER; else land.push(at);
+  for (let at = 0; at < w * h; at += 1) {
+    const wet = field && field[at] < -0.35 ? true : field && field[at] > 0.35 ? false : level[at] < sea;
+    if (wet || (settings.island && settings.water > 0 && edgeCell(at, w, h))) grid[at] = WATER; else land.push(at);
+  }
   const peak = cut(land.map((at) => height[at]), 100 - settings.mountains);
   for (const at of land) if (settings.mountains > 0 && height[at] >= peak) grid[at] = MOUNTAIN;
   const lowland = land.filter((at) => grid[at] === GRASS);
@@ -517,11 +687,13 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
   }
   if (!settings.roads) return;
   // Roads keep off the sand where they can (inland first, the shore only when a town can't be reached otherwise).
-  const inland = (cell: number) => cell === GRASS || cell === FOREST || cell === ROAD || cell === TOWN;
+  const inland = (cell: number) => cell === GRASS || cell === FOREST || cell === ROAD || cell === TOWN || cell === BRIDGE;
   const walkable = (cell: number) => inland(cell) || cell === SHORE;
   for (let at = 1; at < towns.length; at += 1) {
-    const dry = distances(grid, w, h, towns[at], inland);
-    const distance = towns.slice(0, at).some((town) => dry[town] > 0) ? dry : distances(grid, w, h, towns[at], walkable);
+    const dry = distances(grid, w, h, towns[at], inland), reaches = (distance: Int32Array) => towns.slice(0, at).some((town) => distance[town] > 0);
+    // Over the water last (the author, 2026-11-02: bridges where roads cross water): a town across it is reached by a bridge.
+    let distance = reaches(dry) ? dry : distances(grid, w, h, towns[at], walkable);
+    if (!reaches(distance)) distance = distances(grid, w, h, towns[at], (cell) => walkable(cell) || cell === WATER || cell === BRIDGE);
     const reachable = towns.slice(0, at).filter((town) => distance[town] > 0);
     if (!reachable.length) continue;
     // Walk back from the nearest town along falling distances, laying road.
@@ -531,7 +703,7 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
       const next = SIDES.map(([dx, dy]) => (y + dy) * w + x + dx).find((n, side) => { const nx = x + SIDES[side][0], ny = y + SIDES[side][1]; return nx >= 0 && ny >= 0 && nx < w && ny < h && distance[n] === distance[step] - 1; });
       if (next === undefined) break;
       step = next;
-      if (grid[step] !== TOWN) grid[step] = ROAD;
+      if (grid[step] !== TOWN) grid[step] = grid[step] === WATER || grid[step] === BRIDGE ? BRIDGE : ROAD;
     }
   }
 }
@@ -553,7 +725,7 @@ function blitTile(out: Generated, sheet: Sheet, tx: number, ty: number, column: 
  */
 function drawShores(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
   const tw = w * 2, th = h * 2;
-  const water = (tx: number, ty: number) => tx < 0 || ty < 0 || tx >= tw || ty >= th ? true : grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)] === WATER;
+  const water = (tx: number, ty: number) => tx < 0 || ty < 0 || tx >= tw || ty >= th ? true : [WATER, BRIDGE].includes(grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)]);
   const corner = (vx: number, vy: number) => water(vx - 1, vy - 1) && water(vx, vy - 1) && water(vx - 1, vy) && water(vx, vy);
   for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) {
     if (!water(tx, ty)) continue;
@@ -571,7 +743,7 @@ function drawShores(out: Generated, grid: Uint8Array, w: number, h: number, shee
 function drawRoads(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
   const tw = w * 2, th = h * 2;
   const cell = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
-  const linked = (x: number, y: number) => cell(x, y) === ROAD || cell(x, y) === TOWN;
+  const linked = (x: number, y: number) => cell(x, y) === ROAD || cell(x, y) === TOWN || cell(x, y) === BRIDGE;
   const road = new Uint8Array(tw * th);
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     if (cell(x, y) !== ROAD) continue;
@@ -606,13 +778,14 @@ function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number,
     if (hash(x, y, settings.seed) % 3 === 0) { pen.dot(4, 3, 1); pen.dot(3, 4, 1); pen.dot(5, 4, 1); pen.dot(11, 10, 1); pen.dot(10, 11, 1); pen.dot(12, 11, 1); }
   }
   // The map's own edge: water runs off it on an island, so no shore shows there.
-  const wet = (x: number, y: number) => at(x, y) === WATER, sandy = (x: number, y: number) => at(x, y) === WATER || at(x, y) === SHORE;
+  const wet = (x: number, y: number) => at(x, y) === WATER || at(x, y) === BRIDGE, sandy = (x: number, y: number) => wet(x, y) || at(x, y) === SHORE;
   paintXp(canvasOut, sheet("xp-sand"), sandy, w, h, settings.island);
   paintXp(canvasOut, sheet("water"), wet, w, h, settings.island);
   paintXp(canvasOut, sheet("xp-dirt"), (x, y) => at(x, y) === ROAD, w, h);
   // Map-scale pieces (the author, 2026-10-14: "an overworld, so don't use big trees or mounds"): the Outdoor sheet's
   // repeating Mountain tile on each mountain cell, a small tree on each forest cell (pines or round trees by seed).
-  const tree = settings.seed % 2 ? "pine" : "tree";
+  // Snow grows pines, swamp and desert round trees (the author, 2026-11-02: biomes); grassland either, by seed.
+  const tree = settings.biome === "snow" ? "pine" : settings.biome === "swamp" || settings.biome === "desert" ? "tree" : settings.seed % 2 ? "pine" : "tree";
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     const cell = at(x, y);
     if (cell !== MOUNTAIN && cell !== FOREST) continue;
@@ -631,8 +804,37 @@ function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number,
   return out;
 }
 
+/** Bridges (the author, 2026-11-02): planks across each road cell over water, running the way the road goes, with rails along both sides. */
+function drawBridges(out: Generated, grid: Uint8Array, w: number, h: number) {
+  const at = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
+  const road = (cell: number) => cell === ROAD || cell === TOWN || cell === BRIDGE;
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    if (at(x, y) !== BRIDGE) continue;
+    const pen = new Pen(out, x * 16, y * 16, 16);
+    // Across (east-west) unless the road only runs north-south here.
+    const across = road(at(x - 1, y)) || road(at(x + 1, y)) || !(road(at(x, y - 1)) || road(at(x, y + 1)));
+    if (across) {
+      pen.rect(0, 3, 16, 10, 0);
+      for (let px = 1; px < 16; px += 3) pen.rect(px, 4, 1, 8, 2);
+      pen.rect(0, 2, 16, 1, 3); pen.rect(0, 13, 16, 1, 3);
+    } else {
+      pen.rect(3, 0, 10, 16, 0);
+      for (let py = 1; py < 16; py += 3) pen.rect(4, py, 8, 1, 2);
+      pen.rect(2, 0, 1, 16, 3); pen.rect(13, 0, 1, 16, 3);
+    }
+  }
+}
+
 export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): Generated {
   const { w, h, grid } = worldGrid(settings);
+  const out = drawWorldTerrain(settings, tiles, w, h, grid);
+  drawBridges(out, grid, w, h);
+  // Collisions for GB Studio (the author, 2026-11-02): water and mountains solid; bridges, roads and the rest open.
+  out.collisions = tileCollisions(out.width, out.height, (tx, ty) => { const cell = grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)]; return cell === WATER || cell === MOUNTAIN; });
+  return out;
+}
+
+function drawWorldTerrain(settings: WorldSettings, tiles: WorldTiles | null | undefined, w: number, h: number, grid: Uint8Array): Generated {
   const out: Generated = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
   const theme = themeOf(WORLD_THEMES, settings.theme);
   if (theme) {
@@ -648,7 +850,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
     const pen = new Pen(out, x * 16, y * 16, 16);
     const cell = grid[y * w + x];
     const variant = hash(x, y, settings.seed);
-    if (cell === WATER) {
+    if (cell === WATER || cell === BRIDGE) {
       pen.fill(1);
       // Waves: two short dashes, offset on alternate cells.
       const shift = (x + y) % 2 ? 6 : 0;
@@ -682,7 +884,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
       // With one palette for the whole map, shade 1 is the water's color too: roads take shade 2 there.
       const dirt = theme && theme.palettes.length === 1 ? 2 : 1;
       pen.rect(5, 5, 6, 6, dirt);
-      const links = SIDES.map(([dx, dy]) => { const n = at(x + dx, y + dy); return n === ROAD || n === TOWN; });
+      const links = SIDES.map(([dx, dy]) => { const n = at(x + dx, y + dy); return n === ROAD || n === TOWN || n === BRIDGE; });
       if (links[0]) pen.rect(5, 0, 6, 5, dirt);
       if (links[1]) pen.rect(11, 5, 5, 6, dirt);
       if (links[2]) pen.rect(5, 11, 6, 5, dirt);
