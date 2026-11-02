@@ -675,7 +675,13 @@ export default function PaintApp() {
       if (followProject(docs.current, palettesRef.current.filter((item): item is Palette & { id: string } => Boolean(item.id)))) bump();
       setProject(projectRef.current);
       setStartDone(true);
-      if (ownLoadedFor.current !== opened.path) { ownLoadedFor.current = opened.path; void loadOwn(opened.path); }
+      if (ownLoadedFor.current !== opened.path) {
+        ownLoadedFor.current = opened.path; void loadOwn(opened.path);
+        // A Win11 user (2026-11-02) wasn't warned that GB Studio was open too: say it as soon as the project opens,
+        // not only before the first write.
+        void fetch("./__cartographer/gbstudio-running", { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ running?: boolean }> : null).catch(() => null)
+          .then((status) => { if (status?.running) say(`GB Studio is open too. Painting is fine; before saving palettes, tile colors or collisions, close GB Studio or reload ${opened.name} there afterwards, or its next save may undo them.`); });
+      }
     } else {
       ownLoadedFor.current = null;
       palettesRef.current = [];

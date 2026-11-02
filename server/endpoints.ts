@@ -47,7 +47,7 @@
  * a scene's palette lists and the project's default palettes, and in its own Cartographer/ folder saved stamps and
  * the Map Room's layouts; nothing else.
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { dirname, resolve, sep } from "node:path";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -92,14 +92,18 @@ function revealInFileManager(path: string, isFile: boolean) {
   spawn(command, args, { detached: true, stdio: "ignore" }).unref();
 }
 
-/** Best effort: is a process called GB Studio running? (It keeps the project in memory and writes it back when it saves.) */
-function gbStudioRunning(): boolean {
-  try {
-    const list = process.platform === "win32" ? execFileSync("tasklist", { encoding: "utf8", timeout: 3000 }) : execFileSync("ps", ["-ax", "-o", "comm="], { encoding: "utf8", timeout: 3000 });
-    return /gb studio|gb-studio/i.test(list);
-  } catch {
-    return false;
-  }
+/**
+ * Best effort: is a process called GB Studio running? (It keeps the project in memory and writes it back when it saves.)
+ * Asynchronous with a long timeout: Windows' tasklist often takes several seconds (a Win11 user, 2026-11-02, got no
+ * warning: the old 3-second synchronous call timed out and read as "not running").
+ */
+function gbStudioRunning(): Promise<boolean> {
+  const [command, args] = process.platform === "win32" ? ["tasklist", ["/FO", "CSV", "/NH"]] : ["ps", ["-ax", "-o", "comm="]];
+  return new Promise((resolve) => {
+    execFile(command, args, { encoding: "utf8", timeout: 15000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (error, list) => {
+      resolve(!error && /gb[ _-]?studio/i.test(list));
+    });
+  });
 }
 
 /** Whether the request names this machine (127.0.0.1, localhost or [::1]) on the port it arrived at. */
@@ -133,7 +137,7 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
   try {
     const project = projectFolder();
     if (url.pathname === "/__cartographer/gbstudio-running") {
-      reply(res, 200, { ok: true, running: gbStudioRunning() });
+      reply(res, 200, { ok: true, running: await gbStudioRunning() });
       return true;
     }
     if (url.pathname === "/__cartographer/recent-backgrounds" || url.pathname === "/__cartographer/recent-picture") {
