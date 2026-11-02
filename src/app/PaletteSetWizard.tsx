@@ -17,6 +17,7 @@ import { CloseWarning } from "./CloseWarning";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
 import { useWizardSettings } from "./useWizardSettings";
 import { SceneTarget, type SceneBackground } from "./SceneTarget";
+import { NameInput } from "./NameInput";
 import "./PaletteSetWizard.css";
 
 export interface PaletteSetWizardProps {
@@ -217,7 +218,7 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
           {!last ? <div className="k-well psw-empty k-muted k-small">{kind === "lospec" ? "Fetch a Lospec palette to see it grouped." : "Nothing to make a set from yet."}</div> : <>
           <div className="psw-base">
             <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last} where a name below is left empty`}>
-              <input className="k-input" value={base} onChange={(event) => { setBase(event.target.value); setDone({}); }} />
+              <NameInput kind="Palette" label="Base name" value={base} onChange={(next) => { setBase(next); setDone({}); }} />
             </Field>
           </div>
           <div className="psw-grid">
