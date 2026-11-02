@@ -14,6 +14,7 @@ import { applyMerges, fixAll, mergeSteps, stepTile, tilePixels, type MergeStep }
 import { WizardPage } from "./WizardPage";
 import { useWizardSettings } from "./useWizardSettings";
 import { TileBudget, slotsUsed } from "./TileBudget";
+import { BeforeAfter } from "./BeforeAfter";
 import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
@@ -145,6 +146,9 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
     return countUniqueTiles(copy, width, height, flips);
   }, [busy, checked, now, working, width, height, flips]);
 
+  // Before / after (the author, 2026-11-02): the picture as the window opened it, wiped into how it is now.
+  const [compare, setCompare] = useState(false);
+  const opened = useMemo(() => toRgba(picture.pixels, cells, width, palettes), [picture.pixels, cells, width, palettes]);
   const image = useMemo(() => new ImageData(new Uint8ClampedArray(toRgba(working, cells, width, palettes)), width, height), [working, cells, width, height, palettes]);
   // A tile as it looks in `place`'s palette (the merged tile keeps its cell's palette).
   const look = (tile: Uint8Array, place: number) => toRgba(tile, Uint16Array.of(cells[place] ?? 0), 8, palettes);
@@ -210,6 +214,7 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
             { value: "colorOnly", label: `Color Only · ${colorOnlyLimit} tiles`, title: "Color Only scenes: flipped copies (left-right, upside down or both) count once" },
           ]} />
           <span className="k-spacer" />
+          <Switch checked={compare} onChange={setCompare}>Before / after</Switch>
           <Switch checked={heatOn} onChange={setHeatOn}>Show where the tiles go</Switch>
         </div>
         <TileBudget label="Now" tiles={now} limit={limit} slots={slotsUsed(cells)} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
@@ -257,7 +262,8 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
             {note && <span className="k-muted k-xs" role="status">{note}</span>}
           </div>
           <div className="k-stack k-stack--tight">
-            <Shot image={image} tile={current?.from ?? null} heat={heat} label={current ? <>Before · {where(current.from)}</> : "The picture"} />
+            {compare ? <BeforeAfter before={opened} after={image.data} width={width} height={height} beforeLabel="As opened" afterLabel="Now" />
+              : <Shot image={image} tile={current?.from ?? null} heat={heat} label={current ? <>Before · {where(current.from)}</> : "The picture"} />}
             {heat && <span className="bf-legend k-xs k-muted">{HEAT.map((step) => <span key={step.label}><i style={{ background: `rgb(${step.rgb})` }} />{step.label}</span>)}</span>}
             {current && <Shot image={image} tile={current.from} patch={thumbs.get(current.from)?.into} label={<>After · a copy of {where(current.into).toLowerCase()}{flipWord(current.flip)}</>} />}
           </div>

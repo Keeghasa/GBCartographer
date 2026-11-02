@@ -8,10 +8,11 @@
 import { Check, Moon, Mountain, Pause, Play, Sunrise, Sunset, Waves } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba, type TimeLetter } from "../paint";
-import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Select, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
 import { useWizardSettings } from "./useWizardSettings";
+import { BeforeAfter } from "./BeforeAfter";
 import "./DnsWizard.css";
 
 type SlotPalette = { id: string; name: string; colors: string[] };
@@ -127,6 +128,9 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   // Play (the author, 2026-11-02): one big preview stepping through day and each picked time on a timer. It never
   // starts by itself, so prefers-reduced-motion is respected; with reduced motion it steps more slowly.
   const [playing, setPlaying] = useState(false);
+  // Before / after (the author, 2026-11-02): day as painted, wiped into one picked time.
+  const [compareTime, setCompareTime] = useState<string>("");
+  const compared = previews.find((preview) => preview.key === compareTime) ?? previews[1];
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!playing || previews.length < 2) return;
@@ -204,6 +208,8 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
             {previews.length > 1 && <Button size="sm" aria-pressed={playing} title="Step the picture through day and each picked time" onClick={() => setPlaying(!playing)}>{playing ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Play the cycle</>}</Button>}
           </div>
           <span className="k-eyebrow">The open picture under each time</span>
+          {!playing && compared && <BeforeAfter before={previews[0].rgba} after={compared.rgba} width={picture.width} height={picture.height} beforeLabel={previews[0].label}
+            afterLabel={compared.label} extra={previews.length > 2 && <Select label="Compare with" value={compared.key} onChange={setCompareTime} options={previews.slice(1).map((preview) => ({ value: preview.key, label: preview.label }))} />} />}
           {playing && shown && <figure className="dw-pic dw-pic--play" aria-live="polite"><figcaption className="k-muted k-xs">{shown.label}</figcaption><Pixels rgba={shown.rgba} width={picture.width} height={picture.height} /></figure>}
           <div className="dw-pics">{previews.map((preview) => (
             <figure key={preview.key} className="dw-pic"><figcaption className="k-muted k-xs">{preview.label}</figcaption><Pixels rgba={preview.rgba} width={picture.width} height={picture.height} /></figure>

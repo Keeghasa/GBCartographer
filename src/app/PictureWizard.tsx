@@ -17,6 +17,7 @@ import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
 import { useWizardSettings } from "./useWizardSettings";
 import { TileBudget } from "./TileBudget";
+import { BeforeAfter } from "./BeforeAfter";
 import "./PictureWizard.css";
 
 interface Props {
@@ -215,6 +216,8 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [budget, setBudget] = ws.field("budget");
   const [name, setName] = useState(() => defaultName("Background", takenNames));
   const [over, setOver] = useState(false);
+  // Before / after (the author, 2026-11-02): your picture as framed, wiped into the result.
+  const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
@@ -344,9 +347,11 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
               <span className="k-muted k-xs">It is framed to whole screens, fitted to 8 palettes of 4 colors a tile, and kept under the tile budget.</span>
             </div>
           ) : (<>
-            <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined}>
-              <LockLayer width={width} height={height} locks={locks} brush={lockBrush} onLocks={setLockMap} />
-            </Picture>
+            {compare && framed && after && result?.width === width && result.height === height
+              ? <BeforeAfter before={framed} after={after} width={width} height={height} beforeLabel="Your picture, framed" afterLabel={<>Result · {width} × {height}</>} />
+              : <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined}>
+                <LockLayer width={width} height={height} locks={locks} brush={lockBrush} onLocks={setLockMap} />
+              </Picture>}
             <div style={{ width: "46%" }}>{turned && <SourceView name={source.name} turned={turned} crop={crop} onCrop={setCrop} width={width} height={height} framing={framing} pan={pan} />}</div>
           </>)}
         </div>
@@ -385,6 +390,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {batch && <p className="k-hint">A batch is framed as set above; turning, cropping and locks are for one picture.</p>}
           {current && <>
+            {!batch && <Checkbox checked={compare} onChange={setCompare}>Before / after</Checkbox>}
             <TileBudget tiles={current.tiles} limit={current.limit} slots={current.palettes.length} title={current.merged ? `${current.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
             {logoHelps(current.width, current.height, current.limit) && <Meter label="Logo" value={current.tiles} of={LOGO_TILES} tone={current.tiles > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
             <p className="pw-report">{current.merged ? `${current.tilesBefore} → ${current.tiles} tiles after merging ${current.merged} near ones. ` : ""}{current.report.after} palette{current.report.after === 1 ? "" : "s"} · {current.report.overfull.length} tile{current.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{current.tiles > current.limit ? ` Still ${current.tiles - current.limit} over GB Studio's ${current.limit}: keep fewer colors, or set dithering to None.` : ""}</p>
