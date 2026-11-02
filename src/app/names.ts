@@ -5,7 +5,7 @@
  * "Cave-Desert-Dunes-Cove": a first word, a place word and a last word, with lists per kind, all here. No game
  * names. A name already in the project is never given again (the file would be a new PNG anyway, never replacing one).
  */
-export type NameKind = "Cave" | "Dungeon" | "Background" | "Overworld" | "Stamp" | "Map" | "Palette";
+export type NameKind = "Cave" | "Dungeon" | "Background" | "Overworld" | "Stamp" | "Map" | "Palette" | "Room";
 
 /** Three word lists per kind: the first word, the place, the last word. */
 export const NAME_WORDS: Record<NameKind, readonly [readonly string[], readonly string[], readonly string[]]> = {
@@ -16,6 +16,8 @@ export const NAME_WORDS: Record<NameKind, readonly [readonly string[], readonly 
   Stamp: [["Little", "Mossy", "Wobbly", "Tiny", "Cracked", "Flower", "Broken", "Stone", "Campfire", "Reed", "Old", "Round"], ["Oak", "Rock", "Fence", "Hut", "Well", "Patch", "Cart", "Arch", "Ring", "Bunch"], ["One", "Two", "Pair", "Set", "Bit", "Piece", "Prop", "Mark", "Spot", "Thing"]],
   Map: [["Home", "Long", "Northern", "Market", "Westwood", "Lakeside", "Narrow", "Crossroads", "Upper", "Lower", "Green", "Grey"], ["Valley", "Walk", "Pass", "Town", "Trail", "Loop", "Way", "Country", "Fields", "Shore"], ["North", "South", "East", "West", "Route", "Round", "Reach", "Span", "Run", "Stretch"]],
   Palette: [["Peach", "Sea", "Moss", "Candle", "Berry", "Desert", "Mint", "Plum", "Butter", "Slate", "Rose", "Ash"], ["Fizz", "Glass", "Milk", "Smoke", "Soda", "Dusk", "Choc", "Night", "Toast", "Rain"], ["Day", "Dawn", "Dusk", "Night", "Soft", "Deep", "Pale", "Warm", "Cool", "Bright"]],
+  // The Interior wizard (the author, 2026-11-02).
+  Room: [["Cozy", "Dusty", "Quiet", "Sunny", "Cluttered", "Tidy", "Creaky", "Warm", "Drafty", "Candlelit", "Little", "Grand"], ["Parlor", "Study", "Kitchen", "Bedroom", "Attic", "Cellar", "Shop", "Inn", "Library", "Workshop"], ["Upstairs", "Downstairs", "Front", "Back", "Corner", "Annex", "Nook", "Wing", "Side", "End"]],
 };
 
 /** A name that `taken` doesn't have (compared without case): `wanted`, else "wanted-2", "wanted-3"… */
