@@ -2703,6 +2703,8 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     await openFiles(files);
   }
 
+  // Before the start screen's early return: hooks run on every render.
+  const checkupCount = useCheckupCount(project?.path ?? null, wizard === "checkup");
   const hint = TOOLS.find(([id]) => id === tool)!;
   const gridLines = doc && grid && grid * doc.zoom >= 3 ? `${grid * doc.zoom}px` : null;
   // A project background or sprite sheet carries its eight palette slots (the Palettes tab and the slot menu show them).
@@ -2828,7 +2830,6 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   // The wizards (W1…W8, the author's picks 2026-10-10); the text tool (W5) is in the tool column.
   const noProject = !project;
   const needProject = noProject ? "Open a GB Studio project first" : null;
-  const checkupCount = useCheckupCount(project?.path ?? null, wizard === "checkup");
   const wizardCards: WizardCard[] = [
     { thumb: "picture", name: "Picture to background", icon: <ImagePlus />, about: "Any picture or photo, framed to screens and fitted to GB Studio's palettes and tile budget, keeping its colors as best it can.", blocked: needProject, onStart: () => setShowPictureWizard(true) },
     { thumb: "dns", name: "Dawn, sunset and night", icon: <PxCloudMoon size={15} />, about: "Dawn, sunset and night versions of the open picture's slot palettes (as painted, they're the day), named so GB Studio events can swap them.", 
