@@ -39,6 +39,34 @@ export const WORLD_THEMES: MapTheme[] = [
     ["#43BD35", "#FEE761", "#ECAB11", "#1C162D"],
     ["#43BD35", "#FFEEE5", "#DA2424", "#1C162D"],
   ]) },
+  // The biomes' own palettes (the author, 2026-11-02: desert, snow, swamp), invented here for GB Cartographer, CC0.
+  { id: "biome-desert", name: "Desert", credit: "GB Cartographer, CC0", palettes: terrains("Desert", [
+    ["#F2E2B0", "#D9B878", "#A8784A", "#3A2218"],
+    ["#F2E2B0", "#8FB060", "#4E7A44", "#3A2218"],
+    ["#F2E2B0", "#D88A5A", "#9A4A36", "#3A1A20"],
+    ["#E8F6EA", "#58BCC0", "#2E7C9C", "#14243A"],
+    ["#FFF0C8", "#E2C68E", "#58BCC0", "#14243A"],
+    ["#F2E2B0", "#C89E68", "#8A6040", "#3A2218"],
+    ["#F2E2B0", "#FAF0DC", "#C46A3C", "#3A2218"],
+  ]) },
+  { id: "biome-snow", name: "Snow", credit: "GB Cartographer, CC0", palettes: terrains("Snow", [
+    ["#F4F8FC", "#C8D8E8", "#7E96B4", "#1C2438"],
+    ["#F4F8FC", "#7AA898", "#3E6A64", "#1C2438"],
+    ["#F4F8FC", "#A8B4C8", "#5E6A88", "#20203A"],
+    ["#E0F0FA", "#86BEE0", "#3E78B0", "#16204A"],
+    ["#F4F8FC", "#D2E2EE", "#86BEE0", "#16204A"],
+    ["#F4F8FC", "#C2B4A0", "#7E6A58", "#1C2438"],
+    ["#F4F8FC", "#F0E6D8", "#B0484C", "#1C2438"],
+  ]) },
+  { id: "biome-swamp", name: "Swamp", credit: "GB Cartographer, CC0", palettes: terrains("Swamp", [
+    ["#B8C88A", "#8A9E5C", "#56683E", "#1E2414"],
+    ["#B8C88A", "#6E8A4C", "#3C5432", "#1E2414"],
+    ["#B8C88A", "#9A9070", "#5E5644", "#1E1C18"],
+    ["#A8B890", "#6A8A68", "#3E5A4A", "#141E1A"],
+    ["#C8C496", "#9E9466", "#6A8A68", "#141E1A"],
+    ["#B8C88A", "#A08A60", "#6A5638", "#1E2414"],
+    ["#B8C88A", "#E0D8B8", "#8A4A3A", "#1E2414"],
+  ]) },
   ...["SG-Winter Forest GB", "SG-Campfire GB"].flatMap((name) => { const palette = named(name); return palette ? [{ id: name, name: name.replace("SG-", ""), credit: SPICY, palettes: [palette] }] : []; }),
 ];
 

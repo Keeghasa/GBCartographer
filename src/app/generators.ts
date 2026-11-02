@@ -530,14 +530,45 @@ export interface WorldSettings {
   roads: boolean;
   /** The palettes it wears: a WORLD_THEMES id ("" or unknown: the GB greens). */
   theme: string;
+  /** The land it is (the author, 2026-11-02): which trees it grows; the wizard also picks the biome's palettes and sliders. */
+  biome?: Biome;
+  /**
+   * A rough shape painted first (the author, 2026-11-02), SHAPE_W × SHAPE_H stretched over the map: 0 left to the
+   * generator, LAND or SEA. Painted land stays land and painted water water; the noise fills in round them.
+   */
+  shape?: Uint8Array | null;
 }
+
+export type Biome = "grassland" | "desert" | "snow" | "swamp";
+/** Each biome's palettes (a WORLD_THEMES id) and the sliders it starts from. */
+export const BIOMES: { value: Biome; label: string; theme: string; settings: Partial<WorldSettings> }[] = [
+  { value: "grassland", label: "Grassland", theme: "overworld", settings: { water: 35, mountains: 18, forest: 35 } },
+  { value: "desert", label: "Desert", theme: "biome-desert", settings: { water: 10, mountains: 25, forest: 8 } },
+  { value: "snow", label: "Snow", theme: "biome-snow", settings: { water: 30, mountains: 30, forest: 40 } },
+  { value: "swamp", label: "Swamp", theme: "biome-swamp", settings: { water: 45, mountains: 5, forest: 55 } },
+];
+
+export const SHAPE_W = 16, SHAPE_H = 16, LAND = 1, SEA = 2;
 
 export const WORLD_DEFAULTS: WorldSettings = { columns: 3, rows: 3, seed: 1, water: 35, mountains: 18, forest: 35, towns: 3, scale: 5, island: true, roads: true, theme: "overworld" };
 
-export const WATER = 0, SHORE = 1, GRASS = 2, FOREST = 3, MOUNTAIN = 4, TOWN = 5, ROAD = 6;
+/** BRIDGE (the author, 2026-11-02): a road over water. */
+export const WATER = 0, SHORE = 1, GRASS = 2, FOREST = 3, MOUNTAIN = 4, TOWN = 5, ROAD = 6, BRIDGE = 7;
 
-/** Each terrain's palette in a seven-palette theme (1-based): grass 1, forest 2, mountain 3, water 4, shore 5, road 6, town 7. */
-const TERRAIN_PALETTE: Record<number, number> = { [GRASS]: 1, [FOREST]: 2, [MOUNTAIN]: 3, [WATER]: 4, [SHORE]: 5, [ROAD]: 6, [TOWN]: 7 };
+/** Each terrain's palette in a seven-palette theme (1-based): grass 1, forest 2, mountain 3, water 4 (bridges too), shore 5, road 6, town 7. */
+const TERRAIN_PALETTE: Record<number, number> = { [GRASS]: 1, [FOREST]: 2, [MOUNTAIN]: 3, [WATER]: 4, [SHORE]: 5, [ROAD]: 6, [TOWN]: 7, [BRIDGE]: 4 };
+
+/** The painted shape over the map's cells: +1 land … -1 water, blended between the shape's squares (0: unpainted). */
+function shapeField(shape: Uint8Array, w: number, h: number): Float32Array {
+  const value = (sx: number, sy: number) => { const v = shape[Math.min(SHAPE_H - 1, Math.max(0, sy)) * SHAPE_W + Math.min(SHAPE_W - 1, Math.max(0, sx))]; return v === LAND ? 1 : v === SEA ? -1 : 0; };
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    const fx = (x + 0.5) / w * SHAPE_W - 0.5, fy = (y + 0.5) / h * SHAPE_H - 0.5, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+    const top = value(ix, iy) * (1 - tx) + value(ix + 1, iy) * tx, bottom = value(ix, iy + 1) * (1 - tx) + value(ix + 1, iy + 1) * tx;
+    out[y * w + x] = top * (1 - ty) + bottom * ty;
+  }
+  return out;
+}
 
 /** Smooth noise: random values on a lattice, blended (smoothstep) between them, a few octaves summed. */
 function valueNoise(w: number, h: number, period: number, random: () => number): Float32Array {
@@ -580,9 +611,17 @@ export function worldGrid(settings: WorldSettings): { w: number; h: number; grid
     }
   }
   const grid = new Uint8Array(w * h).fill(GRASS);
-  const sea = cut(height, settings.water);
+  // A painted shape decides the cells well inside its land and water; the rest (its edges, the unpainted) go by height,
+  // nudged towards the shape, with the Water share of them under water.
+  const field = settings.shape?.some((value) => value) ? shapeField(settings.shape, w, h) : null;
+  const level = field ? Float32Array.from(height, (value, at) => value + field[at] * 0.5) : height;
+  const open = field ? Array.from(level.keys()).filter((at) => Math.abs(field[at]) <= 0.35) : null;
+  const sea = cut(open ? open.map((at) => level[at]) : level, settings.water);
   const land: number[] = [];
-  for (let at = 0; at < w * h; at += 1) if (height[at] < sea || (settings.island && settings.water > 0 && edgeCell(at, w, h))) grid[at] = WATER; else land.push(at);
+  for (let at = 0; at < w * h; at += 1) {
+    const wet = field && field[at] < -0.35 ? true : field && field[at] > 0.35 ? false : level[at] < sea;
+    if (wet || (settings.island && settings.water > 0 && edgeCell(at, w, h))) grid[at] = WATER; else land.push(at);
+  }
   const peak = cut(land.map((at) => height[at]), 100 - settings.mountains);
   for (const at of land) if (settings.mountains > 0 && height[at] >= peak) grid[at] = MOUNTAIN;
   const lowland = land.filter((at) => grid[at] === GRASS);
@@ -648,11 +687,13 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
   }
   if (!settings.roads) return;
   // Roads keep off the sand where they can (inland first, the shore only when a town can't be reached otherwise).
-  const inland = (cell: number) => cell === GRASS || cell === FOREST || cell === ROAD || cell === TOWN;
+  const inland = (cell: number) => cell === GRASS || cell === FOREST || cell === ROAD || cell === TOWN || cell === BRIDGE;
   const walkable = (cell: number) => inland(cell) || cell === SHORE;
   for (let at = 1; at < towns.length; at += 1) {
-    const dry = distances(grid, w, h, towns[at], inland);
-    const distance = towns.slice(0, at).some((town) => dry[town] > 0) ? dry : distances(grid, w, h, towns[at], walkable);
+    const dry = distances(grid, w, h, towns[at], inland), reaches = (distance: Int32Array) => towns.slice(0, at).some((town) => distance[town] > 0);
+    // Over the water last (the author, 2026-11-02: bridges where roads cross water): a town across it is reached by a bridge.
+    let distance = reaches(dry) ? dry : distances(grid, w, h, towns[at], walkable);
+    if (!reaches(distance)) distance = distances(grid, w, h, towns[at], (cell) => walkable(cell) || cell === WATER || cell === BRIDGE);
     const reachable = towns.slice(0, at).filter((town) => distance[town] > 0);
     if (!reachable.length) continue;
     // Walk back from the nearest town along falling distances, laying road.
@@ -662,7 +703,7 @@ function placeTowns(grid: Uint8Array, w: number, h: number, settings: WorldSetti
       const next = SIDES.map(([dx, dy]) => (y + dy) * w + x + dx).find((n, side) => { const nx = x + SIDES[side][0], ny = y + SIDES[side][1]; return nx >= 0 && ny >= 0 && nx < w && ny < h && distance[n] === distance[step] - 1; });
       if (next === undefined) break;
       step = next;
-      if (grid[step] !== TOWN) grid[step] = ROAD;
+      if (grid[step] !== TOWN) grid[step] = grid[step] === WATER || grid[step] === BRIDGE ? BRIDGE : ROAD;
     }
   }
 }
@@ -684,7 +725,7 @@ function blitTile(out: Generated, sheet: Sheet, tx: number, ty: number, column: 
  */
 function drawShores(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
   const tw = w * 2, th = h * 2;
-  const water = (tx: number, ty: number) => tx < 0 || ty < 0 || tx >= tw || ty >= th ? true : grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)] === WATER;
+  const water = (tx: number, ty: number) => tx < 0 || ty < 0 || tx >= tw || ty >= th ? true : [WATER, BRIDGE].includes(grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)]);
   const corner = (vx: number, vy: number) => water(vx - 1, vy - 1) && water(vx, vy - 1) && water(vx - 1, vy) && water(vx, vy);
   for (let ty = 0; ty < th; ty += 1) for (let tx = 0; tx < tw; tx += 1) {
     if (!water(tx, ty)) continue;
@@ -702,7 +743,7 @@ function drawShores(out: Generated, grid: Uint8Array, w: number, h: number, shee
 function drawRoads(out: Generated, grid: Uint8Array, w: number, h: number, sheet: Sheet) {
   const tw = w * 2, th = h * 2;
   const cell = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
-  const linked = (x: number, y: number) => cell(x, y) === ROAD || cell(x, y) === TOWN;
+  const linked = (x: number, y: number) => cell(x, y) === ROAD || cell(x, y) === TOWN || cell(x, y) === BRIDGE;
   const road = new Uint8Array(tw * th);
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     if (cell(x, y) !== ROAD) continue;
@@ -737,13 +778,14 @@ function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number,
     if (hash(x, y, settings.seed) % 3 === 0) { pen.dot(4, 3, 1); pen.dot(3, 4, 1); pen.dot(5, 4, 1); pen.dot(11, 10, 1); pen.dot(10, 11, 1); pen.dot(12, 11, 1); }
   }
   // The map's own edge: water runs off it on an island, so no shore shows there.
-  const wet = (x: number, y: number) => at(x, y) === WATER, sandy = (x: number, y: number) => at(x, y) === WATER || at(x, y) === SHORE;
+  const wet = (x: number, y: number) => at(x, y) === WATER || at(x, y) === BRIDGE, sandy = (x: number, y: number) => wet(x, y) || at(x, y) === SHORE;
   paintXp(canvasOut, sheet("xp-sand"), sandy, w, h, settings.island);
   paintXp(canvasOut, sheet("water"), wet, w, h, settings.island);
   paintXp(canvasOut, sheet("xp-dirt"), (x, y) => at(x, y) === ROAD, w, h);
   // Map-scale pieces (the author, 2026-10-14: "an overworld, so don't use big trees or mounds"): the Outdoor sheet's
   // repeating Mountain tile on each mountain cell, a small tree on each forest cell (pines or round trees by seed).
-  const tree = settings.seed % 2 ? "pine" : "tree";
+  // Snow grows pines, swamp and desert round trees (the author, 2026-11-02: biomes); grassland either, by seed.
+  const tree = settings.biome === "snow" ? "pine" : settings.biome === "swamp" || settings.biome === "desert" ? "tree" : settings.seed % 2 ? "pine" : "tree";
   for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
     const cell = at(x, y);
     if (cell !== MOUNTAIN && cell !== FOREST) continue;
@@ -762,8 +804,37 @@ function drawWorldPieces(out: Generated, grid: Uint8Array, w: number, h: number,
   return out;
 }
 
+/** Bridges (the author, 2026-11-02): planks across each road cell over water, running the way the road goes, with rails along both sides. */
+function drawBridges(out: Generated, grid: Uint8Array, w: number, h: number) {
+  const at = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h ? -1 : grid[y * w + x];
+  const road = (cell: number) => cell === ROAD || cell === TOWN || cell === BRIDGE;
+  for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+    if (at(x, y) !== BRIDGE) continue;
+    const pen = new Pen(out, x * 16, y * 16, 16);
+    // Across (east-west) unless the road only runs north-south here.
+    const across = road(at(x - 1, y)) || road(at(x + 1, y)) || !(road(at(x, y - 1)) || road(at(x, y + 1)));
+    if (across) {
+      pen.rect(0, 3, 16, 10, 0);
+      for (let px = 1; px < 16; px += 3) pen.rect(px, 4, 1, 8, 2);
+      pen.rect(0, 2, 16, 1, 3); pen.rect(0, 13, 16, 1, 3);
+    } else {
+      pen.rect(3, 0, 10, 16, 0);
+      for (let py = 1; py < 16; py += 3) pen.rect(4, py, 8, 1, 2);
+      pen.rect(2, 0, 1, 16, 3); pen.rect(13, 0, 1, 16, 3);
+    }
+  }
+}
+
 export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): Generated {
   const { w, h, grid } = worldGrid(settings);
+  const out = drawWorldTerrain(settings, tiles, w, h, grid);
+  drawBridges(out, grid, w, h);
+  // Collisions for GB Studio (the author, 2026-11-02): water and mountains solid; bridges, roads and the rest open.
+  out.collisions = tileCollisions(out.width, out.height, (tx, ty) => { const cell = grid[Math.floor(ty / 2) * w + Math.floor(tx / 2)]; return cell === WATER || cell === MOUNTAIN; });
+  return out;
+}
+
+function drawWorldTerrain(settings: WorldSettings, tiles: WorldTiles | null | undefined, w: number, h: number, grid: Uint8Array): Generated {
   const out: Generated = { width: w * 16, height: h * 16, pixels: new Uint8Array(w * 16 * h * 16) };
   const theme = themeOf(WORLD_THEMES, settings.theme);
   if (theme) {
@@ -779,7 +850,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
     const pen = new Pen(out, x * 16, y * 16, 16);
     const cell = grid[y * w + x];
     const variant = hash(x, y, settings.seed);
-    if (cell === WATER) {
+    if (cell === WATER || cell === BRIDGE) {
       pen.fill(1);
       // Waves: two short dashes, offset on alternate cells.
       const shift = (x + y) % 2 ? 6 : 0;
@@ -813,7 +884,7 @@ export function drawWorld(settings: WorldSettings, tiles?: WorldTiles | null): G
       // With one palette for the whole map, shade 1 is the water's color too: roads take shade 2 there.
       const dirt = theme && theme.palettes.length === 1 ? 2 : 1;
       pen.rect(5, 5, 6, 6, dirt);
-      const links = SIDES.map(([dx, dy]) => { const n = at(x + dx, y + dy); return n === ROAD || n === TOWN; });
+      const links = SIDES.map(([dx, dy]) => { const n = at(x + dx, y + dy); return n === ROAD || n === TOWN || n === BRIDGE; });
       if (links[0]) pen.rect(5, 0, 6, 5, dirt);
       if (links[1]) pen.rect(11, 5, 5, 6, dirt);
       if (links[2]) pen.rect(5, 11, 6, 5, dirt);

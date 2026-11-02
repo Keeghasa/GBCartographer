@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { countUniqueTiles } from "../paint";
-import { OVERWORLD_PALETTES, TOWN, CAVE_DEFAULTS, MOUNTAIN, ROAD, WATER, WORLD_DEFAULTS, caveGrid, drawCave, drawWorld, worldGrid, STAIRS, DOOR_ACROSS, DOOR_DOWN, TREASURE, ENEMY } from "./generators";
+import { OVERWORLD_PALETTES, TOWN, CAVE_DEFAULTS, MOUNTAIN, ROAD, WATER, WORLD_DEFAULTS, caveGrid, drawCave, drawWorld, worldGrid, STAIRS, DOOR_ACROSS, DOOR_DOWN, TREASURE, ENEMY, BIOMES, BRIDGE, LAND, SEA, SHAPE_H, SHAPE_W } from "./generators";
 import { SOLID } from "./pendingCollisions";
 
 /** Floor cells reachable from the first one, by sides. */
@@ -96,6 +96,49 @@ describe("map generators", () => {
       expect(world.cells?.[tileOf(town) + offset]).toBe(7);
     }
     expect(drawWorld({ ...WORLD_DEFAULTS, theme: "" }).cells).toBeUndefined();
+  });
+});
+
+describe("overworld shape, biomes, bridges and collisions (2026-11-02)", () => {
+  it("keeps painted land and water, and fills in the rest the same way every time", () => {
+    const shape = new Uint8Array(SHAPE_W * SHAPE_H);
+    for (let y = 0; y < SHAPE_H; y += 1) for (let x = 0; x < SHAPE_W; x += 1) shape[y * SHAPE_W + x] = x < SHAPE_W / 2 ? SEA : LAND;
+    const settings = { ...WORLD_DEFAULTS, island: false, shape };
+    const { w, h, grid } = worldGrid(settings);
+    // Well inside each half: water on the left, never water on the right.
+    for (let y = 0; y < h; y += 1) {
+      expect(grid[y * w + 2]).toBe(WATER);
+      expect(grid[y * w + w - 3]).not.toBe(WATER);
+    }
+    expect(worldGrid(settings).grid).toEqual(grid);
+    expect(worldGrid({ ...WORLD_DEFAULTS, shape: new Uint8Array(SHAPE_W * SHAPE_H) }).grid).toEqual(worldGrid(WORLD_DEFAULTS).grid);
+  });
+
+  it("gives each biome its own seven palettes, sharing shade 0 on the grass", () => {
+    for (const biome of BIOMES) {
+      const world = drawWorld({ ...WORLD_DEFAULTS, ...biome.settings, biome: biome.value, theme: biome.theme });
+      expect(world.palettes?.length, biome.value).toBe(7);
+      for (const at of [1, 2, 5, 6]) expect(world.palettes![at].colors[0]).toBe(world.palettes![0].colors[0]);
+    }
+    expect(new Set(BIOMES.map((biome) => biome.theme)).size).toBe(BIOMES.length);
+  });
+
+  it("bridges the water when a town can only be reached across it", () => {
+    // Two strips of land with water between: towns on both sides.
+    const shape = new Uint8Array(SHAPE_W * SHAPE_H);
+    for (let y = 0; y < SHAPE_H; y += 1) for (let x = 0; x < SHAPE_W; x += 1) shape[y * SHAPE_W + x] = x >= 6 && x <= 9 ? SEA : LAND;
+    let bridged = 0;
+    for (let seed = 1; seed <= 6; seed += 1) {
+      const { grid } = worldGrid({ ...WORLD_DEFAULTS, seed, island: false, mountains: 0, towns: 4, shape });
+      if (grid.some((cell) => cell === BRIDGE)) bridged += 1;
+    }
+    expect(bridged).toBeGreaterThan(0);
+  });
+
+  it("makes water and mountains solid, bridges and the rest open", () => {
+    const settings = { ...WORLD_DEFAULTS, seed: 2 }, world = drawWorld(settings), { w, grid } = worldGrid(settings), tw = world.width / 8;
+    expect(world.collisions?.length).toBe(tw * (world.height / 8));
+    world.collisions!.forEach((value, at) => { const cell = grid[Math.floor(Math.floor(at / tw) / 2) * w + Math.floor((at % tw) / 2)]; expect(value).toBe(cell === WATER || cell === MOUNTAIN ? SOLID : 0); });
   });
 });
 

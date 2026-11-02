@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { countUniqueTiles, toRgba } from "../paint";
 import { Button, Chip, IconButton, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { CAVE_THEMES, WORLD_THEMES, themeOf } from "./mapThemes";
-import { CAVE_DEFAULTS, CAVE_FLOORS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, floorOf, wallsOf, type CaveFloor, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
+import { BIOMES, LAND, SEA, SHAPE_H, SHAPE_W, CAVE_DEFAULTS, CAVE_FLOORS, CAVE_WALLS, WORLD_DEFAULTS, drawCave, floorOf, wallsOf, type CaveFloor, type CaveWalls, drawWorld, type CaveSettings, type CaveTiles, type Generated, type WorldSettings } from "./generators";
 import type { Asset } from "./model";
 import { autotileOf } from "./autotile";
 import { defaultName, isSuggestedName, type NameKind } from "./names";
@@ -44,6 +44,41 @@ function Setting({ label, value, unit = "", min, max, step, onChange, title }: {
     <div className="gw-setting" title={title}>
       <span className="gw-setting-head"><span className="k-label">{label}</span><span className="k-mono k-small">{value}{unit}</span></span>
       <Slider label={label} value={value} min={min} max={max} step={step} onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * A rough shape painted first (the author, 2026-11-02): a little grid stretched over the map, painted with land or
+ * water (drag to paint, Erase gives a square back to the generator); empty, the overworld is all the generator's.
+ */
+function ShapePad({ shape, ratio, onChange }: { shape: Uint8Array | null; ratio: number; onChange: (shape: Uint8Array | null) => void }) {
+  const [brush, setBrush] = useState<"land" | "water" | "erase">("land");
+  const [down, setDown] = useState(false);
+  const value = brush === "land" ? LAND : brush === "water" ? SEA : 0;
+  const paint = (at: number) => {
+    if ((shape?.[at] ?? 0) === value) return;
+    const next = shape ? shape.slice() : new Uint8Array(SHAPE_W * SHAPE_H);
+    next[at] = value;
+    onChange(next.some((item) => item) ? next : null);
+  };
+  useEffect(() => {
+    if (!down) return;
+    const up = () => setDown(false);
+    window.addEventListener("pointerup", up);
+    return () => window.removeEventListener("pointerup", up);
+  }, [down]);
+  return (
+    <div className="k-stack k-stack--tight" title="Paint where land and water go; the generator fills in the rest (mountains, forest, towns and roads too)">
+      <span className="k-row"><span className="k-label">Rough shape</span><span className="k-spacer" /><Button size="sm" disabled={!shape} onClick={() => onChange(null)}>Clear</Button></span>
+      <Segmented fill size="sm" label="Shape brush" value={brush} onChange={setBrush} options={[{ value: "land", label: "Land" }, { value: "water", label: "Water" }, { value: "erase", label: "Erase" }]} />
+      <div className="gw-shape" style={{ ["--gw-ratio" as string]: ratio, ["--gw-shape-cols" as string]: SHAPE_W, ["--gw-shape-rows" as string]: SHAPE_H }} onPointerLeave={() => setDown(false)}>
+        {Array.from({ length: SHAPE_W * SHAPE_H }, (_, at) => (
+          <span key={at} className="gw-shape-cell" data-kind={shape?.[at] === LAND ? "land" : shape?.[at] === SEA ? "water" : undefined}
+            onPointerDown={(event) => { event.preventDefault(); setDown(true); paint(at); }} onPointerEnter={() => { if (down) paint(at); }} />
+        ))}
+      </div>
+      <span className="k-muted k-xs">{shape ? "Painted land and water stay; the rest is generated round them" : "Empty: the generator makes it all"}</span>
     </div>
   );
 }
@@ -172,6 +207,11 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
             <Switch checked={cave.marks ?? false} onChange={(marks) => setC({ marks })}>Mark treasure (T) and enemy (E) spots</Switch>
           </>}
           {mode === "world" && <>
+            <div className="k-stack k-stack--tight" title="The land it is: its palettes, trees and sliders">
+              <span className="k-label">Biome</span>
+              <Segmented fill size="sm" label="Biome" value={world.biome ?? "grassland"} onChange={(value) => { const biome = BIOMES.find((item) => item.value === value)!; setW({ biome: biome.value, theme: biome.theme, ...biome.settings }); }} options={BIOMES.map(({ value, label }) => ({ value, label }))} />
+            </div>
+            <ShapePad shape={world.shape ?? null} ratio={(columns * 160) / (rows * 144)} onChange={(shape) => setW({ shape })} />
             <Setting label="Water" value={world.water} unit="%" min={0} max={80} onChange={(water) => setW({ water })} />
             <Setting label="Mountains" value={world.mountains} unit="%" min={0} max={60} onChange={(mountains) => setW({ mountains })} title="Share of the land" />
             <Setting label="Forest" value={world.forest} unit="%" min={0} max={80} onChange={(forest) => setW({ forest })} title="Share of the lowland" />
