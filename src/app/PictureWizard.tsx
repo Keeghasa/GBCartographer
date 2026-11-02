@@ -6,12 +6,12 @@
  * project as a new background with its palettes in the slots.
  */
 import { LOGO_TILES, logoHelps } from "../gb/limits";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Undo2, Upload } from "lucide-react";
+import { Crop, Eraser, ImagePlus, Lock, RotateCcw, RotateCw, Undo2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
-import { Button, Checkbox, IconButton, Chip, Field, Meter, Segmented, Slider } from "../ui/kit";
+import { Button, Checkbox, IconButton, Select, Chip, Field, Meter, Segmented, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
-import { SCREEN_SIZES, clampCrop, fitPicture, rotatedSize, type CropBox, type DitherKind, type FitOptions, type FitResult } from "./pictureFit";
+import { SCREEN_SIZES, clampCrop, fitPicture, lockCell, rotatedSize, type CropBox, type DitherKind, type FitOptions, type FitResult } from "./pictureFit";
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
@@ -90,7 +90,7 @@ function frame(source: Drawable, width: number, height: number, framing: Framing
   return context.getImageData(0, 0, width, height).data;
 }
 
-function Picture({ rgba, width, height, label, extra }: { rgba: Uint8ClampedArray | null; width: number; height: number; label: ReactNode; extra?: ReactNode }) {
+function Picture({ rgba, width, height, label, extra, children }: { rgba: Uint8ClampedArray | null; width: number; height: number; label: ReactNode; extra?: ReactNode; children?: ReactNode }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const target = canvas.current;
@@ -98,7 +98,49 @@ function Picture({ rgba, width, height, label, extra }: { rgba: Uint8ClampedArra
     if (target.width !== width || target.height !== height) Object.assign(target, { width, height });
     target.getContext("2d")!.putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
   }, [rgba, width, height]);
-  return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className="pw-frame"><canvas ref={canvas} width={width} height={height} />{extra}</div></figure>;
+  return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className="pw-frame"><canvas ref={canvas} width={width} height={height} />{children}{extra}</div></figure>;
+}
+
+/** A lock's tint per slot (only on the wizard's overlay, never in the picture). */
+const LOCK_TINTS = ["#ff5a5a", "#ffb03a", "#f2e24a", "#5ad46a", "#3ac8ff", "#5a7aff", "#c05aff", "#ff5ab4"];
+
+/**
+ * Lock a region's palette (the author, 2026-11-02): painted over the result, tile by tile, with a slot brush (or the
+ * eraser). Strokes draw on the overlay at once and reach the fit when the pointer lifts.
+ */
+function LockLayer({ width, height, locks, brush, onLocks }: { width: number; height: number; locks: Uint8Array; brush: number | null; onLocks: (locks: Uint8Array) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const live = useRef<Uint8Array | null>(null);
+  const draw = (map: Uint8Array) => {
+    const target = canvas.current;
+    if (!target) return;
+    const context = target.getContext("2d")!;
+    context.clearRect(0, 0, width, height);
+    const cw = Math.ceil(width / 8);
+    context.font = "6px monospace";
+    context.textBaseline = "top";
+    map.forEach((slot, cell) => {
+      if (!slot) return;
+      const x = (cell % cw) * 8, y = Math.floor(cell / cw) * 8;
+      context.globalAlpha = 0.4; context.fillStyle = LOCK_TINTS[slot - 1]; context.fillRect(x, y, 8, 8);
+      context.globalAlpha = 1; context.fillStyle = "#000"; context.fillText(String(slot), x + 2, y + 1);
+    });
+  };
+  useEffect(() => draw(locks)); // eslint-disable-line react-hooks/exhaustive-deps
+  const paint = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!live.current || brush === null) return;
+    // The canvas keeps its picture's shape inside its box (object-fit: contain): map the pointer into the picture.
+    const rect = event.currentTarget.getBoundingClientRect(), scale = Math.min(rect.width / width, rect.height / height);
+    const x = Math.floor((event.clientX - rect.left - (rect.width - width * scale) / 2) / scale), y = Math.floor((event.clientY - rect.top - (rect.height - height * scale) / 2) / scale);
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    live.current[lockCell(width, x, y)] = brush;
+    draw(live.current);
+  };
+  return <canvas ref={canvas} width={width} height={height} className={`pw-locks${brush !== null ? " is-painting" : ""}`} aria-label="Palette locks"
+    onPointerDown={(event) => { if (brush === null) return; event.currentTarget.setPointerCapture(event.pointerId); live.current = locks.slice(); paint(event); }}
+    onPointerMove={paint}
+    onPointerUp={() => { if (live.current) { onLocks(live.current); live.current = null; } }}
+    onPointerCancel={() => { live.current = null; draw(locks); }} />;
 }
 
 /**
@@ -156,6 +198,10 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
+  // Palette locks, one slot per tile (0 free); a new size starts with none. The brush: a slot, 0 to erase, null off.
+  const [lockMap, setLockMap] = useState<Uint8Array>(() => new Uint8Array(0));
+  const [lockBrush, setLockBrush] = useState<number | null>(null);
+  const [lockSlot, setLockSlot] = useState(1);
   const file = useRef<HTMLInputElement>(null);
   const [width, height] = size;
 
@@ -201,8 +247,11 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   });
 
   const turned = useMemo(() => source ? turn(source.image, quarter * 90 + angle) : null, [source, quarter, angle]);
+  const cellCount = Math.ceil(width / 8) * Math.ceil(height / 8);
+  const locks = useMemo(() => lockMap.length === cellCount ? lockMap : new Uint8Array(cellCount), [lockMap, cellCount]);
+  const locked = useMemo(() => locks.some((slot) => slot > 0 && slot <= max), [locks, max]);
   const framed = useMemo(() => turned ? frame(cropTo(turned, crop), width, height, framing, pan.x, pan.y) : null, [turned, crop, width, height, framing, pan.x, pan.y]);
-  const options = useMemo<FitOptions>(() => ({ keep, dither, strength, max, budget }), [keep, dither, strength, max, budget]);
+  const options = useMemo<FitOptions>(() => ({ keep, dither, strength, max, budget, locks: locked ? locks : undefined }), [keep, dither, strength, max, budget, locks, locked]);
 
   // The fit is the slow part (a few hundred ms on four screens): run it a beat after the last change.
   useEffect(() => {
@@ -237,7 +286,9 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
               <span className="k-muted k-xs">It is framed to whole screens, fitted to 8 palettes of 4 colors a tile, and kept under the tile budget.</span>
             </div>
           ) : (<>
-            <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined} />
+            <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined}>
+              <LockLayer width={width} height={height} locks={locks} brush={lockBrush} onLocks={setLockMap} />
+            </Picture>
             <div style={{ width: "46%" }}>{turned && <SourceView name={source.name} turned={turned} crop={crop} onCrop={setCrop} width={width} height={height} framing={framing} pan={pan} />}</div>
           </>)}
         </div>
@@ -265,6 +316,14 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <div className="pw-section"><span className="k-label">Dithering</span><Segmented fill size="sm" label="Dithering" value={dither} onChange={setDither} options={[{ value: "none", label: "None" }, { value: "ordered", label: "Ordered", title: "A 4 × 4 pattern: even textures" }, { value: "floyd", label: "Diffused", title: "Floyd-Steinberg: each pixel's error spreads to its neighbours" }]} />
             {dither !== "none" && <Field label={<>Strength <span className="k-muted">· {strength}%</span></>}><Slider label="Dither strength" value={strength} onChange={setStrength} min={0} max={100} step={5} /></Field>}</div>
           <div className="pw-section"><span className="k-label">Palettes</span><Segmented fill size="sm" label="Palettes" value={String(max) as "7" | "8"} onChange={(value) => setMax(Number(value) as 7 | 8)} options={[{ value: "8", label: "8" }, { value: "7", label: "7 · keep slot 8 for the UI" }]} /></div>
+          <div className="pw-section"><span className="k-label"><Lock size={12} /> Lock palettes</span>
+            <div className="pw-row">
+              <Button size="sm" icon={<Lock />} pressed={lockBrush !== null && lockBrush > 0} title="Paint over the result: those tiles keep this slot, its palette fitted to them alone" onClick={() => setLockBrush(lockBrush !== null && lockBrush > 0 ? null : Math.min(lockSlot, max))}>Paint</Button>
+              <span className="pw-slot"><Select label="Slot to lock" value={String(Math.min(lockSlot, max))} onChange={(value) => { setLockSlot(Number(value)); if (lockBrush) setLockBrush(Number(value)); }} options={Array.from({ length: max }, (_, index) => ({ value: String(index + 1), label: `Slot ${index + 1}` }))} /></span>
+              <IconButton label="Erase locks" size="sm" pressed={lockBrush === 0} onClick={() => setLockBrush(lockBrush === 0 ? null : 0)}><Eraser /></IconButton>
+            </div>
+            <Button size="sm" disabled={!locks.some(Boolean)} onClick={() => { setLockMap(new Uint8Array(cellCount)); setLockBrush(null); }}>Clear the locks</Button>
+          </div>
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {result && <>
             <Meter label="Tiles" value={result.tiles} of={result.limit} tone={tone} title={result.merged ? `${result.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />

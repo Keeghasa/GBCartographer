@@ -10,6 +10,10 @@
 .pw-frame--source { overflow: hidden; }
 .pw-src { cursor: crosshair; touch-action: none; user-select: none; }
 .pw-cropbox { position: absolute; outline: 1px dashed var(--k-acc); pointer-events: none; }
+.pw-frame > canvas { grid-area: 1 / 1; }
+.pw-locks { pointer-events: none; }
+.pw-locks.is-painting { pointer-events: auto; cursor: cell; touch-action: none; }
+.pw-slot { flex: 1; min-width: 0; }
 .pw-row { display: flex; align-items: center; gap: var(--k-2); }
 .pw-busy { position: absolute; top: 8px; right: 10px; }
 .pw-drop { display: grid; place-items: center; gap: var(--k-3); min-height: 280px; padding: var(--k-8); text-align: center; border: 2px dashed var(--k-edge-2); border-radius: var(--k-r-card); background: var(--k-well); color: var(--k-ink-2); }
