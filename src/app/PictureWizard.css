@@ -25,3 +25,7 @@
 .pw-palettes i { display: block; }
 .pw-report { margin: 0; color: var(--k-ink-2); font-size: var(--k-text-xs); font-variant-numeric: tabular-nums; }
 .pw-name { display: flex; width: 220px; }
+.pw-strip { display: flex; gap: var(--k-2); overflow-x: auto; padding-bottom: 4px; }
+.pw-thumb { flex: none; padding: 3px; border: 1px solid var(--k-edge-2); border-radius: 6px; background: var(--k-well); cursor: pointer; line-height: 0; }
+.pw-thumb.is-picked { border-color: var(--k-acc); box-shadow: 0 0 0 1px var(--k-acc); }
+.pw-thumb canvas { height: 56px; width: auto; image-rendering: pixelated; }
