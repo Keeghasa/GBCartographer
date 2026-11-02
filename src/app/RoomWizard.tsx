@@ -14,6 +14,7 @@ import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { WizardPage } from "./WizardPage";
 import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget } from "./TileBudget";
 import "./GeneratorWizard.css";
 import "./RoomWizard.css";
 
@@ -107,7 +108,7 @@ export function RoomWizard({ projectName, limit, takenNames, onClose, onOpen, on
           <span className="k-row">
             <Chip>{picture.width} × {picture.height} px</Chip>
             <Chip>{columns} × {rows} screens</Chip>
-            <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} unique tiles</Chip>
+            <TileBudget tiles={tiles} limit={limit} slots={1} />
             <span className="k-muted k-xs">The catalog's indoor tiles: paint over them as you like. Cyan lines are screen edges.</span>
           </span>
         </div>

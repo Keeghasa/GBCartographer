@@ -7,13 +7,14 @@
 import { ImagePlus, Map as MapIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { countUniqueTiles, fitTileBudget, toRgba } from "../paint";
-import { Button, Checkbox, Chip, Field, Meter, Segmented, Select, Slider, Switch } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Segmented, Select, Slider, Switch } from "../ui/kit";
 import { NameInput } from "./NameInput";
 import type { Picture } from "./mapEdges";
 import type { Asset } from "./model";
 import { fitPicture, type FitResult } from "./pictureFit";
 import { WizardPage } from "./WizardPage";
 import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget } from "./TileBudget";
 import "./MapWizard.css";
 
 /** One screen of the planned map: a background already in the project, or a new PNG (blank when no picture). */
@@ -257,7 +258,7 @@ export function MapWizard({ suggestedName, takenMaps, backgrounds, onCancel, onC
             <Switch checked={dither} onChange={setDither}>Dithering</Switch>
             <div className="k-field"><span className="k-label">Palettes</span><Segmented fill size="sm" label="Palettes" value={String(max) as "7" | "8"} onChange={(value) => setMax(Number(value) as 7 | 8)} options={[{ value: "8", label: "8" }, { value: "7", label: "7 · keep slot 8 for the UI" }]} /></div>
             <Checkbox checked={budget} onChange={setBudget}>Keep each screen within {SCREEN_TILES} tiles (merge near tiles)</Checkbox>
-            {screens && <Meter label="Tiles" value={worst} of={SCREEN_TILES} tone={worst > SCREEN_TILES ? "bad" : worst > SCREEN_TILES * 0.94 ? "warn" : undefined} title="Unique tiles in the busiest screen" />}
+            {screens && <TileBudget tiles={worst} limit={SCREEN_TILES} slots={result?.palettes.length} title="Unique tiles in the busiest screen" />}
             <p className="k-well k-xs mw-note">Tile palettes: the screens are written in GB greens. Open each screen and use Fit colors… or Picture to background to bring its colors.</p>
           </>}
 

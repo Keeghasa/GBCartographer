@@ -13,6 +13,7 @@ import { Button, Chip, Checkbox, Field, Meter, Segmented, Slider, Switch } from 
 import { applyMerges, fixAll, mergeSteps, stepTile, tilePixels, type MergeStep } from "./budgetSteps";
 import { WizardPage } from "./WizardPage";
 import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget, slotsUsed } from "./TileBudget";
 import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
@@ -211,7 +212,7 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
           <span className="k-spacer" />
           <Switch checked={heatOn} onChange={setHeatOn}>Show where the tiles go</Switch>
         </div>
-        <Meter label="Now" value={now} of={limit} tone={now > limit ? "bad" : undefined} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
+        <TileBudget label="Now" tiles={now} limit={limit} slots={slotsUsed(cells)} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
         <Meter label="After" value={after} of={limit} tone={after > limit ? "bad" : undefined} title="If the checked merges are made" />
         {logoHelps(picture.width, picture.height, limit) && <Meter label="Logo" value={now} of={LOGO_TILES} tone={now > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
         <Field label={`Merge tiles that differ by at most ${plural(maxDiff, "pixel")}`}

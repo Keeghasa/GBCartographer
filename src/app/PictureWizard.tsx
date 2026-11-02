@@ -16,6 +16,7 @@ import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
 import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget } from "./TileBudget";
 import "./PictureWizard.css";
 
 interface Props {
@@ -316,7 +317,6 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const after = useMemo(() => current ? toRgba(current.pixels, current.cells, current.width, current.palettes.map((colors, index) => ({ name: `${index}`, colors }))) : null, [current]);
   const screens = `${width / 160 * height / 144} screen${width / 160 * height / 144 === 1 ? "" : "s"}`;
   const act = async (what: () => Promise<unknown>) => { setBusy(true); try { await what(); } finally { setBusy(false); } };
-  const tone = current ? (current.tiles > current.limit ? "bad" : current.tiles > current.limit * 0.9 ? "warn" : undefined) : undefined;
 
   return (
     <WizardPage tools={ws.bar} title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
@@ -385,7 +385,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {batch && <p className="k-hint">A batch is framed as set above; turning, cropping and locks are for one picture.</p>}
           {current && <>
-            <Meter label="Tiles" value={current.tiles} of={current.limit} tone={tone} title={current.merged ? `${current.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
+            <TileBudget tiles={current.tiles} limit={current.limit} slots={current.palettes.length} title={current.merged ? `${current.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
             {logoHelps(current.width, current.height, current.limit) && <Meter label="Logo" value={current.tiles} of={LOGO_TILES} tone={current.tiles > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
             <p className="pw-report">{current.merged ? `${current.tilesBefore} → ${current.tiles} tiles after merging ${current.merged} near ones. ` : ""}{current.report.after} palette{current.report.after === 1 ? "" : "s"} · {current.report.overfull.length} tile{current.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{current.tiles > current.limit ? ` Still ${current.tiles - current.limit} over GB Studio's ${current.limit}: keep fewer colors, or set dithering to None.` : ""}</p>
             <div className="pw-palettes" aria-label="Palettes">{current.palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>

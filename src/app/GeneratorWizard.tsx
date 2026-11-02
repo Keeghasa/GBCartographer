@@ -15,6 +15,7 @@ import { defaultName, isSuggestedName, type NameKind } from "./names";
 import { NameInput } from "./NameInput";
 import { WizardPage } from "./WizardPage";
 import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget, slotsUsed } from "./TileBudget";
 import "./GeneratorWizard.css";
 
 export type GeneratorMode = "cave" | "world";
@@ -236,7 +237,7 @@ export function GeneratorWizard({ mode, projectName, limit, onClose, onOpen, onS
           <span className="k-row">
             <Chip>{picture.width} × {picture.height} px</Chip>
             <Chip>{columns} × {rows} screens</Chip>
-            <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} unique tiles</Chip>
+            <TileBudget tiles={tiles} limit={limit} slots={slotsUsed(picture.cells)} />
             <span className="k-muted k-xs">The catalog's art: paint over it as you like. Cyan lines are screen edges.</span>
           </span>
         </div>
