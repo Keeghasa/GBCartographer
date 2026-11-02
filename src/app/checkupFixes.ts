@@ -38,6 +38,9 @@ export function fixKind(issue: CheckupIssue): FixKind {
 /** Notes are only shown when they come with something to do (or when asked for). */
 export const worthShowing = (issue: CheckupIssue, notes: boolean) => notes || issue.level !== "note" || fixKind(issue) !== "explain";
 
+/** The badge on the check-up's card and the Wizards button (the author, 2026-11-02): issues the check-up shows by default. */
+export const checkupBadge = (issues: readonly CheckupIssue[]) => issues.filter((issue) => worthShowing(issue, false)).length;
+
 /** Worst first (problems, warnings, notes), the report's own order kept within a level. */
 export function checkupOrder(issues: readonly CheckupIssue[], notes: boolean): CheckupIssue[] {
   const rank = { problem: 0, warning: 1, note: 2 } as const;

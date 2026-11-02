@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
-import { Dialog } from "../ui/kit";
+import { Chip, Dialog } from "../ui/kit";
 import { PxWizard } from "../ui/setIcons";
 import { WIZARD_FRAMES, WIZARD_LOOK, photoFrames, wizardThumb, type WizardThumb } from "./wizardThumbs";
 import sammie from "./sammie.png";
@@ -20,6 +20,8 @@ export interface WizardCard {
   /** What starting it will ask for first, shown instead of `about` (it can still start). */
   needs?: string;
   onStart: () => void;
+  /** Issues waiting (the check-up, run quietly on open; 2026-11-02): a small count by the name. */
+  badge?: number;
 }
 
 /** The order the wizards show in, three to a row. */
@@ -82,7 +84,7 @@ export function WizardGallery({ cards, onClose }: { cards: WizardCard[]; onClose
               onClick={() => { onClose(); card.onStart(); }}>
               <span className="wg-art"><Thumb id={card.thumb} playing={!card.blocked} /></span>
               <span className="wg-text">
-                <span className="wg-name"><span className="wg-icon">{card.icon}</span>{card.name}</span>
+                <span className="wg-name"><span className="wg-icon">{card.icon}</span>{card.name}{card.badge ? <Chip tone="warn" title={`${card.badge} issue${card.badge === 1 ? "" : "s"} found`}>{card.badge}</Chip> : null}</span>
                 <span className="wg-about">{card.blocked ?? card.needs ?? card.about}</span>
               </span>
             </button>

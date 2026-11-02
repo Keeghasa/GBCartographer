@@ -1,7 +1,7 @@
 // The project check-up's pure parts: separating close colors, and which fix goes with which issue.
 import { describe, expect, it } from "vitest";
 import { closeShades, colorDistance } from "../paint";
-import { checkupOrder, checkupSummary, contrastPairs, fixKind, lightness, separateColors, separatePairs, tileCount, twinNames, whatToDo, type CheckupIssue } from "./checkupFixes";
+import { checkupBadge, checkupOrder, checkupSummary, contrastPairs, fixKind, lightness, separateColors, separatePairs, tileCount, twinNames, whatToDo, type CheckupIssue } from "./checkupFixes";
 
 const lightestFirst = (colors: string[]) => colors.every((color, at) => at === 0 || lightness(colors[at - 1]) >= lightness(color));
 
@@ -76,5 +76,10 @@ describe("The newer checks (2026-11-02)", () => {
       expect(whatToDo(issue)).not.toBe("Nothing to fix from here.");
       expect(whatToDo(issue)).not.toBe("Open it to have a look.");
     }
+  });
+  it("counts for the badge what the check-up shows without notes", () => {
+    const note = (title: string, kind = "palettes", file?: string): CheckupIssue => ({ level: "note", kind, file, title, detail: "" });
+    expect(checkupBadge([at("Town: background missing"), note("Unused palette", "palettes", "Spare"), note("Unused picture", "backgrounds", "a.png")])).toBe(2);
+    expect(checkupBadge([])).toBe(0);
   });
 });
