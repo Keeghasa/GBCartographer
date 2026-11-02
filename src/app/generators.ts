@@ -44,7 +44,7 @@ export interface CaveSettings {
   style: "cave" | "dungeon";
   /** Size in GB screens (160 × 144 each). */
   columns: number; rows: number;
-  /** Pixels per map cell: 32 (4 × 4 tiles) or 16 (2 × 2 tiles); 8 went (the author, 2026-10-13: the catalog walls need 16). */
+  /** Pixels per map cell: 32 (4 × 4 tiles, the default and first choice since the author, 2026-11-02) or 16 (2 × 2 tiles); 8 went (the author, 2026-10-13: the catalog walls need 16). */
   cell: 16 | 32;
   seed: number;
   /** Cave: how much starts as rock (percent). */
@@ -91,7 +91,7 @@ const FLOOR_SHEETS: Record<Exclude<CaveFloor, "plain">, Parameters<typeof sheet>
 /** The floor it wears: the one picked, else grass under a forest (`forest`: a forest stamp's), a dungeon's tiled floor, or a cave's stone floor. */
 export const floorOf = (settings: CaveSettings, forest = false): CaveFloor => settings.floor ?? (forest || settings.walls === "pines" || settings.walls === "oaks" ? "grass" : settings.style === "dungeon" ? "tile" : "stone");
 
-export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 16, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 5, connected: true, stairs: true };
+export const CAVE_DEFAULTS: CaveSettings = { style: "cave", columns: 2, rows: 2, cell: 32, seed: 1, fill: 46, smooth: 4, rooms: 8, roomSize: 3, connected: true, stairs: true };
 
 /** The cave's grid: 1 rock, 0 floor (2 stairs), the edge always rock. */
 export function caveGrid(settings: CaveSettings, topRows?: number): { w: number; h: number; grid: Uint8Array } {
