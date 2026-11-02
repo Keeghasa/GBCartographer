@@ -13,6 +13,8 @@ import { ROOM_DEFAULTS, ROOM_FLOORS, drawRoom, type DoorSide, type RoomFloor, ty
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget } from "./TileBudget";
 import "./GeneratorWizard.css";
 import "./RoomWizard.css";
 
@@ -38,10 +40,12 @@ export function RoomWizard({ projectName, limit, takenNames, onClose, onOpen, on
   onOpen: (picture: Generated, name: string) => void;
   onSave: (picture: Generated, name: string) => Promise<boolean>;
 }) {
-  const [room, setRoom] = useState<RoomSettings>(() => ({ ...ROOM_DEFAULTS, seed: newSeed() }));
+  // Remembered per project with the seed, and presets (the author, 2026-11-02).
+  const ws = useWizardSettings("room", { ...ROOM_DEFAULTS, seed: newSeed() } as RoomSettings & Record<string, unknown>);
+  const room: RoomSettings = ws.settings;
   const [name, setName] = useState(() => defaultName("Room", takenNames));
   const [busy, setBusy] = useState(false);
-  const set = (change: Partial<RoomSettings>) => setRoom((old) => ({ ...old, ...change }));
+  const set = (change: Partial<RoomSettings>) => ws.set(change);
   const picture = useMemo(() => drawRoom(room), [room]);
   const tiles = useMemo(() => countUniqueTiles(picture.pixels, picture.width, picture.height, false), [picture]);
   const columns = Math.ceil(picture.width / 160), rows = Math.ceil(picture.height / 144);
@@ -64,7 +68,7 @@ export function RoomWizard({ projectName, limit, takenNames, onClose, onOpen, on
   const sideways = room.door === "left" || room.door === "right";
 
   return (
-    <WizardPage title="Interior" icon={<Sofa size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Interior" icon={<Sofa size={18} />} busy={busy} onClose={onClose}
       line={["In the catalog's indoor tiles", "sized in 16 px cells · sliders redraw it live"]}
       footer={<>
         <span className="k-spacer" />
@@ -104,7 +108,7 @@ export function RoomWizard({ projectName, limit, takenNames, onClose, onOpen, on
           <span className="k-row">
             <Chip>{picture.width} × {picture.height} px</Chip>
             <Chip>{columns} × {rows} screens</Chip>
-            <Chip tone={tiles > limit ? "warn" : undefined} title="Unique 8 × 8 tiles; GB Studio's limit for one background">{tiles} / {limit} unique tiles</Chip>
+            <TileBudget tiles={tiles} limit={limit} slots={1} />
             <span className="k-muted k-xs">The catalog's indoor tiles: paint over them as you like. Cyan lines are screen edges.</span>
           </span>
         </div>

@@ -8,9 +8,12 @@
 import { Check, Moon, Mountain, Pause, Play, Sunrise, Sunset, Waves } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
 import { closeShades, hexRgb, paletteVariant, timeVariant, toRgba, type TimeLetter } from "../paint";
-import { Button, Checkbox, Chip, Field, Slider } from "../ui/kit";
+import { Button, Checkbox, Chip, Field, Select, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
 import { PxCloudMoon } from "../ui/setIcons";
+import { useWizardSettings } from "./useWizardSettings";
+import { BeforeAfter } from "./BeforeAfter";
+import { SceneTarget, type SceneBackground } from "./SceneTarget";
 import "./DnsWizard.css";
 
 type SlotPalette = { id: string; name: string; colors: string[] };
@@ -26,7 +29,9 @@ export interface DnsWizardProps {
   picture: { pixels: Uint8Array; cells: Uint16Array; width: number; height: number; palettes: { name: string; colors: string[]; id?: string }[] } | null;
   onClose: () => void;
   /** Adds these palettes to the project; resolves to how many were written (the parent writes them, with backups). */
-  onCreate: (palettes: { name: string; colors: string[] }[]) => Promise<number>;
+  onCreate: (palettes: { name: string; colors: string[]; slot?: number }[], sendTo?: string) => Promise<number>;
+  /** The project's backgrounds: one time's versions can go straight into a scene's slots, each in its day palette's slot. */
+  scenes?: readonly SceneBackground[];
 }
 
 type Time = TimeLetter;
@@ -69,7 +74,10 @@ function Pixels({ rgba, width, height }: { rgba: Uint8ClampedArray; width: numbe
   return <canvas ref={canvas} width={width} height={height} />;
 }
 
-export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }: DnsWizardProps): JSX.Element {
+export function DnsWizard({ slots, where, existing, picture, onClose, onCreate, scenes = [] }: DnsWizardProps): JSX.Element {
+  // Send straight to a scene's slots (the author, 2026-11-02): one time's versions, each in its day palette's slot.
+  const [sendTo, setSendTo] = useState("");
+  const [sendTime, setSendTime] = useState<string>("");
   // The slot palettes once each (a palette may sit in two slots); ones that are already a version are left out.
   const bases = useMemo(() => {
     const seen = new Set<string>();
@@ -84,8 +92,11 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   }, [slots]);
 
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(bases.usable.map((base) => base.id)));
-  const [times, setTimes] = useState<Set<Time>>(() => new Set<Time>(["D", "S", "N"]));
-  const [strength, setStrength] = useState(100);
+  // Remembered per project, with presets (the author, 2026-11-02); which palettes are picked follows the picture.
+  const ws = useWizardSettings("dns", { times: ["D", "S", "N"] as Time[], strength: 100 });
+  const times = useMemo(() => new Set<Time>(ws.settings.times), [ws.settings.times]);
+  const setTimes = (next: Set<Time>) => ws.set({ times: [...next] });
+  const [strength, setStrength] = ws.field("strength");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +134,9 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   // Play (the author, 2026-11-02): one big preview stepping through day and each picked time on a timer. It never
   // starts by itself, so prefers-reduced-motion is respected; with reduced motion it steps more slowly.
   const [playing, setPlaying] = useState(false);
+  // Before / after (the author, 2026-11-02): day as painted, wiped into one picked time.
+  const [compareTime, setCompareTime] = useState<string>("");
+  const compared = previews.find((preview) => preview.key === compareTime) ?? previews[1];
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!playing || previews.length < 2) return;
@@ -137,7 +151,8 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
   const create = async () => {
     setBusy(true);
     setError(null);
-    try { setDone(await onCreate(toAdd.map(({ name, colors }) => ({ name, colors })))); }
+    const time = sendTime || pickedTimes[0]?.key;
+    try { setDone(await onCreate(toAdd.map(({ name, colors, base, time: at }) => ({ name, colors, slot: sendTo && at === time ? slots.findIndex((slot) => slot?.id === base.id) : undefined })), sendTo)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   };
@@ -200,6 +215,8 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
             {previews.length > 1 && <Button size="sm" aria-pressed={playing} title="Step the picture through day and each picked time" onClick={() => setPlaying(!playing)}>{playing ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Play the cycle</>}</Button>}
           </div>
           <span className="k-eyebrow">The open picture under each time</span>
+          {!playing && compared && <BeforeAfter before={previews[0].rgba} after={compared.rgba} width={picture.width} height={picture.height} beforeLabel={previews[0].label}
+            afterLabel={compared.label} extra={previews.length > 2 && <Select label="Compare with" value={compared.key} onChange={setCompareTime} options={previews.slice(1).map((preview) => ({ value: preview.key, label: preview.label }))} />} />}
           {playing && shown && <figure className="dw-pic dw-pic--play" aria-live="polite"><figcaption className="k-muted k-xs">{shown.label}</figcaption><Pixels rgba={shown.rgba} width={picture.width} height={picture.height} /></figure>}
           <div className="dw-pics">{previews.map((preview) => (
             <figure key={preview.key} className="dw-pic"><figcaption className="k-muted k-xs">{preview.label}</figcaption><Pixels rgba={preview.rgba} width={picture.width} height={picture.height} /></figure>
@@ -216,11 +233,13 @@ export function DnsWizard({ slots, where, existing, picture, onClose, onCreate }
 
   const footer = done !== null
     ? <><span className="k-muted k-small dw-done"><Check size={14} /> Added {plural(done, "palette")}. With Time-of-day palettes on, tiles painted with a version save in their base's slot.</span><span className="k-spacer" /><Button variant="primary" onClick={onClose}>Close</Button></>
-    : <><span className="k-muted k-small">{toAdd.length ? `Adds ${plural(toAdd.length, "palette")} (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : "Nothing new to add"}</span><span className="k-spacer" />
+    : <><SceneTarget backgrounds={scenes} value={sendTo} onChange={setSendTo} what="one time's versions" />
+      {sendTo && pickedTimes.length > 1 && <Select label="Which time goes in the scene" value={sendTime || pickedTimes[0].key} onChange={setSendTime} options={pickedTimes.map((time) => ({ value: time.key, label: time.name }))} />}
+      <span className="k-muted k-small">{toAdd.length ? `Adds ${plural(toAdd.length, "palette")} (${picked.length} × ${pickedTimes.map((time) => time.key).join(", ")}${skipped ? `, less ${skipped} that exist` : ""})` : "Nothing new to add"}</span><span className="k-spacer" />
       <Button variant="primary" disabled={busy || toAdd.length === 0} onClick={() => void create()}>{busy ? "Adding…" : `Add ${plural(toAdd.length, "palette")}`}</Button></>;
 
   return (
-    <WizardPage title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
+    <WizardPage tools={ws.bar} title="Dawn, sunset and night" icon={<PxCloudMoon size={18} />} busy={busy} onClose={onClose} footer={footer}
       line={["Your palettes are the day", `${plural(picked.length, "palette")} · ${pickedTimes.map((time) => time.name).join(", ") || "no times"} · ${plural(toAdd.length, "new palette")}`]}>
       <div className="wp-cols">{palettesStep}{versionsStep}</div>
     </WizardPage>

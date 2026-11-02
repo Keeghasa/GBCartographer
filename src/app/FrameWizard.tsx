@@ -12,6 +12,7 @@ import { Button, Chip, Field, Segmented, Select } from "../ui/kit";
 import { CLEAR_PIXEL, encodeText, fetchFontMap, glyphOf, readFont, type GbFont } from "../gb/font";
 import { FRAME_CORNERS, FRAME_STYLES, STYLE_SHADES, drawFrame, frameFileName, sliceFrame, type FrameSettings, type FrameStyle } from "./uiFrame";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
 import "./FrameWizard.css";
 
 interface Settings { colorMode: string; uiPalette: string[] | null; defaultFont: string | null; fonts: { file: string; name: string }[] }
@@ -28,9 +29,11 @@ export function FrameWizard({ projectName, uiFiles, onClose, onCreate }: {
   /** A new picture: kind "ui" writes a new PNG into the project, null opens it here. */
   onCreate: (picture: { kind: "ui" | null; name: string; width: number; height: number; pixels: Uint8Array }) => Promise<boolean>;
 }) {
-  const [frame, setFrame] = useState<FrameSettings>({ style: "rounded", corners: "drawn", ...STYLE_SHADES.rounded });
+  // Remembered per project with the sample text, and presets (the author, 2026-11-02).
+  const ws = useWizardSettings("frame", { frame: { style: "rounded", corners: "drawn", ...STYLE_SHADES.rounded } as FrameSettings, text: "Hello! It's cold out here. Come inside?" });
+  const [frame, setFrame] = ws.field("frame");
   const [busy, setBusy] = useState(false);
-  const [text, setText] = useState("Hello! It's cold out here. Come inside?");
+  const [text, setText] = ws.field("text");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [font, setFont] = useState("");
   const [sheet, setSheet] = useState<GbFont | null>(null);
@@ -114,7 +117,7 @@ export function FrameWizard({ projectName, uiFiles, onClose, onCreate }: {
   }
 
   return (
-    <WizardPage title="UI frame" icon={<PanelsTopLeft size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title="UI frame" icon={<PanelsTopLeft size={18} />} busy={busy} onClose={onClose}
       line={["For assets/ui", "24 × 24, nine 8 × 8 tiles · shown as a dialogue box"]}
       footer={<>
         <span className="k-muted k-xs">{projectName ? (fileName === "frame" ? "The project has no frame.png: this one becomes it" : `The project has a frame.png already: this one is ${fileName}.png beside it (GB Studio reads frame.png; swap them by hand)`) : "Open a GB Studio project to make it there"}</span>

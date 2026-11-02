@@ -37,6 +37,7 @@ import { PaletteSetWizard } from "./app/PaletteSetWizard";
 import { GeneratorWizard, type GeneratorMode } from "./app/GeneratorWizard";
 import { StoreWindow } from "./app/StoreWindow";
 import { WizardGallery, type WizardCard } from "./app/WizardGallery";
+import { setWizardProject } from "./app/wizardSettings";
 import { SnapshotWindow } from "./app/SnapshotWindow";
 import { SettingsWindow } from "./app/SettingsWindow";
 import type { Generated } from "./app/generators";
@@ -143,6 +144,10 @@ export default function PaintApp() {
   const [copiedColors, setCopiedColors] = useState<string[] | null>(null);
   const [paletteFilter, setPaletteFilter] = useState("");
   const [project, setProject] = useState<Project | null>(null);
+  // The wizards remember their settings per project (wizardSettings.ts); idempotent, so set while rendering.
+  setWizardProject(project?.path ?? null);
+  // The backgrounds whose scene a wizard can send new palettes to (SceneTarget.tsx).
+  const sceneBackgrounds = (project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map(({ file, name }) => ({ file, name }));
   /** Whether the page is served by something that can open a project (the dev server or the desktop app). */
   const [served, setServed] = useState(false);
   const [showPalettes, setShowPalettes] = useState(false);
@@ -1141,13 +1146,39 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /** Adds palettes to the project (after the GB Studio check); returns how many were written. */
-  async function addPalettes(list: { name: string; colors: string[] }[]): Promise<number> {
+  async function addPalettes(list: { name: string; colors: string[]; slot?: number }[], sendTo = ""): Promise<number> {
     if (!list.length || !await okToWriteProjectJson()) return 0;
     let written = 0;
-    for (const palette of list) if (await writeProjectPalette(palette)) written += 1;
+    const ids: (string | null)[] = Array(8).fill(null);
+    for (const palette of list) {
+      const id = await writeProjectPalette({ name: palette.name, colors: palette.colors });
+      if (id) written += 1;
+      if (id && palette.slot !== undefined && palette.slot >= 0 && palette.slot < 8) ids[palette.slot] = id;
+    }
     await loadProject();
+    if (sendTo) await sendToScene(sendTo, ids);
     setSlotsVersion((value) => value + 1);
     return written;
+  }
+
+  /**
+   * Send straight to a scene's slots (the author, 2026-11-02; SceneTarget.tsx): the palettes go in the slots of the
+   * scene showing `file` (null slots are left as they are), one slot at a time through Put in slot, after a confirm
+   * naming the scene. The scene file is backed up first.
+   */
+  async function sendToScene(file: string, ids: (string | null)[]): Promise<boolean> {
+    const asset = projectRef.current?.assets.find((item) => item.kind === "backgrounds" && item.file === file);
+    if (!asset || !ids.some(Boolean)) return false;
+    const info = await fetch(`./__cartographer/gbstudio-asset-info?${assetQuery(asset)}`, { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ slotScene: string | null }> : null).catch(() => null);
+    if (!info?.slotScene) { say(`No GB Studio scene shows ${asset.name} yet, so its scene's slots were left alone. Add it to a scene in GB Studio first.`); return false; }
+    const names = ids.map((id, slot) => id ? `${slot + 1} ${projectRef.current?.palettes.find((item) => item.id === id)?.name ?? "—"}` : null).filter(Boolean).join(", ");
+    if (!await confirmBox(`Put them in ${info.slotScene}'s palette slots?\n\n${names}. The other slots stay as they are; the scene file is backed up first.`, { yes: `Put in ${info.slotScene}` })) return false;
+    for (const [slot, paletteId] of ids.entries()) {
+      if (paletteId) await fetch(`./__cartographer/gbstudio-palette-slot?${assetQuery(asset)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot, paletteId }) }).catch(() => null);
+    }
+    await rereadSlots();
+    say(`${info.slotScene}'s slots now hold them.`);
+    return true;
   }
 
   /** The background slots a palette set goes in: the open background's or tileset's (its scene's, or the defaults), else the project's defaults (through a tileset). */
@@ -1161,7 +1192,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
   }
 
   /** W3: adds a palette set to the project (reusing palettes it already has), and when asked puts it in slots 1…n. */
-  async function addPaletteSet(list: { name: string; colors: string[] }[], inSlots: boolean): Promise<number> {
+  async function addPaletteSet(list: { name: string; colors: string[] }[], inSlots: boolean, sendTo = ""): Promise<number> {
     const target = inSlots ? setSlotsAsset() : null;
     if (inSlots && target && !await confirmBox(`Add the ${list.length} palettes to the project and put them in ${target.where}, slots 1–${list.length}?\n\nThe old settings are backed up.`)) return 0;
     if (!list.length || !await okToWriteProjectJson()) return 0;
@@ -1173,6 +1204,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     }
     await loadProject();
     if (target) { await putInSlots(target.asset, ids.slice(0, 8)); await rereadSlots(); }
+    if (sendTo) await sendToScene(sendTo, ids.slice(0, 8));
     setSlotsVersion((value) => value + 1);
     say(target ? `Added ${ids.length} palettes and put them in ${target.where}.` : `Added ${ids.length} palettes to the project.`);
     return ids.length;
@@ -1199,7 +1231,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
    * The wizard's result as a new background in the project: the PNG (in GB greens) goes to assets/backgrounds, the
    * palettes are added to the project and put in the default slots 1…n, and the tiles' slots are written.
    */
-  async function saveFittedBackground(result: FittedPicture, name: string, asked = false): Promise<boolean> {
+  async function saveFittedBackground(result: FittedPicture, name: string, asked = false, sendTo = ""): Promise<boolean> {
     if (!projectRef.current) return false;
     // The default slots are what every scene without its own palettes uses: say so before changing them.
     const count = result.palettes.length;
@@ -1237,6 +1269,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       await saveDoc(target, false, false);
     }
     await rereadSlots();
+    if (sendTo) await sendToScene(sendTo, ids);
     setSlotsVersion((value) => value + 1);
     say(`Made assets/backgrounds/${made.file} with ${ids.length === 1 ? "its palette in slot 1" : `${ids.length} palettes in slots 1–${ids.length}`}.${target?.dirty ? " Its tile palettes wait until GB Studio has read the project once: then Save it here again." : ""}`);
     return true;
@@ -3088,10 +3121,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       ]} />}
       {wizard === "dns" && doc && project && (
         <DnsWizard slots={slotPalettes.map((index) => { const palette = index >= 0 ? docPalettes[index] : null; return palette?.id ? { id: palette.id, name: palette.name, colors: [...palette.colors] } : null; })} where={slotWhere} existing={project.palettes.map((palette) => palette.name)}
-          picture={{ pixels: doc.pixels, cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }} onClose={() => setWizard(null)} onCreate={addPalettes} />
+          picture={{ pixels: doc.pixels, cells: doc.cells, width: doc.width, height: doc.height, palettes: doc.palettes }} onClose={() => setWizard(null)} onCreate={addPalettes} scenes={sceneBackgrounds} />
       )}
       {wizard === "paletteSet" && project && (
-        <PaletteSetWizard projectName={project.name} slotsWhere={setSlotsAsset()?.where ?? null}
+        <PaletteSetWizard projectName={project.name} slotsWhere={setSlotsAsset()?.where ?? null} scenes={sceneBackgrounds}
           picture={doc ? { name: doc.name, width: doc.width, height: doc.height, rgba: (() => { const flat = doc.pixels.slice(); if (doc.float) drop(flat, doc.width, doc.height, doc.float); return toRgba(flat, doc.cells, doc.width, doc.palettes); })() } : null}
           onClose={() => setWizard(null)} onAddToProject={addPaletteSet} onAddToMine={(list) => { addToMine(list); say(`Added ${list.length} palettes to Mine (the palette manager).`); }} />
       )}
@@ -3138,7 +3171,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
           onOpen={(kind, file) => void openByFile(kind, file)}
           onFixTiles={(kind, file, colorOnly) => void openByFile(kind, file).then((opened) => { if (opened) { setBudgetId(colorOnly ? "colorOnly" : "monochrome"); setWizard("budget"); } })} />
       )}
-      {showPictureWizard && <PictureWizard say={say} projectName={project?.name ?? null} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} />}
+      {showPictureWizard && <PictureWizard say={say} projectName={project?.name ?? null} takenNames={(project?.assets ?? []).filter((asset) => asset.kind === "backgrounds").map((asset) => asset.name)} onClose={() => setShowPictureWizard(false)} onOpen={openFittedPicture} onSave={saveFittedBackground} scenes={sceneBackgrounds} />}
       {showHealth && project && <HealthWindow projectName={project.name} onClose={() => setShowHealth(false)} onOpen={(kind, file) => { if ((kind as string) === "palettes") { setPaletteFocus(file); setShowPalettes(true); return; } const asset = project.assets.find((item) => item.kind === kind && item.file === file); if (asset) { setProjectKind(kind); void openAsset(asset); } }} />}
       {showNew && <NewPictureWindow projectName={project?.name ?? null} takenNames={(kind: AssetKind) => (project?.assets ?? []).filter((asset) => asset.kind === kind).map((asset) => asset.name)} initialKind={projectKind} onClose={() => setShowNew(false)} onCreate={createPicture} />}
       {showResize && doc && <ResizeWindow name={doc.asset?.name ?? doc.name} width={doc.width} height={doc.height} sprite={doc.asset?.kind === "sprites"} inProject={Boolean(doc.asset)} onClose={() => setShowResize(false)} onResize={resizePicture} />}

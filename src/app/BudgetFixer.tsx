@@ -12,6 +12,9 @@ import { countUniqueTiles, tileUsage, toRgba } from "../paint";
 import { Button, Chip, Checkbox, Field, Meter, Segmented, Slider, Switch } from "../ui/kit";
 import { applyMerges, fixAll, mergeSteps, stepTile, tilePixels, type MergeStep } from "./budgetSteps";
 import { WizardPage } from "./WizardPage";
+import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget, slotsUsed } from "./TileBudget";
+import { BeforeAfter } from "./BeforeAfter";
 import "./BudgetFixer.css";
 
 export interface BudgetFixerProps {
@@ -108,12 +111,14 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
   const colorOnlyLimit = openFlips ? openLimit : UNIQUE_TILE_LIMITS.colorOnly;
   const flips = budget === "colorOnly";
   const limit = flips ? colorOnlyLimit : gbLimit;
-  const [heatOn, setHeatOn] = useState(false);
+  // Remembered per project, with presets (the author, 2026-11-02); the budget follows the scene it opened for.
+  const ws = useWizardSettings("budget", { heatOn: false, maxDiff: 3 });
+  const [heatOn, setHeatOn] = ws.field("heatOn");
   // Fix all's target; null follows the limit.
   const [target, setTarget] = useState<number | null>(null);
   const [working, setWorking] = useState(() => picture.pixels.slice());
   const [history, setHistory] = useState<Uint8Array[]>([]);
-  const [maxDiff, setMaxDiff] = useState(3);
+  const [maxDiff, setMaxDiff] = ws.field("maxDiff");
   // The candidate list and what it was built from (a stale list can't be merged).
   const [found, setFound] = useState<{ steps: MergeStep[]; pixels: Uint8Array; maxDiff: number; flips: boolean } | null>(null);
   const [unchecked, setUnchecked] = useState<ReadonlySet<number>>(() => new Set());
@@ -141,6 +146,9 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
     return countUniqueTiles(copy, width, height, flips);
   }, [busy, checked, now, working, width, height, flips]);
 
+  // Before / after (the author, 2026-11-02): the picture as the window opened it, wiped into how it is now.
+  const [compare, setCompare] = useState(false);
+  const opened = useMemo(() => toRgba(picture.pixels, cells, width, palettes), [picture.pixels, cells, width, palettes]);
   const image = useMemo(() => new ImageData(new Uint8ClampedArray(toRgba(working, cells, width, palettes)), width, height), [working, cells, width, height, palettes]);
   // A tile as it looks in `place`'s palette (the merged tile keeps its cell's palette).
   const look = (tile: Uint8Array, place: number) => toRgba(tile, Uint16Array.of(cells[place] ?? 0), 8, palettes);
@@ -191,7 +199,7 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
 
   const under = now <= limit;
   return (
-    <WizardPage title="Tile budget fixer" icon={<Sparkles size={18} />} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Tile budget fixer" icon={<Sparkles size={18} />} onClose={onClose}
       line={["One safe step at a time", `${picture.name} · under GB Studio's tile limit`]}
       footer={<>
         <span className="k-muted k-small">{history.length ? `${plural(history.length, "merge step")} made here` : "Nothing changes in the picture until you apply"}</span>
@@ -206,9 +214,10 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
             { value: "colorOnly", label: `Color Only · ${colorOnlyLimit} tiles`, title: "Color Only scenes: flipped copies (left-right, upside down or both) count once" },
           ]} />
           <span className="k-spacer" />
+          <Switch checked={compare} onChange={setCompare}>Before / after</Switch>
           <Switch checked={heatOn} onChange={setHeatOn}>Show where the tiles go</Switch>
         </div>
-        <Meter label="Now" value={now} of={limit} tone={now > limit ? "bad" : undefined} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
+        <TileBudget label="Now" tiles={now} limit={limit} slots={slotsUsed(cells)} title={flips ? "Unique tiles (flipped copies count once, as in a Color Only scene)" : "Unique tiles"} />
         <Meter label="After" value={after} of={limit} tone={after > limit ? "bad" : undefined} title="If the checked merges are made" />
         {logoHelps(picture.width, picture.height, limit) && <Meter label="Logo" value={now} of={LOGO_TILES} tone={now > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
         <Field label={`Merge tiles that differ by at most ${plural(maxDiff, "pixel")}`}
@@ -253,7 +262,8 @@ export function BudgetFixer({ picture, limit: openLimit, flips: openFlips, onClo
             {note && <span className="k-muted k-xs" role="status">{note}</span>}
           </div>
           <div className="k-stack k-stack--tight">
-            <Shot image={image} tile={current?.from ?? null} heat={heat} label={current ? <>Before · {where(current.from)}</> : "The picture"} />
+            {compare ? <BeforeAfter before={opened} after={image.data} width={width} height={height} beforeLabel="As opened" afterLabel="Now" />
+              : <Shot image={image} tile={current?.from ?? null} heat={heat} label={current ? <>Before · {where(current.from)}</> : "The picture"} />}
             {heat && <span className="bf-legend k-xs k-muted">{HEAT.map((step) => <span key={step.label}><i style={{ background: `rgb(${step.rgb})` }} />{step.label}</span>)}</span>}
             {current && <Shot image={image} tile={current.from} patch={thumbs.get(current.from)?.into} label={<>After · a copy of {where(current.into).toLowerCase()}{flipWord(current.flip)}</>} />}
           </div>

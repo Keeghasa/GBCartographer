@@ -15,6 +15,10 @@ import { SCREEN_SIZES, clampCrop, fitPicture, fitPictures, lockCell, rotatedSize
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
+import { useWizardSettings } from "./useWizardSettings";
+import { TileBudget } from "./TileBudget";
+import { BeforeAfter } from "./BeforeAfter";
+import { SceneTarget, type SceneBackground } from "./SceneTarget";
 import "./PictureWizard.css";
 
 interface Props {
@@ -26,7 +30,9 @@ interface Props {
    * Writes the result into the project as a new background, palettes in the slots; resolves true when done. `asked`
    * skips the question (a batch asks once, for its first picture).
    */
-  onSave: (result: FitResult, name: string, asked?: boolean) => Promise<boolean>;
+  onSave: (result: FitResult, name: string, asked?: boolean, sendTo?: string) => Promise<boolean>;
+  /** The project's backgrounds, whose scene's slots can get the palettes too (SceneTarget). */
+  scenes?: readonly SceneBackground[];
   /** The project's background names (the suggested name is never one of them). */
   takenNames?: string[];
   /** A line for the message bar (kept pictures, problems). */
@@ -191,26 +197,31 @@ function SourceView({ name, turned, crop, onCrop, width, height, framing, pan }:
   );
 }
 
-export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [], say }: Props) {
+export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames = [], say, scenes = [] }: Props) {
   // The shelf rereads the project's pictures when a drop or paste adds one.
   const [shelfTick, setShelfTick] = useState(0);
   const [source, setSource] = useState<Source | null>(null);
-  const [size, setSize] = useState<[number, number]>([160, 144]);
-  const [framing, setFraming] = useState<Framing>("cover");
+  // Remembered per project, with presets (the author, 2026-11-02); the picture, its crop and pan are not.
+  const ws = useWizardSettings("picture", { size: [160, 144] as [number, number], framing: "cover" as Framing, keep: 32, dither: "none" as DitherKind, strength: 100, max: 8 as 7 | 8, budget: true });
+  const [size, setSize] = ws.field("size");
+  const [framing, setFraming] = ws.field("framing");
   const [pan, setPan] = useState({ x: 50, y: 50 });
   // Crop and turn the source first (the author, 2026-11-02): quarter turns, a fine angle (-45 … 45°) and a crop box.
   const [quarter, setQuarter] = useState(0);
   const [angle, setAngle] = useState(0);
   const [crop, setCrop] = useState<CropBox | null>(null);
   const unturn = () => { setQuarter(0); setAngle(0); setCrop(null); };
-  const [keep, setKeep] = useState(32);
+  const [keep, setKeep] = ws.field("keep");
   // (the author, 2026-11-02): the dither pattern is a choice, with a strength; none stays the default.
-  const [dither, setDither] = useState<DitherKind>("none");
-  const [strength, setStrength] = useState(100);
-  const [max, setMax] = useState<7 | 8>(8);
-  const [budget, setBudget] = useState(true);
+  const [dither, setDither] = ws.field("dither");
+  const [strength, setStrength] = ws.field("strength");
+  const [max, setMax] = ws.field("max");
+  const [budget, setBudget] = ws.field("budget");
   const [name, setName] = useState(() => defaultName("Background", takenNames));
   const [over, setOver] = useState(false);
+  // Before / after (the author, 2026-11-02): your picture as framed, wiped into the result.
+  const [compare, setCompare] = useState(false);
+  const [sendTo, setSendTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<FitResult | null>(null);
@@ -313,10 +324,9 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const after = useMemo(() => current ? toRgba(current.pixels, current.cells, current.width, current.palettes.map((colors, index) => ({ name: `${index}`, colors }))) : null, [current]);
   const screens = `${width / 160 * height / 144} screen${width / 160 * height / 144 === 1 ? "" : "s"}`;
   const act = async (what: () => Promise<unknown>) => { setBusy(true); try { await what(); } finally { setBusy(false); } };
-  const tone = current ? (current.tiles > current.limit ? "bad" : current.tiles > current.limit * 0.9 ? "warn" : undefined) : undefined;
 
   return (
-    <WizardPage title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
+    <WizardPage tools={ws.bar} title="Picture to background" icon={<ImagePlus size={18} />} busy={busy} onClose={onClose}
       line={["Change anything, the result follows", batch ? `${batch.length} pictures · one shared set of ${current?.palettes.length ?? "…"} palettes · ${width} × ${height}` : result ? `${source?.name ?? "picture"} · ${width} × ${height} · ${result.tiles} / ${result.limit} tiles · ${result.palettes.length} palettes` : source ? `${source.name} · fitting…` : "drop, paste or choose a picture"]}
       footer={<>
         <input ref={file} type="file" accept="image/*" hidden onChange={(event) => { void keepFile(event.target.files?.[0]); event.target.value = ""; }} />
@@ -325,9 +335,10 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
         <Button icon={<Images />} title="Several pictures at once, fitted to one shared set of palettes, each saved as its own background" onClick={() => several.current?.click()}>{batch ? "Other pictures…" : "Several…"}</Button>
         <span className="k-spacer" />
         <span className="pw-name"><NameInput kind="Background" value={name} onChange={setName} taken={takenNames} /></span>
+        {projectName && !batch && <SceneTarget backgrounds={scenes} value={sendTo} onChange={setSendTo} what="its palettes" />}
         <Button disabled={!current || busy || working} title={batch ? "Opens the picture shown here as an untitled picture" : "Opens the result here as an untitled picture"} onClick={() => current && void act(() => onOpen(current, batch ? batchNames()[shown] ?? "Picture" : name.trim() || "Picture"))}>Open as a picture</Button>
         {batch ? <Button variant="primary" disabled={batchResults.length !== batch.length || busy || working || !projectName || !name.trim()} title={projectName ? `${batch.length} new backgrounds in ${projectName} (${batchNames().join(", ")}), the shared palettes added once and put in the default slots` : "Open a project to save into it"} onClick={() => void act(async () => { if (await saveBatch()) onClose(); })}>Save {batch.length} into {projectName ?? "the project"}</Button>
-          : <Button variant="primary" disabled={!result || busy || working || !projectName || !name.trim()} title={projectName ? `A new background in ${projectName}, its palettes added to the project and put in the default slots` : "Open a project to save into it"} onClick={() => result && void act(async () => { if (await onSave(result, name.trim())) onClose(); })}>Save into {projectName ?? "the project"}</Button>}
+          : <Button variant="primary" disabled={!result || busy || working || !projectName || !name.trim()} title={projectName ? `A new background in ${projectName}, its palettes added to the project and put in the default slots` : "Open a project to save into it"} onClick={() => result && void act(async () => { if (await onSave(result, name.trim(), false, sendTo)) onClose(); })}>Save into {projectName ?? "the project"}</Button>}
       </>}>
       <div className="pw-body">
         <div className="pw-stage">
@@ -341,9 +352,11 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
               <span className="k-muted k-xs">It is framed to whole screens, fitted to 8 palettes of 4 colors a tile, and kept under the tile budget.</span>
             </div>
           ) : (<>
-            <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined}>
-              <LockLayer width={width} height={height} locks={locks} brush={lockBrush} onLocks={setLockMap} />
-            </Picture>
+            {compare && framed && after && result?.width === width && result.height === height
+              ? <BeforeAfter before={framed} after={after} width={width} height={height} beforeLabel="Your picture, framed" afterLabel={<>Result · {width} × {height}</>} />
+              : <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined}>
+                <LockLayer width={width} height={height} locks={locks} brush={lockBrush} onLocks={setLockMap} />
+              </Picture>}
             <div style={{ width: "46%" }}>{turned && <SourceView name={source.name} turned={turned} crop={crop} onCrop={setCrop} width={width} height={height} framing={framing} pan={pan} />}</div>
           </>)}
         </div>
@@ -382,7 +395,8 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
           <Checkbox checked={budget} onChange={setBudget}>Stay within the tile budget (merge near tiles)</Checkbox>
           {batch && <p className="k-hint">A batch is framed as set above; turning, cropping and locks are for one picture.</p>}
           {current && <>
-            <Meter label="Tiles" value={current.tiles} of={current.limit} tone={tone} title={current.merged ? `${current.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
+            {!batch && <Checkbox checked={compare} onChange={setCompare}>Before / after</Checkbox>}
+            <TileBudget tiles={current.tiles} limit={current.limit} slots={current.palettes.length} title={current.merged ? `${current.tilesBefore} before merging near tiles` : "Unique tiles (flipped copies count once, as in a Color Only scene)"} />
             {logoHelps(current.width, current.height, current.limit) && <Meter label="Logo" value={current.tiles} of={LOGO_TILES} tone={current.tiles > LOGO_TILES ? "bad" : undefined} title="As a Logo scene (static: no text, menus or actors) GB Studio lets one screen use every tile, up to 360" />}
             <p className="pw-report">{current.merged ? `${current.tilesBefore} → ${current.tiles} tiles after merging ${current.merged} near ones. ` : ""}{current.report.after} palette{current.report.after === 1 ? "" : "s"} · {current.report.overfull.length} tile{current.report.overfull.length === 1 ? "" : "s"} had more than 4 colors.{current.tiles > current.limit ? ` Still ${current.tiles - current.limit} over GB Studio's ${current.limit}: keep fewer colors, or set dithering to None.` : ""}</p>
             <div className="pw-palettes" aria-label="Palettes">{current.palettes.map((colors, index) => <span key={index} title={`Palette ${index + 1}: ${colors.join(" ")}`}>{colors.map((color, at) => <i key={at} style={{ background: color }} />)}</span>)}</div>

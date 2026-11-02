@@ -1,0 +1,4 @@
+/* The presets and reset bar under a wizard's title (useWizardSettings.tsx). */
+.wset { flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.wset .k-select { min-width: 160px; }
+.wset-error { flex-basis: 100%; color: var(--k-bad); font-size: 12px; }

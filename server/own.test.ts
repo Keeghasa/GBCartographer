@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { listBackups } from "./backups";
-import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, writeOwnSettings, writePanel, writeUnsaved } from "./own";
+import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, readPresets, writeOwnSettings, writePreset, writePanel, writeUnsaved } from "./own";
 
 const project = () => { const root = mkdtempSync(join(tmpdir(), "gbc-own-")), folder = join(root, "Game"); mkdirSync(folder); return { root, folder }; };
 
@@ -68,5 +68,18 @@ describe("the wizards' own sources", () => {
     expect(existsSync(join(folder, "Cartographer/models/castle"))).toBe(false);
     expect(listBackups(join(root, "backups"), folder).map((entry) => entry.file).sort()).toEqual(["Cartographer/models/castle/castle.bin", "Cartographer/models/castle/castle.gltf", "Cartographer/models/castle/wall.png"]);
     expect(removeSource(folder, "pictures", "nope.png", join(root, "backups"))).toBe(false);
+  });
+
+  it("keeps the wizards' presets in presets.json, backs it up before each write, deletes by name", () => {
+    const { root, folder } = project();
+    expect(readPresets(folder)).toEqual({});
+    writePreset(folder, "cave", "Desert cave", { seed: 4, sand: true }, join(root, "app"));
+    writePreset(folder, "cave", "Ice cave", { seed: 9 }, join(root, "app"));
+    expect(readPresets(folder)).toEqual({ cave: { "Desert cave": { seed: 4, sand: true }, "Ice cave": { seed: 9 } } });
+    expect(writePreset(folder, "cave", "Ice cave", null, join(root, "app"))).toEqual({ cave: { "Desert cave": { seed: 4, sand: true } } });
+    expect(() => writePreset(folder, "../x", "A", {}, join(root, "app"))).toThrow();
+    expect(() => writePreset(folder, "cave", "  ", {}, join(root, "app"))).toThrow();
+    expect(() => writePreset(folder, "cave", "A", [1], join(root, "app"))).toThrow();
+    expect(listBackups(join(root, "app"), folder, "Cartographer/presets.json")[0].versions.length).toBe(2);
   });
 });

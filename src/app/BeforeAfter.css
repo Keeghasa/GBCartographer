@@ -1,0 +1,6 @@
+/* Before / after (BeforeAfter.tsx): the two pictures stacked, the after wiped in from the right. */
+.ba { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ba-labels { gap: 8px; }
+.ba-frame { position: relative; width: 100%; max-height: 60vh; border-radius: var(--k-r-ctl); overflow: hidden; background: var(--k-bg); }
+.ba-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.ba-line { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--k-acc); pointer-events: none; }
