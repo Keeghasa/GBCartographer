@@ -6,12 +6,12 @@
  * project as a new background with its palettes in the slots.
  */
 import { LOGO_TILES, logoHelps } from "../gb/limits";
-import { Crop, ImagePlus, Upload } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Undo2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toRgba } from "../paint";
-import { Button, Checkbox, Chip, Field, Meter, Segmented, Slider } from "../ui/kit";
+import { Button, Checkbox, IconButton, Chip, Field, Meter, Segmented, Slider } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
-import { SCREEN_SIZES, fitPicture, type DitherKind, type FitOptions, type FitResult } from "./pictureFit";
+import { SCREEN_SIZES, clampCrop, fitPicture, rotatedSize, type CropBox, type DitherKind, type FitOptions, type FitResult } from "./pictureFit";
 import { defaultName } from "./names";
 import { NameInput } from "./NameInput";
 import { SourceShelf, storeSources } from "./SourceShelf";
@@ -33,8 +33,46 @@ interface Props {
 type Source = { image: ImageBitmap; name: string; /** The shelf tile it came from ("sample:sammie", "project:<file>"). */ key?: string };
 type Framing = "cover" | "contain";
 
+type Drawable = ImageBitmap | HTMLCanvasElement;
+
+/** A picture's average color, "rgb(r,g,b)". */
+function average(source: Drawable): string {
+  const tiny = Object.assign(document.createElement("canvas"), { width: 1, height: 1 });
+  const tc = tiny.getContext("2d", { willReadFrequently: true })!;
+  tc.drawImage(source, 0, 0, 1, 1);
+  const [r, g, b] = tc.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r},${g},${b})`;
+}
+
+/**
+ * The source turned (the author, 2026-11-02): quarter turns plus a fine angle; the corners a fine angle opens take the
+ * picture's average color (as the letterbox does), so they fit in the same palettes.
+ */
+function turn(source: ImageBitmap, degrees: number): Drawable {
+  if (!degrees) return source;
+  const [width, height] = rotatedSize(source.width, source.height, degrees);
+  const canvas = Object.assign(document.createElement("canvas"), { width, height });
+  const context = canvas.getContext("2d")!;
+  if (degrees % 90) { context.fillStyle = average(source); context.fillRect(0, 0, width, height); }
+  context.imageSmoothingQuality = "high";
+  context.translate(width / 2, height / 2);
+  context.rotate(degrees * Math.PI / 180);
+  context.drawImage(source, -source.width / 2, -source.height / 2);
+  return canvas;
+}
+
+/** The part of the turned picture the crop box takes (all of it without one). */
+function cropTo(source: Drawable, crop: CropBox | null): Drawable {
+  if (!crop) return source;
+  const sx = Math.round(crop.x * source.width), sy = Math.round(crop.y * source.height);
+  const width = Math.max(1, Math.round(crop.w * source.width)), height = Math.max(1, Math.round(crop.h * source.height));
+  const canvas = Object.assign(document.createElement("canvas"), { width, height });
+  canvas.getContext("2d")!.drawImage(source, sx, sy, width, height, 0, 0, width, height);
+  return canvas;
+}
+
 /** Draws the source into a width × height frame: cover (crop, panned) or contain (letterboxed on its average color). */
-function frame(source: ImageBitmap, width: number, height: number, framing: Framing, panX: number, panY: number): Uint8ClampedArray {
+function frame(source: Drawable, width: number, height: number, framing: Framing, panX: number, panY: number): Uint8ClampedArray {
   const canvas = Object.assign(document.createElement("canvas"), { width, height });
   const context = canvas.getContext("2d", { willReadFrequently: true })!;
   context.imageSmoothingEnabled = true;
@@ -43,11 +81,7 @@ function frame(source: ImageBitmap, width: number, height: number, framing: Fram
   const w = source.width * scale, h = source.height * scale;
   if (framing === "contain") {
     // The letterbox takes the picture's average color, so it fits in the same palettes.
-    const tiny = Object.assign(document.createElement("canvas"), { width: 1, height: 1 });
-    const tc = tiny.getContext("2d", { willReadFrequently: true })!;
-    tc.drawImage(source, 0, 0, 1, 1);
-    const [r, g, b] = tc.getImageData(0, 0, 1, 1).data;
-    context.fillStyle = `rgb(${r},${g},${b})`;
+    context.fillStyle = average(source);
     context.fillRect(0, 0, width, height);
   }
   const x = framing === "cover" ? -(w - width) * panX / 100 : (width - w) / 2;
@@ -67,21 +101,33 @@ function Picture({ rgba, width, height, label, extra }: { rgba: Uint8ClampedArra
   return <figure className="pw-pic"><figcaption className="k-eyebrow">{label}</figcaption><div className="pw-frame"><canvas ref={canvas} width={width} height={height} />{extra}</div></figure>;
 }
 
-/** The whole source picture, the part the frame takes boxed on it (Fill crops; Fit inside takes it all). */
-function SourceView({ source, width, height, framing, pan }: { source: Source; width: number; height: number; framing: Framing; pan: { x: number; y: number } }) {
+/**
+ * The whole source picture (turned), the part the frame takes boxed on it (Fill crops; Fit inside takes it all).
+ * Dragging on it draws a crop box (the author, 2026-11-02); the frame then fits inside that box.
+ */
+function SourceView({ name, turned, crop, onCrop, width, height, framing, pan }: { name: string; turned: Drawable; crop: CropBox | null; onCrop: (crop: CropBox | null) => void; width: number; height: number; framing: Framing; pan: { x: number; y: number } }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [drag, setDrag] = useState<{ x: number; y: number; box: CropBox | null } | null>(null);
   useEffect(() => {
     const target = canvas.current;
     if (!target) return;
-    Object.assign(target, { width: source.image.width, height: source.image.height });
-    target.getContext("2d")!.drawImage(source.image, 0, 0);
-  }, [source]);
-  const sw = source.image.width, sh = source.image.height;
+    Object.assign(target, { width: turned.width, height: turned.height });
+    target.getContext("2d")!.drawImage(turned, 0, 0);
+  }, [turned]);
+  const shown = drag?.box ?? crop;
+  const area = crop ?? { x: 0, y: 0, w: 1, h: 1 };
+  const sw = turned.width * area.w, sh = turned.height * area.h;
   const scale = Math.max(width / sw, height / sh), w = width / scale / sw, h = height / scale / sh;
-  const box = framing === "cover" ? { left: (1 - w) * pan.x, top: (1 - h) * pan.y, width: w * 100, height: h * 100 } : null;
+  const box = framing === "cover" && !drag ? { left: (area.x + (1 - w) * area.w * pan.x / 100) * 100, top: (area.y + (1 - h) * area.h * pan.y / 100) * 100, width: w * area.w * 100, height: h * area.h * 100 } : null;
+  const at = (event: React.PointerEvent<HTMLElement>) => { const rect = event.currentTarget.getBoundingClientRect(); return { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height }; };
   return (
-    <figure className="pw-pic"><figcaption className="k-eyebrow">Your picture · {source.name}</figcaption>
-      <div className="pw-frame pw-frame--source"><span className="pw-src"><canvas ref={canvas} />
+    <figure className="pw-pic"><figcaption className="k-eyebrow">Your picture · {name} <span className="k-muted">· drag to crop</span></figcaption>
+      <div className="pw-frame pw-frame--source"><span className="pw-src"
+        onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const p = at(event); setDrag({ ...p, box: null }); }}
+        onPointerMove={(event) => { if (!drag) return; const p = at(event); setDrag({ ...drag, box: clampCrop(drag.x, drag.y, p.x, p.y) }); }}
+        onPointerUp={() => { if (drag) { if (drag.box) onCrop(drag.box); setDrag(null); } }}
+        onPointerCancel={() => setDrag(null)}><canvas ref={canvas} />
+        {shown && <i className="pw-cropbox" style={{ left: `${shown.x * 100}%`, top: `${shown.y * 100}%`, width: `${shown.w * 100}%`, height: `${shown.h * 100}%` }} />}
         {box && <i className="pw-crop" style={{ left: `${box.left}%`, top: `${box.top}%`, width: `${box.width}%`, height: `${box.height}%` }} />}</span></div>
     </figure>
   );
@@ -94,6 +140,11 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
   const [size, setSize] = useState<[number, number]>([160, 144]);
   const [framing, setFraming] = useState<Framing>("cover");
   const [pan, setPan] = useState({ x: 50, y: 50 });
+  // Crop and turn the source first (the author, 2026-11-02): quarter turns, a fine angle (-45 … 45°) and a crop box.
+  const [quarter, setQuarter] = useState(0);
+  const [angle, setAngle] = useState(0);
+  const [crop, setCrop] = useState<CropBox | null>(null);
+  const unturn = () => { setQuarter(0); setAngle(0); setCrop(null); };
   const [keep, setKeep] = useState(32);
   // (the author, 2026-11-02): the dither pattern is a choice, with a strength; none stays the default.
   const [dither, setDither] = useState<DitherKind>("none");
@@ -118,6 +169,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
     try {
       const image = await createImageBitmap(picked, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
       if (ticket !== picks.current || (sample && chosen.current)) { image.close(); return; }
+      unturn();
       setSource((was) => { was?.image.close(); return { image, name: label ?? (picked instanceof File ? picked.name : "picture"), key }; });
     } catch { /* not a picture */ }
   };
@@ -148,7 +200,8 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
     return () => window.removeEventListener("paste", onPaste);
   });
 
-  const framed = useMemo(() => source ? frame(source.image, width, height, framing, pan.x, pan.y) : null, [source, width, height, framing, pan.x, pan.y]);
+  const turned = useMemo(() => source ? turn(source.image, quarter * 90 + angle) : null, [source, quarter, angle]);
+  const framed = useMemo(() => turned ? frame(cropTo(turned, crop), width, height, framing, pan.x, pan.y) : null, [turned, crop, width, height, framing, pan.x, pan.y]);
   const options = useMemo<FitOptions>(() => ({ keep, dither, strength, max, budget }), [keep, dither, strength, max, budget]);
 
   // The fit is the slow part (a few hundred ms on four screens): run it a beat after the last change.
@@ -185,7 +238,7 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
             </div>
           ) : (<>
             <Picture rgba={after && result?.width === width && result.height === height ? after : framed} width={width} height={height} label={<>Result · {width} × {height} ({screens}) · live</>} extra={working ? <Chip title="Fitting…">fitting…</Chip> : undefined} />
-            <div style={{ width: "46%" }}><SourceView source={source} width={width} height={height} framing={framing} pan={pan} /></div>
+            <div style={{ width: "46%" }}>{turned && <SourceView name={source.name} turned={turned} crop={crop} onCrop={setCrop} width={width} height={height} framing={framing} pan={pan} />}</div>
           </>)}
         </div>
         <div className="pw-controls">
@@ -198,6 +251,15 @@ export function PictureWizard({ projectName, onClose, onOpen, onSave, takenNames
               <Field label="Left ↔ right"><Slider label="Pan across" value={pan.x} onChange={(x) => setPan({ ...pan, x })} min={0} max={100} /></Field>
               <Field label="Top ↕ bottom"><Slider label="Pan down" value={pan.y} onChange={(y) => setPan({ ...pan, y })} min={0} max={100} /></Field>
             </>}
+          </div>
+          <div className="pw-section"><span className="k-label">Turn and crop</span>
+            <div className="pw-row">
+              <IconButton label="Turn left a quarter" size="sm" onClick={() => { setQuarter((quarter + 3) % 4); setCrop(null); }}><RotateCcw /></IconButton>
+              <IconButton label="Turn right a quarter" size="sm" onClick={() => { setQuarter((quarter + 1) % 4); setCrop(null); }}><RotateCw /></IconButton>
+              <span className="k-spacer" />
+              <Button size="sm" icon={<Undo2 />} disabled={!quarter && !angle && !crop} title="No turn, no crop" onClick={unturn}>Reset</Button>
+            </div>
+            <Field label={<>Straighten <span className="k-muted">· {angle}°</span></>} hint={crop ? "Cropped: drag on your picture again to change it" : "Drag on your picture to crop it"}><Slider label="Straighten" value={angle} onChange={(value) => { setAngle(value); setCrop(null); }} min={-45} max={45} /></Field>
           </div>
           <Field label={<>Keep colors <span className="k-muted">· {keep >= 64 ? "all" : keep}</span></>} hint="Fewer colors: cleaner tiles, fewer palettes needed"><Slider label="Keep colors" value={keep} onChange={setKeep} min={4} max={64} step={2} /></Field>
           <div className="pw-section"><span className="k-label">Dithering</span><Segmented fill size="sm" label="Dithering" value={dither} onChange={setDither} options={[{ value: "none", label: "None" }, { value: "ordered", label: "Ordered", title: "A 4 × 4 pattern: even textures" }, { value: "floyd", label: "Diffused", title: "Floyd-Steinberg: each pixel's error spreads to its neighbours" }]} />

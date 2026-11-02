@@ -8,6 +8,9 @@
 .pw-src { position: relative; display: block; line-height: 0; }
 .pw-crop { position: absolute; box-shadow: 0 0 0 1px var(--k-acc), 0 0 0 999px rgba(0, 0, 0, .45); pointer-events: none; }
 .pw-frame--source { overflow: hidden; }
+.pw-src { cursor: crosshair; touch-action: none; user-select: none; }
+.pw-cropbox { position: absolute; outline: 1px dashed var(--k-acc); pointer-events: none; }
+.pw-row { display: flex; align-items: center; gap: var(--k-2); }
 .pw-busy { position: absolute; top: 8px; right: 10px; }
 .pw-drop { display: grid; place-items: center; gap: var(--k-3); min-height: 280px; padding: var(--k-8); text-align: center; border: 2px dashed var(--k-edge-2); border-radius: var(--k-r-card); background: var(--k-well); color: var(--k-ink-2); }
 .pw-drop.is-over { border-color: var(--k-acc); color: var(--k-ink); }
