@@ -3,7 +3,7 @@
  * lightest first. `groupColors` does the grouping for a loose color list (a Lospec palette); the rest are the small
  * steps the wizard needs (sorting, swapping, naming, the library's sets).
  */
-import { LOW_CONTRAST, hexRgb } from "../paint";
+import { LOW_CONTRAST, hexRgb, timeVariant } from "../paint";
 
 /** CIE L*a*b* of "#RRGGBB" (D65), as paint.ts measures colors: kept here so a grouping measures each color once. */
 function lab(hex: string): [number, number, number] {
@@ -146,14 +146,14 @@ export interface LibrarySet { id: string; label: string; base: string; palettes:
 
 /**
  * The bundled library as sets to pick from: a small collection whole (eight or fewer), a big one by its name
- * prefixes ("DWC-1-Cliffs" … "DWC-8-UI" make the DWC set). Time-of-day variants ("… D", "… N", "… S") are left
+ * prefixes ("DWC-1-Cliffs" … "DWC-8-UI" make the DWC set). Time-of-day variants ("… D", "… N", "… S", U, C) are left
  * out, since they are versions of a set's palettes rather than members of it.
  */
 export function librarySets(collections: readonly { name: string; palettes: readonly { name: string; colors: readonly string[] }[] }[]): LibrarySet[] {
   const sets: LibrarySet[] = [];
   const copy = (palette: { name: string; colors: readonly string[] }) => ({ name: palette.name, colors: [...palette.colors] });
   for (const collection of collections) {
-    const palettes = collection.palettes.filter((palette) => palette.colors.length === 4 && !/ [DNS]$/.test(palette.name));
+    const palettes = collection.palettes.filter((palette) => palette.colors.length === 4 && !timeVariant(palette.name));
     if (palettes.length <= 8) { if (palettes.length) sets.push({ id: collection.name, label: `${collection.name} (${palettes.length})`, base: collection.name, palettes: palettes.map(copy) }); continue; }
     const groups = new Map<string, typeof palettes>();
     for (const palette of palettes) {

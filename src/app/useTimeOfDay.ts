@@ -5,10 +5,11 @@
  * palettes.
  */
 import { useEffect, useRef, useState } from "react";
-import { hexRgb, timeVariant } from "../paint";
+import { hexRgb, timeVariant, TIME_LETTERS } from "../paint";
 
-export type TimeKey = "day" | "D" | "S" | "N";
-export const TIMES: { key: TimeKey; name: string }[] = [{ key: "day", name: "Day" }, { key: "D", name: "Dawn" }, { key: "S", name: "Sunset" }, { key: "N", name: "Night" }];
+export type TimeKey = "day" | "D" | "S" | "N" | "U" | "C";
+/** Underwater and Cave (the author, 2026-11-02) are places rather than times: they show, but a played day skips them. */
+export const TIMES: { key: TimeKey; name: string }[] = [{ key: "day", name: "Day" }, { key: "D", name: "Dawn" }, { key: "S", name: "Sunset" }, { key: "N", name: "Night" }, { key: "U", name: "Water" }, { key: "C", name: "Cave" }];
 /** The order a day plays in. */
 const PLAY: TimeKey[] = ["D", "day", "S", "N"];
 const FADE_MS = 700, HOLD_MS = 1800;
@@ -61,8 +62,8 @@ export function timeColors(palette: { name: string; colors: readonly string[] },
   return view.mix >= 1 ? at(view.to) : blend(at(view.from), at(view.to), view.mix);
 }
 
-/** How many of these palettes have at least one dawn, sunset or night version in `all`. */
+/** How many of these palettes have at least one dawn, sunset, night, underwater or cave version in `all`. */
 export function palettesWithTimes(list: readonly { name: string }[], all: readonly { name: string }[]): number {
   const names = new Set(all.map((item) => item.name));
-  return list.filter((palette) => { const base = timeVariant(palette.name)?.base ?? palette.name; return ["D", "S", "N"].some((key) => names.has(`${base} ${key}`)); }).length;
+  return list.filter((palette) => { const base = timeVariant(palette.name)?.base ?? palette.name; return TIME_LETTERS.some((key) => names.has(`${base} ${key}`)); }).length;
 }

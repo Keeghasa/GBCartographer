@@ -12,6 +12,7 @@ import library from "../palettes/library.json";
 import { closeShades, fitPalettes } from "../paint";
 import { Button, Checkbox, Chip, Field, IconButton, Segmented, Select } from "../ui/kit";
 import { WizardPage } from "./WizardPage";
+import { VISIONS, visionClashes, simulate, type Vision } from "./colorBlind";
 import { CloseWarning } from "./CloseWarning";
 import { baseFromFile, baseFromLink, flattenColors, groupColors, librarySets, lightestFirst, paletteNames, swapColors } from "./paletteSet";
 import "./PaletteSetWizard.css";
@@ -68,6 +69,8 @@ const Strip = ({ colors }: { colors: readonly string[] }) => <div className="psw
 export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, onAddToProject, onAddToMine }: PaletteSetWizardProps): JSX.Element {
   const [kind, setKind] = useState<SourceKind>("lospec");
   const [link, setLink] = useState("");
+  // Colour-blind check (the author, 2026-11-02): the set as seen with one kind of colour blindness; only the view changes.
+  const [vision, setVision] = useState<"typical" | Vision>("typical");
   const [fetching, setFetching] = useState(false);
   const [lospec, setLospec] = useState<{ colors: string[]; base: string } | null>(null);
   const [setId, setSetId] = useState(SETS[0]?.id ?? "");
@@ -195,6 +198,14 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
             <span className="k-muted k-xs">{!last ? "" : picked ? "Now click the color to swap it with." : "Click a color, then another, to swap them."}</span>
             <Button size="sm" variant="ghost" icon={<RotateCcw />} disabled={!loadedFrom} title="Back to the palettes as the source gave them" onClick={() => loadedFrom && load(loadedFrom)}>Start over</Button>
           </div>
+          {last > 0 && <div className="psw-vision">
+            <Segmented fill size="sm" label="Seen as" value={vision} onChange={(value) => setVision(value as "typical" | Vision)}
+              options={[{ value: "typical", label: "Typical" }, ...VISIONS.map(({ key, name }) => ({ value: key, label: name }))]} />
+            {vision !== "typical" && (() => {
+              const count = palettes.filter((colors) => visionClashes(colors, vision).length > 0).length;
+              return <span className="k-muted k-xs">{VISIONS.find((each) => each.key === vision)?.hint} (a simulation). {count ? `${count} palette${count === 1 ? " has" : "s have"} colors that run together.` : "Every palette's colors stay apart."}</span>;
+            })()}
+          </div>}
           {!last ? <div className="k-well psw-empty k-muted k-small">{kind === "lospec" ? "Fetch a Lospec palette to see it grouped." : "Nothing to make a set from yet."}</div> : <>
           <div className="psw-base">
             <Field label="Base name" hint={`Palettes are named ${base.trim() || "<base>"}-1 … ${base.trim() || "<base>"}-${last} where a name below is left empty`}>
@@ -205,12 +216,15 @@ export function PaletteSetWizard({ projectName, slotsWhere, picture, onClose, on
             {palettes.map((colors, index) => {
               const close = closeShades(colors);
               const sorted = lightestFirst(colors).join() === colors.join();
+              const clashes = vision === "typical" ? [] : visionClashes(colors, vision);
+              const visionName = VISIONS.find((each) => each.key === vision)?.name;
               return (
                 <div key={index} className="k-card psw-row">
                   <input className="k-input psw-row-name" aria-label={`Palette ${index + 1} name`} placeholder={`${base.trim() || "name"}-${index + 1}`} value={own[index] ?? ""} onChange={(event) => { const nextOwn = [...own]; nextOwn[index] = event.target.value; setOwn(nextOwn); setDone({}); }} />
                   <div className="psw-swatches" role="group" aria-label={`Palette ${index + 1}`}>
-                    {colors.map((color, at) => <button key={at} type="button" className="psw-swatch" style={{ background: color }} aria-pressed={picked?.[0] === index && picked[1] === at} aria-label={`Color ${at + 1}: ${color}`} title={`Color ${at + 1}: ${color}`} onClick={() => pick(index, at)} />)}
+                    {colors.map((color, at) => <button key={at} type="button" className="psw-swatch" style={{ background: vision === "typical" ? color : simulate(color, vision) }} aria-pressed={picked?.[0] === index && picked[1] === at} aria-label={`Color ${at + 1}: ${color}`} title={`Color ${at + 1}: ${color}`} onClick={() => pick(index, at)} />)}
                   </div>
+                  {clashes.length > 0 && <Chip tone="warn" title={clashes.map(({ a, b, delta }) => `Colors ${a + 1} and ${b + 1} run together with ${visionName?.toLowerCase()} (difference ${delta})`).join("; ")}>{clashes.map(({ a, b }) => `${a + 1}·${b + 1}`).join(" ")}</Chip>}
                   {close.length > 0 && <CloseWarning key={colors.join()} colors={colors} title={close.map(({ a, b }) => `Colors ${a + 1} and ${b + 1} are hard to tell apart`).join("; ")} />}
                   <IconButton size="sm" variant="ghost" label={sorted ? "Already lightest first" : "Sort lightest first"} disabled={sorted} onClick={() => edit(palettes.map((each, at) => at === index ? lightestFirst(each) : each))}><ArrowDownWideNarrow /></IconButton>
                 </div>
