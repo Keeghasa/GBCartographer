@@ -31,6 +31,7 @@
  *   GET  /__cartographer/maps                 the project's Map Room layouts; POST { maps } saves them (in the project's
  *                                             Cartographer/maps.json; older ones move there from the data folder)
  *   GET  /__cartographer/own-settings          the project's own choices in Cartographer/cartographer.json; POST sets some
+ *   GET  /__cartographer/pending-collisions    a generator's collisions waiting for a scene (Cartographer/collisions.json); POST { file, values | null }
  *   GET  /__cartographer/presets               the wizards' saved presets (Cartographer/presets.json); POST { wizard, name, settings | null }
  *   GET  /__cartographer/panel                 hidden and pinned pictures (Cartographer/panel.json); POST { hidden, pinned }
  *   GET  /__cartographer/sources?kind=         the wizards' own 3D models or pictures kept in Cartographer/models|pictures;
@@ -55,7 +56,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { AssetWriteError, ASSET_KINDS, createAsset, dialogueSettings, paletteUsage, previewSheet, projectHealth, removePalette, assetInfo, assetPath, listAssets, listPalettes, projectName, renderPreview, writeAsset, writePalette, writePaletteSlot, writeScenePaletteIds, writeStampAutotile, writeStampMeta, assetDeleteCheck, deleteAsset, renameAsset, isAutotile, sceneCollisions, writeSceneCollisions, writeTileColors, type AssetKind } from "./assets";
 import { backupPath, listBackups, migrateOutOfProject, projectBackupDir, restoreBackup, RestoreChangedError } from "./backups";
-import { addSource, listSources, listUnsaved, readModelViews, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, readPresets, writePreset, SOURCE_KINDS, sourcePath, writeModelViews, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
+import { addSource, listSources, listUnsaved, readModelViews, readOwnSettings, readPanel, removeSource, removeUnsaved, renameOwn, readPresets, writePreset, readCollisions, writeCollisions, SOURCE_KINDS, sourcePath, writeModelViews, writeOwnSettings, writePanel, writeUnsaved, type SourceKind } from "./own";
 import { readMaps, writeMaps } from "./maps";
 import { demoProjectCopy, projectFolder, projectFolderFor, projectProblem, projectVersion, recentProjects, saveProjectFolder, setProjectFolder, versionNote, demoAvailable } from "./project";
 
@@ -301,6 +302,17 @@ export async function handleCartographerRequest(req: IncomingMessage, res: Serve
     if (url.pathname === "/__cartographer/panel") {
       try {
         reply(res, 200, { ok: true, ...(req.method === "POST" ? { exists: true, ...writePanel(project, JSON.parse((await readBody(req)).toString("utf8"))) } : readPanel(project)) });
+      } catch (error) {
+        reply(res, 400, { error: (error as Error).message });
+      }
+      return true;
+    }
+    if (url.pathname === "/__cartographer/pending-collisions") {
+      try {
+        if (req.method === "POST") {
+          const body = JSON.parse((await readBody(req)).toString("utf8")) as { file?: unknown; values?: unknown };
+          reply(res, 200, { ok: true, collisions: writeCollisions(project, String(body.file ?? ""), body.values ?? null, options.backupDir) });
+        } else reply(res, 200, { ok: true, collisions: readCollisions(project) });
       } catch (error) {
         reply(res, 400, { error: (error as Error).message });
       }

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { listBackups } from "./backups";
-import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, readPresets, writeOwnSettings, writePreset, writePanel, writeUnsaved } from "./own";
+import { listUnsaved, readOwnSettings, readPanel, removeUnsaved, readPresets, writeOwnSettings, writePreset, readCollisions, writeCollisions, writePanel, writeUnsaved } from "./own";
 
 const project = () => { const root = mkdtempSync(join(tmpdir(), "gbc-own-")), folder = join(root, "Game"); mkdirSync(folder); return { root, folder }; };
 
@@ -68,6 +68,18 @@ describe("the wizards' own sources", () => {
     expect(existsSync(join(folder, "Cartographer/models/castle"))).toBe(false);
     expect(listBackups(join(root, "backups"), folder).map((entry) => entry.file).sort()).toEqual(["Cartographer/models/castle/castle.bin", "Cartographer/models/castle/castle.gltf", "Cartographer/models/castle/wall.png"]);
     expect(removeSource(folder, "pictures", "nope.png", join(root, "backups"))).toBe(false);
+  });
+
+  it("keeps a generator's collisions in collisions.json until a scene takes them, backed up, only numbers per tile", () => {
+    const { root, folder } = project();
+    expect(readCollisions(folder)).toEqual({});
+    writeCollisions(folder, "Cave 1.png", [0, 15, 15, 0], join(root, "app"));
+    writeCollisions(folder, "Island.png", [15, 0], join(root, "app"));
+    expect(JSON.parse(readFileSync(join(folder, "Cartographer/collisions.json"), "utf8")).collisions).toEqual({ "Cave 1.png": [0, 15, 15, 0], "Island.png": [15, 0] });
+    expect(writeCollisions(folder, "Cave 1.png", null, join(root, "app"))).toEqual({ "Island.png": [15, 0] });
+    expect(() => writeCollisions(folder, "../x.png", [1], join(root, "app"))).toThrow();
+    expect(() => writeCollisions(folder, "Bad.png", [999], join(root, "app"))).toThrow();
+    expect(listBackups(join(root, "app"), folder, "Cartographer/collisions.json").length).toBeGreaterThan(0);
   });
 
   it("keeps the wizards' presets in presets.json, backs it up before each write, deletes by name", () => {

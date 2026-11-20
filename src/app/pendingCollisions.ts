@@ -1,7 +1,8 @@
 /**
  * Collisions a map generator made for a new background (the author, 2026-11-02: "collisions written too"). They live
- * in a GB Studio scene's `collisions`, and a brand-new background is in no scene yet, so they wait here (per
- * computer, by project and file) until GB Studio has put the background in a scene: the next time the background is
+ * in a GB Studio scene's `collisions`, and a brand-new background is in no scene yet, so they wait in the project's
+ * Cartographer/collisions.json (since 2026-11-20, so they travel with it; older ones in this browser move in on first
+ * read) until GB Studio has put the background in a scene: the next time the background is
  * opened, every scene that shows it with no collisions at all takes them as unsaved collision edits, and Save writes
  * them (the collision brush's own path, only that scene's `collisions` field). A scene that has collisions is never
  * touched.
@@ -28,16 +29,28 @@ export function withPending(scene: Uint8Array, pending: ArrayLike<number> | unde
   return Uint8Array.from(pending);
 }
 
-export function keepPending(project: string, file: string, values: Uint8Array) {
-  const kept = readStored<Kept>(KEY, {});
-  store(KEY, { ...kept, [project]: { ...kept[project], [file]: Array.from(values) } });
+const post = (file: string, values: number[] | null) => fetch("./__cartographer/pending-collisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, values }) });
+
+/** Kept in the open project's Cartographer/collisions.json. Resolves false when it couldn't be written. */
+export async function keepPending(_project: string, file: string, values: Uint8Array): Promise<boolean> {
+  return (await post(file, Array.from(values)).catch(() => null))?.ok ?? false;
 }
 
-export function pendingFor(project: string, file: string): number[] | undefined {
-  return readStored<Kept>(KEY, {})[project]?.[file];
+/** The open project's pending collisions for a background; this browser's older ones for the project move in first. */
+export async function pendingFor(project: string, file: string): Promise<number[] | undefined> {
+  const local = readStored<Kept>(KEY, {});
+  for (const [name, values] of Object.entries(local[project] ?? {})) {
+    if ((await post(name, values).catch(() => null))?.ok) dropLocal(project, name);
+  }
+  const read = await fetch("./__cartographer/pending-collisions", { cache: "no-cache" }).then((response) => response.ok ? response.json() as Promise<{ collisions?: Record<string, number[]> }> : null).catch(() => null);
+  return read?.collisions?.[file];
 }
 
-export function dropPending(project: string, file: string) {
+export async function dropPending(_project: string, file: string): Promise<void> {
+  await post(file, null).catch(() => null);
+}
+
+function dropLocal(project: string, file: string) {
   const kept = readStored<Kept>(KEY, {});
   if (!kept[project]?.[file]) return;
   const { [file]: _gone, ...rest } = kept[project];

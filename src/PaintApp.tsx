@@ -1087,10 +1087,10 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
       scenes: read.scenes.map(({ collisions, ...scene }) => ({ ...scene, opened: collisions.slice(), values: Uint8Array.from(collisions) })),
     };
     // A generator's collisions (2026-11-02) go into each scene showing it that has none yet, unsaved: Save writes them.
-    const project = projectRef.current?.path, pending = project ? pendingFor(project, asset.file) : undefined;
+    const project = projectRef.current?.path, pending = project ? await pendingFor(project, asset.file) : undefined;
     const taken = pending ? target.collision.scenes.filter((scene) => { const values = withPending(scene.values, pending); if (values) scene.values = values; return Boolean(values); }) : [];
     if (taken.length && project) {
-      dropPending(project, asset.file);
+      void dropPending(project, asset.file);
       touch(target);
       say(`${target.name}: the generator's collisions are in ${taken.map((scene) => scene.name).join(", ")}, unsaved. Save writes them.`);
     }
@@ -1253,7 +1253,7 @@ ${names}. ${target.name}'s tiles keep their slot numbers, so they show these pal
     const made = response ? await response.json().catch(() => null) as { ok?: boolean; error?: string; file?: string } | null : null;
     if (!response?.ok || !made?.ok || !made.file) { say(`Could not make the background: ${made?.error ?? response?.statusText ?? "no answer"}`); return false; }
     // A generator's collisions wait until GB Studio puts the background in a scene (taken in when it's next opened).
-    if (result.collisions && projectRef.current) keepPending(projectRef.current.path, made.file, result.collisions);
+    if (result.collisions && projectRef.current && !await keepPending(projectRef.current.path, made.file, result.collisions)) say(`Made ${made.file}, but its collisions could not be kept in Cartographer/collisions.json.`);
     await loadProject();
     setProjectKind("backgrounds");
     const asset = projectRef.current?.assets.find((item) => item.kind === "backgrounds" && item.file === made.file);

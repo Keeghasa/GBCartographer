@@ -287,3 +287,37 @@ export function writePreset(project: string, wizard: string, name: string, setti
   writeJson(path, { presets: next });
   return next;
 }
+
+/**
+ * A map generator's collisions for a new background (the author, 2026-11-20: moved out of the browser so they travel
+ * with the project): Cartographer/collisions.json, `{ collisions: { <background file>: [one value per 8 × 8 tile] } }`.
+ * They wait there until GB Studio puts the background in a scene; src/app/pendingCollisions.ts takes them in. Backed up
+ * before each write.
+ */
+const COLLISIONS_FILE = "collisions.json";
+export type PendingCollisions = Record<string, number[]>;
+const pngName = /^[^/\\]{1,200}\.png$/i;
+export function sanitizeCollisions(value: unknown): PendingCollisions {
+  const clean: PendingCollisions = {};
+  if (!plainObject(value)) return clean;
+  for (const [file, values] of Object.entries(value).slice(0, 500)) {
+    if (pngName.test(file) && Array.isArray(values) && values.length <= 65536 && values.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)) clean[file] = values as number[];
+  }
+  return clean;
+}
+export function readCollisions(project: string): PendingCollisions {
+  return sanitizeCollisions(readJson(ownFile(project, COLLISIONS_FILE))?.collisions);
+}
+/** Keeps (values) or drops (null) one background's pending collisions; the others are kept. */
+export function writeCollisions(project: string, file: string, values: unknown, backupDir: string): PendingCollisions {
+  if (!pngName.test(file)) throw new Error("A background's file name, please.");
+  const all = readCollisions(project);
+  if (values === null) { if (!all[file]) return all; delete all[file]; } else all[file] = values as number[];
+  const next = sanitizeCollisions(all);
+  if (values !== null && !next[file]) throw new Error("Collisions are one number (0–255) per tile.");
+  ownFolderReadme(project);
+  const path = ownFile(project, COLLISIONS_FILE);
+  if (existsSync(path)) backupFile(backupDir, project, path);
+  writeJson(path, { collisions: next });
+  return next;
+}
