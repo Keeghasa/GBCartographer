@@ -24,5 +24,6 @@ export default defineConfig({
   base: "./",
   define: { __APP_VERSION__: JSON.stringify((JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version) },
   plugins: [react(), cartographerEndpoints()],
-  test: { environment: "node" },
+  // .claude/ holds leftover agent worktrees (whole copies of the repo): never run their tests.
+  test: { environment: "node", exclude: ["**/node_modules/**", ".claude/**", "release/**"] },
 });
