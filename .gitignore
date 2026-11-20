@@ -40,3 +40,6 @@ demo/Cartographer/
 
 # Installers made by electron-builder (npm run dist)
 release/
+
+# The private notes vault (local only)
+GB Cartographer Vault/
