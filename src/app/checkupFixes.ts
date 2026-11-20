@@ -8,8 +8,8 @@ import { colorDistance, hexRgb, LOW_CONTRAST } from "../paint";
 /** One entry of GET /__cartographer/project-health (server/assets.ts projectHealth). */
 export interface CheckupIssue { level: "problem" | "warning" | "note"; kind: string; file?: string; title: string; detail: string }
 
-/** What the check-up can offer for an issue. Only "contrast", "unused", "twin" and "tiles" have a one-click fix. */
-export type FixKind = "contrast" | "unused" | "twin" | "tiles" | "explain";
+/** What the check-up can offer for an issue. Only "contrast", "unused", "twin", "tiles" and "dawn" have a one-click fix. */
+export type FixKind = "contrast" | "unused" | "twin" | "tiles" | "dawn" | "explain";
 
 /** Picture kinds the painter can open (palettes and project settings have nowhere to open). */
 const PICTURE_KINDS = new Set(["backgrounds", "sprites", "tilesets", "fonts", "emotes", "avatars", "ui"]);
@@ -30,6 +30,7 @@ export function fixKind(issue: CheckupIssue): FixKind {
     if (issue.title === "Low contrast") return "contrast";
     if (issue.title === "Unused palette") return "unused";
     if (issue.title === "Same colors as another") return "twin";
+    if (issue.title === "Old Dawn name" && / D$/.test(issue.file)) return "dawn";
   }
   if (issue.kind === "backgrounds" && issue.file && tileCount(issue)) return "tiles";
   return "explain";

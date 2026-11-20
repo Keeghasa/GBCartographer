@@ -1013,6 +1013,8 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
     const palette = byId.get(entry.id);
     if (!palette) continue;
     const variant = timeVariant(palette.name);
+    if (variant?.dawn && names.has(variant.base) && !names.has(`${variant.base} M`)) issues.push({ level: "warning", kind: "palettes", file: palette.name, title: "Old Dawn name",
+      detail: `Morning versions end in M since beta.4 (D read as Day). It still shows as ${variant.base}'s morning; renaming it ${variant.base} M keeps it that way for good. Events find palettes by id, so they keep working.` });
     if (variant && names.has(variant.base)) {
       variants += 1;
       const twin = entry.sameColors.map((id) => byId.get(id)?.name).filter((name): name is string => Boolean(name));
@@ -1039,7 +1041,7 @@ export function projectHealth(project: string): { colorMode: string; issues: Hea
   const TIME_WORDS: Record<string, string> = { M: "morning", S: "sunset", N: "night", U: "underwater", C: "cave" };
   for (const group of groups.values()) {
     const lead = group.find((pair) => family(pair.name) === pair.name) ?? group[0];
-    const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is TimeLetter => Boolean(time)).sort((a, b) => "DSNUC".indexOf(a) - "DSNUC".indexOf(b));
+    const times = group.filter((pair) => pair !== lead).map((pair) => timeVariant(pair.name)?.variant).filter((time): time is TimeLetter => Boolean(time)).sort((a, b) => "MSNUC".indexOf(a) - "MSNUC".indexOf(b));
     const words = times.map((time) => TIME_WORDS[time]);
     const also = times.length ? ` Its ${words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0]} version${times.length === 1 ? "" : "s"} (${times.join(", ")}) match ${[...new Set(lead.twin.map(family))].join(", ")}'s too.` : "";
     issues.push({ level: "note", kind: "palettes", file: lead.name, title: "Same colors as another", detail: `The same four colors as ${lead.twin.join(", ")}.${also}` });

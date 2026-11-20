@@ -5,7 +5,7 @@
  * palettes.
  */
 import { useEffect, useRef, useState } from "react";
-import { hexRgb, timeVariant, TIME_LETTERS } from "../paint";
+import { hexRgb, timeVariant, timeVersionName, TIME_LETTERS } from "../paint";
 
 export type TimeKey = "day" | "M" | "S" | "N" | "U" | "C";
 /** Underwater and Cave (the author, 2026-11-02) are places rather than times: they show, but a played day skips them. */
@@ -58,12 +58,13 @@ const blend = (a: readonly string[], b: readonly string[], mix: number) => a.map
 export function timeColors(palette: { name: string; colors: readonly string[] }, all: readonly { name: string; colors: readonly string[] }[], view: TimeView): readonly string[] {
   if (view.from === "day" && view.to === "day") return palette.colors;
   const base = timeVariant(palette.name)?.base ?? palette.name;
-  const at = (key: TimeKey) => key === "day" ? palette.colors : all.find((item) => item.name === `${base} ${key}`)?.colors ?? palette.colors;
+  const names = new Set(all.map((item) => item.name));
+  const at = (key: TimeKey) => { if (key === "day") return palette.colors; const name = timeVersionName(names, base, key); return (name && all.find((item) => item.name === name)?.colors) || palette.colors; };
   return view.mix >= 1 ? at(view.to) : blend(at(view.from), at(view.to), view.mix);
 }
 
 /** How many of these palettes have at least one morning, sunset, night, underwater or cave version in `all`. */
 export function palettesWithTimes(list: readonly { name: string }[], all: readonly { name: string }[]): number {
   const names = new Set(all.map((item) => item.name));
-  return list.filter((palette) => { const base = timeVariant(palette.name)?.base ?? palette.name; return TIME_LETTERS.some((key) => names.has(`${base} ${key}`)); }).length;
+  return list.filter((palette) => { const base = timeVariant(palette.name)?.base ?? palette.name; return TIME_LETTERS.some((key) => timeVersionName(names, base, key)); }).length;
 }

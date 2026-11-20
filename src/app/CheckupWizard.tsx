@@ -107,7 +107,8 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
   const twins = kind === "twin" && issue ? twinNames(issue.detail, palettes.map((entry) => entry.name)).map(byName).filter((entry): entry is ProjectPalette => Boolean(entry)) : [];
   // Of two palettes with the same colors, one can go only if no scene uses it.
   const spare = kind === "twin" ? [palette, ...twins].find((entry) => entry && unusedNames.has(entry.name)) : kind === "unused" ? palette : undefined;
-  const fixable = !status && (kind === "tiles" || (kind === "contrast" && changed.length > 0) || ((kind === "unused" || kind === "twin") && Boolean(spare)));
+  const morningName = kind === "dawn" && palette ? palette.name.replace(/ D$/, " M") : "";
+  const fixable = !status && (kind === "tiles" || (kind === "contrast" && changed.length > 0) || ((kind === "unused" || kind === "twin") && Boolean(spare)) || (kind === "dawn" && Boolean(palette) && !palettes.some((entry) => entry.name === morningName)));
 
   /** Leaves the issue on screen: passed over if it had a fix, seen if not. */
   const leave = () => {
@@ -136,6 +137,13 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
   const fixColors = () => palette && separated && void run(async () => {
     const done = await onFixPalette({ id: palette.id, name: palette.name, colors: separated });
     if (done) setPalettes((list) => list.map((entry) => entry.id === palette.id ? { ...entry, colors: separated } : entry));
+    return done;
+  });
+
+  /** An old Dawn-named version renamed to M (its id, colors and file follow; events keep it by id). */
+  const renameDawn = () => palette && void run(async () => {
+    const done = await onFixPalette({ id: palette.id, name: morningName, colors: palette.colors });
+    if (done) setPalettes((list) => list.map((entry) => entry.id === palette.id ? { ...entry, name: morningName } : entry));
     return done;
   });
 
@@ -194,6 +202,19 @@ export function CheckupWizard({ projectName, onClose, onFixPalette, onRemovePale
             </Button>
           </Fix>
         ) : <p className="cw-say">These colors have no room to move without changing the palette's order. Change them by hand in the palette manager.</p>}
+      </>);
+    }
+    if (kind === "dawn") {
+      if (!palette) return <p className="cw-say">This palette isn't in the project's palette list any more.</p>;
+      if (palettes.some((entry) => entry.name === morningName)) return <p className="cw-say">{morningName} already exists, and it is the one that shows as morning. If {palette.name} isn't needed, take it out in the palette manager.</p>;
+      return (<>
+        <PaletteLine palette={palette} />
+        <Fix hint="Only the name changes (its file is renamed to match, the old one backed up). Scenes and events find palettes by id, so nothing in GB Studio breaks.">
+          <Button variant="primary" disabled={busy || Boolean(status)} onClick={renameDawn}>
+            Rename to {morningName}
+            <span className="cw-ba"><span className="k-mono">{palette.name}</span><ArrowRight /><span className="k-mono">{morningName}</span></span>
+          </Button>
+        </Fix>
       </>);
     }
     if (kind === "unused") {

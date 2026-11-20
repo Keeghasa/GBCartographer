@@ -231,9 +231,20 @@ export const TIME_LETTERS: readonly TimeLetter[] = ["M", "S", "N", "U", "C"];
  * for sunset; U underwater and C cave dark since 2026-11-02), or null. Events switch these in, so they may be unused,
  * and night, sunset, underwater and cave ones are meant to be dim.
  */
-export function timeVariant(name: string): { base: string; variant: TimeLetter } | null {
-  const match = /^(.+) ([MNSUC])$/.exec(name.trim());
-  return match ? { base: match[1], variant: match[2] as TimeLetter } : null;
+export function timeVariant(name: string): { base: string; variant: TimeLetter; /** Named "<base> D" (Dawn, beta.3 and older): read as Morning. */ dawn?: true } | null {
+  const match = /^(.+) ([MNSUCD])$/.exec(name.trim());
+  if (!match) return null;
+  return match[2] === "D" ? { base: match[1], variant: "M", dawn: true } : { base: match[1], variant: match[2] as TimeLetter };
+}
+
+/**
+ * The name of `base`'s version for a time among `names`, or null. Morning falls back to an old "<base> D" (Dawn, what
+ * beta.3 and older named it, 2026-11-20) when there's no "<base> M", so palettes people made before the rename keep
+ * working; the check-up offers to rename them.
+ */
+export function timeVersionName(names: { has(name: string): boolean }, base: string, time: TimeLetter): string | null {
+  if (names.has(`${base} ${time}`)) return `${base} ${time}`;
+  return time === "M" && names.has(`${base} D`) ? `${base} D` : null;
 }
 
 /**
